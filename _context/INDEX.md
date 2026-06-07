@@ -1,16 +1,18 @@
 # 出勤專案 — 現況總覽 (INDEX)
-> 進場先讀。最後更新：2026-06-03
+> 進場先讀。最後更新：2026-06-08
 
 ## 一句話目標
-出勤記錄相關專案（推測：以 `出勤記錄範本.xlsx` 為基礎做出勤資料處理／自動化）。實際需求尚未在 `_context/` 留下 PRD 或工作紀錄。
+MS365 Power Apps 員工出勤儀表板；先重作模組一 Popup MVP，讓員工查看今日出勤查核並回寫 `表單回覆`。
 
 ## 目前狀態 / 進度
-- `_context/` 為空（僅 .gitkeep），無 PRD / TaskLog / Handover。
-- 專案根目錄僅有 `出勤記錄範本.xlsx`（2026-04-01）與 AGENTS.md（指向 SSOT 的 symlink）。
-- 推測尚未正式開工，或需求仍在他處（未驗證）。
+- 已讀取交接檔 `_context/attendance-dashboard-handover.md`。
+- 三方討論後決議：重作 Canvas App，不修舊 App。
+- 最新工作紀錄：`_context/TaskLog_2026-06-08_attendance-dashboard-rebuild.md`。
+- 工作討論稿：`workingfiles/attendance-dashboard-rebuild-recommendation.html`。
 
 ## 待辦 / 下一步
-- 接手前向使用者確認此專案目標與需求，補一份 PRD 後再動工。
+- 進 Power Apps Studio，依工作討論稿建立模組一 MVP。
+- 先確認 SharePoint List `AttendanceHistory` 欄位、內部欄位名稱、員工權限、`DateString` 格式。
 
 ## 備註
-- 本 INDEX 為占位檔；取得需求後請更新「一句話目標」與待辦。
+- `_context/AI_TEAM_DISCUSSION_2026-06-08_dashboard-rebuild.md` 是原始 ai-team 討論檔，包含 Codex、Antigravity、Claude 意見。

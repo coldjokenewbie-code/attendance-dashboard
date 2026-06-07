@@ -1,4 +1,4 @@
-<!-- WTF-AUTOGEN:AGENTS | 真相源: wtf-config/AGENTS.md | 由 sync_config.py 產生 | 最後同步: 2026-06-07 18:50:52 | 機器: comaMacBookAir.local | 請勿手動編輯，改源頭後重跑 sync。 WTF-AUTOGEN:END -->
+<!-- WTF-AUTOGEN:AGENTS | 真相源: wtf-config/AGENTS.md | 由 sync_config.py 產生 | 最後同步: 2026-06-08 00:59:19 | 機器: comaMacBookAir.local | 請勿手動編輯，改源頭後重跑 sync。 WTF-AUTOGEN:END -->
 
 # Cross-Tool Agent Rules
 > 適用：所有 AI agents 共用（Claude Code、Antigravity、Cursor 等）
@@ -9,14 +9,14 @@
 每次 session 開始，依序執行：
 
 1. **專案層 skills**（優先）：
-   - 統一以 `._agents/skills/` 作為工具中立的實體專案技能目錄。
-   - Claude Code 透過軟連結（symlink）將 `.claude/skills/` 指向 `._agents/skills/`。
-   - 若專案存在同名 skill，**必須使用專案版本，忽略全域同名路徑**。
+   - **統一放 `._agents/skills/`**（工具中立的實體專案技能目錄）。所有工具（Claude／Codex／Antigravity）一律到此找專案 skill。
+   - 原生自動清單只涵蓋全域 `~/.<tool>/skills/`，**不含 `._agents/skills/`**；故進專案時**主動列 `._agents/skills/` 各 `SKILL.md` 的名稱＋描述**（lazy，不讀 body），觸發才讀。**廢除舊 symlink 機制**（Drive 跨平台會斷鏈）。
+   - 若專案存在同名 skill，**必須用專案版本，忽略全域同名**。
 2. **全域 skills**（Fallback）：專案層沒有的 skill，才從全域路徑載入（真相源 `wtf-config/skills/`，部署後在 `~/.claude/skills/`）。
 
 3. **專案設定**：若有 `.claude/CLAUDE.md` 或 `._agents/AGENT_SPEC.md`，一併載入。
 4. **專案知識**：若專案根目錄有 `_context/`，讀取其中所有 `.md` 檔案；若有 `rules/`，讀取其中所有 `.md` 檔案。
-5. **實體讀取技能並簡述**：必須主動以 `view_file` 讀取所有啟用中技能（`SKILL.md`）的內容以確實完成載入，禁止僅口頭宣示；完成後簡述已啟用的 skills（例：`[Dev_Workflow 啟用中] [Quality_Guard 啟用中]`），再詢問任務。
+5. **技能載入並簡述（lazy-load，開場不讀 body）**：工具已自動列出所有 skill 名稱＋描述於可用清單；**開場不需 `view_file` 讀取 `SKILL.md` body**，僅在實際觸發該 skill 時才讀。完成載入後簡述與本案相關的 skills（例：`[Dev_Workflow] [Quality_Guard]`），再詢問任務。
 ## 效益優先溝通原則
 
 

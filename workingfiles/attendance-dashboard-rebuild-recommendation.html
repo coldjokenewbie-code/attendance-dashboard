@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>員工出勤儀表板重作建議</title>
+  <style>
+    :root {
+      --ink: #1f2933;
+      --muted: #667085;
+      --line: #d9e2ec;
+      --surface: #ffffff;
+      --soft: #f5f7fa;
+      --accent: #0f766e;
+      --accent-soft: #e6f4f1;
+      --warn: #b54708;
+      --warn-soft: #fff4e5;
+      --code: #172033;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #eef2f6;
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      line-height: 1.65;
+    }
+
+    main {
+      width: min(1080px, calc(100% - 32px));
+      margin: 32px auto 56px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 18px 50px rgba(31, 41, 51, 0.08);
+    }
+
+    header {
+      padding: 32px 36px 24px;
+      background: linear-gradient(180deg, #ffffff 0%, #f7fafc 100%);
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 22px;
+      line-height: 1.35;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 22px 0 8px;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+
+    p { margin: 0 0 12px; }
+
+    section {
+      padding: 28px 36px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-child { border-bottom: 0; }
+
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .decision {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .tile {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .tile strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent);
+    }
+
+    .callout {
+      padding: 16px 18px;
+      border: 1px solid #a7d7ce;
+      border-left: 5px solid var(--accent);
+      border-radius: 8px;
+      background: var(--accent-soft);
+    }
+
+    .warning {
+      border-color: #ffd7a8;
+      border-left-color: var(--warn);
+      background: var(--warn-soft);
+    }
+
+    ol, ul {
+      margin: 0;
+      padding-left: 22px;
+    }
+
+    li { margin: 7px 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 15px;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--soft);
+      font-weight: 650;
+    }
+
+    code {
+      color: var(--code);
+      background: #edf1f5;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 12px 0 18px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      color: #f8fafc;
+      background: var(--code);
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    pre code {
+      color: inherit;
+      background: transparent;
+      padding: 0;
+      border-radius: 0;
+      font-size: inherit;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 760px) {
+      main { width: 100%; margin: 0; border-radius: 0; }
+      header, section { padding: 24px 20px; }
+      .decision, .grid { grid-template-columns: 1fr; }
+      h1 { font-size: 25px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>員工出勤儀表板重作建議</h1>
+      <p class="meta">Tech Lead 彙整：Codex｜協作來源：Antigravity、Claude｜日期：2026-06-08</p>
+      <div class="decision">
+        <div class="tile">
+          <strong>Codex</strong>
+          <span>重建 Canvas App，沿用 SharePoint 資料模型。</span>
+        </div>
+        <div class="tile">
+          <strong>Antigravity</strong>
+          <span>同意重建，補強權限、欄位內部名稱、DateString 風險。</span>
+        </div>
+        <div class="tile">
+          <strong>Claude</strong>
+          <span>同意重建，提出根層 Rectangle 遮罩作為備案。</span>
+        </div>
+      </div>
+    </header>
+
+    <section>
+      <h2>拍板結論</h2>
+      <div class="callout">
+        <p><strong>建議重作，不修舊 App。</strong></p>
+        <p>保留既有 SharePoint List 與欄位設計，重建乾淨的 Canvas App。第一階段只做模組一：今日出勤列表、Popup 回覆、Patch 寫回 `表單回覆`。</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>主方案與備案</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>方案</th>
+            <th>做法</th>
+            <th>適用情境</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>主方案</td>
+            <td>Screen 根層級建立 `OverlayContainer`，內放 `PopupCard`，用容器置中。</td>
+            <td>Power Apps 容器置中屬性可正常運作時。</td>
+          </tr>
+          <tr>
+            <td>備案</td>
+            <td>Screen 根層級建立 `rectPopupMask` + `ctnPopup`，用 `App.Width` / `App.Height` 計算置中。</td>
+            <td>`OverlayContainer` 置中仍跑掉時。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>製作流程</h2>
+      <ol>
+        <li>檢查 SharePoint List `AttendanceHistory` 欄位是否存在。</li>
+        <li>新建 Blank Canvas App，先只做模組一。</li>
+        <li>Settings &gt; Display：關閉 `Scale to fit`、`Lock aspect ratio`、`Lock orientation`。</li>
+        <li>Data &gt; Add data &gt; SharePoint，連接 `AttendanceHistory`。</li>
+        <li>設定 App `OnStart` 變數。</li>
+        <li>建立 `Screen2` 根層級結構：`ScreenContainer1` 與 `OverlayContainer` 同層。</li>
+        <li>建立今日出勤 `Gallery1`。</li>
+        <li>建立 Popup：方案名稱、任務名稱、回覆下拉、其他說明、關閉、儲存。</li>
+        <li>儲存時 `Patch` 回 SharePoint List。</li>
+        <li>Save、Publish，使用一般員工帳號測試。</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>關鍵設定</h2>
+      <h3>App OnStart</h3>
+      <pre><code>Set(varMonth, Today());
+Set(varShowPopup, false);
+Set(varSelectedRecord, Blank());
+Set(varUserEmail, User().Email);
+Set(varReplyOptions, ["已處理", "待確認", "其他"]);</code></pre>
+
+      <h3>Gallery1 Items</h3>
+      <pre><code>Filter(
+    AttendanceHistory,
+    Email = varUserEmail &amp;&amp;
+    DateString = Text(Today(), "yyyy/m/d")
+)</code></pre>
+
+      <h3>Gallery1 OnSelect</h3>
+      <pre><code>If(
+    !IsBlank(ThisItem.方案名稱),
+    Set(varSelectedRecord, ThisItem);
+    Reset(DropdownReply);
+    Reset(TextInputOther);
+    Set(varShowPopup, true)
+)</code></pre>
+
+      <h3>OverlayContainer</h3>
+      <pre><code>Width = Parent.Width
+Height = Parent.Height
+X = 0
+Y = 0
+Fill = RGBA(0, 0, 0, 0.4)
+Visible = varShowPopup
+LayoutAlignItems = LayoutAlignItems.Center
+LayoutJustifyContent = LayoutJustifyContent.Center</code></pre>
+
+      <h3>ButtonSave OnSelect</h3>
+      <pre><code>Patch(
+    AttendanceHistory,
+    varSelectedRecord,
+    {
+        表單回覆: If(
+            DropdownReply.Selected.Value = "其他",
+            TextInputOther.Text,
+            DropdownReply.Selected.Value
+        )
+    }
+);
+Set(varShowPopup, false)</code></pre>
+    </section>
+
+    <section>
+      <h2>風險清單</h2>
+      <div class="grid">
+        <div class="callout warning">
+          <p><strong>權限</strong></p>
+          <p>員工需要 App 使用權限，也需要 SharePoint List 可更新 `表單回覆` 的權限。若只有讀取權限，`Patch` 會失敗。</p>
+        </div>
+        <div class="callout warning">
+          <p><strong>DateString</strong></p>
+          <p>必須是 `yyyy/m/d`，例如 `2026/6/8`。若填成 `2026/06/08`，Gallery 會撈不到。</p>
+        </div>
+        <div class="callout warning">
+          <p><strong>欄位內部名稱</strong></p>
+          <p>SharePoint 欄位若曾改名，Power Apps 公式可能需要內部名稱，不一定等於顯示名稱。</p>
+        </div>
+        <div class="callout warning">
+          <p><strong>Dropdown 屬性</strong></p>
+          <p>若 `DropdownReply.Selected.Value` 報錯，改查控制項實際欄位，可能要用 `.Result`。</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>驗收檢查</h2>
+      <ul>
+        <li>Data 面板看得到 `AttendanceHistory`。</li>
+        <li>Gallery 只顯示登入者今天資料。</li>
+        <li>只有 `方案名稱` 不為空的列會開 Popup。</li>
+        <li>Popup 開啟時遮罩全畫面，Popup 置中。</li>
+        <li>選「其他」時才顯示文字輸入框。</li>
+        <li>儲存後 SharePoint List 的 `表單回覆` 確實更新。</li>
+        <li>公式列沒有 delegation 黃色警告。</li>
+        <li>Publish 後用一般員工帳號測試成功。</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
