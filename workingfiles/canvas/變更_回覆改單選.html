@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>變更：出勤回覆改為單選</title>
+<style>
+  body{margin:0;background:#f7f8fa;color:#1f2937;font-family:"PingFang TC","Microsoft JhengHei",Arial,sans-serif;line-height:1.7;}
+  .wrap{max-width:820px;margin:0 auto;padding:36px 26px 70px;}
+  h1{font-size:24px;margin:0 0 4px;}
+  .sub{color:#6b7280;font-size:14px;margin-bottom:24px;}
+  h2{font-size:18px;margin:30px 0 10px;padding-bottom:6px;border-bottom:2px solid #2563eb;}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:18px 22px;margin:12px 0;}
+  ol,ul{margin:8px 0;padding-left:22px;} li{margin:5px 0;}
+  code{background:#eef2ff;color:#3730a3;padding:1px 5px;border-radius:4px;font-size:13px;}
+  .opt{background:#fff;border:1px solid #d1d5db;border-radius:8px;padding:10px 14px;margin:8px 0;display:flex;align-items:center;gap:10px;}
+  .opt .r{width:18px;height:18px;border:2px solid #2563eb;border-radius:50%;flex:0 0 auto;}
+  .warn{border-left:4px solid #b45309;background:#fffbeb;}
+  .file{font-family:ui-monospace,monospace;font-size:13px;}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:8px 0;}
+  th,td{border:1px solid #e5e7eb;padding:8px 10px;text-align:left;} th{background:#f1f5f9;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>變更：回覆改單選 ＋ 響應式（手機優先）</h1>
+<div class="sub">2026-06-15 ｜ Claude@Mac ｜ 已整份更新 <span class="file">workingfiles/canvas/ScrToday_paste.pa.yaml</span>（YAML 結構驗證通過）</div>
+
+<h2>改了什麼</h2>
+<div class="card">
+<ul>
+<li>Popup 的「多行文字輸入框」<code>txtReply</code> → 換成「單選清單」<code>radReply</code>。員工點一項即回覆，送出把<b>整段文案</b>寫入 <code>表單回覆</code>。</li>
+<li><b>整份改為響應式、手機優先</b>：所有尺寸改用 <code>Parent.Width / Parent.Height</code> 比例，單欄直向；卡片與按鈕整寬、Popup 佔屏自適應。</li>
+</ul>
+</div>
+
+<h2 style="border-color:#15803d;">響應式設定（YAML 貼不進、需手動）</h2>
+<div class="card" style="border-left:4px solid #15803d;background:#f0fdf4;">
+<ol>
+<li>Settings → Display → 把「<b>縮放以符合螢幕 (Scale to fit)</b>」<b>關閉</b>，App 才會依實際手機寬伸縮。</li>
+<li>畫面層級兩屬性手動設定：<br>
+<code>Screen.Fill = RGBA(243,244,246,1)</code><br>
+<code>Screen.OnVisible = UpdateContext({locShowPopup:false, locShowAll:false})</code></li>
+</ol>
+</div>
+
+<h2>四個選項（畫面長相）</h2>
+<div class="card">
+<div class="opt"><span class="r"></span><span>已完成（請自行勾掉卡片）</span></div>
+<div class="opt"><span class="r"></span><span>延遲（09:30已到公司在補進度）</span></div>
+<div class="opt"><span class="r"></span><span>延遲（09:30沒到公司，請填寫假卡）</span></div>
+<div class="opt"><span class="r"></span><span>如為其他狀況，請於5分鐘內更新卡片</span></div>
+</div>
+
+<h2>寫入值</h2>
+<div class="card">
+<table>
+<tr><th>選項</th><th>寫入「表單回覆」的值</th></tr>
+<tr><td>1</td><td>已完成（請自行勾掉卡片）</td></tr>
+<tr><td>2</td><td>延遲（09:30已到公司在補進度）</td></tr>
+<tr><td>3</td><td>延遲（09:30沒到公司，請填寫假卡）</td></tr>
+<tr><td>4</td><td>如為其他狀況，請於5分鐘內更新卡片</td></tr>
+</table>
+<p>已回覆過的紀錄再開 Popup，會自動預選原本選項（值相符時）。</p>
+</div>
+
+<h2>怎麼套用到 Studio</h2>
+<div class="card">
+<p>最省事：在 Studio 把整個畫面控件刪除，重貼一次更新後的 YAML。或只動 Popup：</p>
+<ol>
+<li>刪掉 Popup 內的 <code>txtReply</code> 控件。</li>
+<li>從更新後 YAML 複製 <code>radReply</code> 區塊，貼進同一層（conPopup 內）。</li>
+<li>檢查送出按鈕公式已是 <code>radReply.Selected.Value</code>、填寫按鈕 OnSelect 已是 <code>Reset(radReply)</code>。</li>
+</ol>
+</div>
+
+<h2 class="warn" style="border:none;color:#b45309;">需實機確認（未驗證）</h2>
+<div class="card warn">
+<ul>
+<li>Classic 單選控件的版面屬性此處寫 <code>Layout = Layout.Vertical</code>（推測）。若貼入後報屬性名錯誤，改用 Studio 右側面板的「版面配置」改直向即可，不影響邏輯。</li>
+<li>四個選項文字較長，Popup 高度 480 / 單選區高度 220 應足夠；實機若有截斷再調高度。</li>
+</ul>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出勤儀表板 模組一 MVP — Power Apps 匯入指南</title>
+<style>
+  :root { --ink:#1f2937; --sub:#6b7280; --blue:#2563eb; --bg:#f3f4f6; --warn:#b45309; }
+  * { box-sizing:border-box; }
+  body { font-family:"PingFang TC","Microsoft JhengHei",sans-serif; color:var(--ink); background:var(--bg); margin:0; line-height:1.7; }
+  .wrap { max-width:860px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:24px; border-left:6px solid var(--blue); padding-left:14px; }
+  h2 { font-size:18px; margin-top:36px; color:var(--blue); }
+  .card { background:#fff; border-radius:10px; padding:20px 24px; margin:16px 0; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  ol li { margin:10px 0; }
+  code, pre { font-family:"SF Mono",Menlo,monospace; font-size:13px; }
+  code { background:#eef2ff; padding:2px 6px; border-radius:4px; }
+  pre { background:#111827; color:#e5e7eb; padding:14px 16px; border-radius:8px; overflow-x:auto; }
+  .warn { border-left:4px solid var(--warn); background:#fffbeb; padding:12px 16px; border-radius:6px; margin:12px 0; }
+  .ok { border-left:4px solid #16a34a; background:#f0fdf4; padding:12px 16px; border-radius:6px; margin:12px 0; }
+  table { border-collapse:collapse; width:100%; font-size:14px; }
+  th,td { border:1px solid #e5e7eb; padding:8px 12px; text-align:left; }
+  th { background:#f9fafb; }
+  .sub { color:var(--sub); font-size:13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>出勤儀表板 模組一 MVP — Power Apps 匯入指南</h1>
+<p class="sub">2026-06-15 更新（響應式・手機優先・回覆改單選）· 來源檔：<code>workingfiles/canvas/ScrToday_paste.pa.yaml</code> · 功能：員工查看今日出勤查核 → Popup 單選回覆 → 寫回 AttendanceHistory.表單回覆</p>
+
+<h2>步驟 1：建立空白 App</h2>
+<div class="card">
+<ol>
+<li>進 <a href="https://make.powerapps.com" target="_blank">make.powerapps.com</a>，確認右上角環境正確。</li>
+<li>「建立」→「空白應用程式」→「空白畫布應用程式」→ 版面配置選 <b>平板電腦</b>（YAML 用 Parent 比例，平板/手機版面皆可；同事在手機看時靠下一步關閉縮放自適應）。</li>
+</ol>
+</div>
+
+<h2>步驟 2：加入 SharePoint 資料來源</h2>
+<div class="card">
+<ol>
+<li>左側「資料」→「新增資料」→ 搜尋 <b>SharePoint</b> → 用公司帳號連線。</li>
+<li>選出勤系統所在的網站 → 勾選清單 <b>AttendanceHistory</b> → 連線。</li>
+</ol>
+<div class="warn">資料來源名稱必須顯示為 <code>AttendanceHistory</code>，YAML 內公式以此名引用；不同名時告訴我，我改 YAML。</div>
+</div>
+
+<h2>步驟 3：貼入 YAML</h2>
+<div class="card">
+<ol>
+<li>用文字編輯器開啟 <code>ScrToday_paste.pa.yaml</code>，<b>全選複製</b>（含開頭註解沒關係，<code>#</code> 行會被忽略）。</li>
+<li>回 Studio，點一下畫布空白處，按 <b>Ctrl+V</b>（Mac：Cmd+V）。Studio 會驗證 YAML 後一次建立全部控件。</li>
+<li>若貼上無反應：改在左側「樹狀檢視」選取畫面後再貼；仍失敗就把錯誤訊息截圖給我。</li>
+</ol>
+</div>
+
+<h2>步驟 4：手動補畫面屬性 ＋ 開啟響應式</h2>
+<div class="card">
+<p>(A) 畫面（Screen）屬性貼不進去，選取畫面後在公式列設定：</p>
+<table>
+<tr><th>屬性</th><th>公式</th></tr>
+<tr><td><code>Fill</code></td><td><code>RGBA(243, 244, 246, 1)</code></td></tr>
+<tr><td><code>OnVisible</code></td><td><code>UpdateContext({locShowPopup: false, locShowAll: false})</code></td></tr>
+</table>
+<p style="margin-top:14px;">(B) <b>開啟響應式</b>：右上「設定」→「顯示 (Display)」→ 把「<b>縮放以符合螢幕 (Scale to fit)</b>」<b>關閉</b>。關閉後 App 才會依實際手機螢幕寬伸縮，而非整頁等比縮放。</p>
+<div class="ok">YAML 內所有尺寸已用 <code>Parent.Width / Parent.Height</code> 比例，單欄直向，關閉縮放後即手機可讀。</div>
+</div>
+
+<h2>步驟 5：驗證（預覽模式 F5）</h2>
+<div class="card">
+<ol>
+<li>列表顯示「你自己、今日」的查核項目。今日無 <code>DateString</code> 資料時會顯示空清單提示——點右上「顯示我的全部紀錄」應看到你的歷史列。</li>
+<li>點任一列「填寫回覆」→ Popup 彈出置中、背景變暗。</li>
+<li><b>點選一個選項</b>（已完成／延遲已到／延遲未到／其他）→ 送出 → 出現綠色「已送出回覆」→ 回 SharePoint 清單確認該列 <code>表單回覆</code> 已寫入整段選項文案。</li>
+<li><b>手機驗證</b>：用手機瀏覽器開 App 連結，或 Power Apps 手機 App 開啟，確認單欄版面不擠、Popup 與選項完整可點。</li>
+<li>用<b>一般員工帳號</b>重測送出：若跳「送出失敗」，多半是該員工對清單無編輯權限 → 需在 SharePoint 給予清單層級「編輯」權限（或之後改走 Power Automate 代寫）。</li>
+</ol>
+<div class="ok">以上四點全過 = 模組一 MVP 完成。</div>
+</div>
+
+<h2>已知限制（MVP 範圍外）</h2>
+<div class="card">
+<ul>
+<li><code>DateString</code> 由 Office Scripts 產生，尚未自動化；空值列不會出現在「今日」檢視。</li>
+<li>公式以「欄位顯示名稱」引用；若清單欄位顯示名稱與 CSV 標頭不同（員工編號／日期／Email／姓名／方案名稱／任務名稱／表單回覆／實際出勤狀態／DateString），貼上後會報紅，告訴我實際名稱即可修正。</li>
+<li>請假紀錄、假期餘額、主管視角、SharePoint 嵌入屬後續模組。</li>
+</ul>
+</div>
+</div>
+</body>
+</html>

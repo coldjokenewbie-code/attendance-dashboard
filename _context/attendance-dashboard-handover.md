@@ -2,6 +2,8 @@
 
 版本：v1 | 建立：2026-06-07 本文件供 Claude Code 新 session 開場使用，包含完整背景、現況、待辦與技術限制。
 
+> ⚠ **2026-06-14 更新**：第六/七節「YAML 無法貼入」已過時。官方 `pa.yaml` paste code 在本環境**實測可貼入並執行**，模組一已走 YAML 路線完成（見 `_context/TaskLog_2026-06-13_module1-canvas-yaml.md`、`workingfiles/canvas/`）。下方手動逐步建立步驟保留作備援參考。
+
 ---
 
 ## 一、專案背景（快速版）

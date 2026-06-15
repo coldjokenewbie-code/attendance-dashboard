@@ -1,0 +1,260 @@
+# 模組一 MVP — 今日出勤查核畫面（響應式・手機優先・paste-ready 控件 YAML）
+# 用法：建空白 Canvas App → 加入 SharePoint 資料來源 AttendanceHistory
+#       → 全選複製本檔 → Studio 畫布貼上（Cmd/Ctrl+V）
+#
+# ★ 響應式設定（YAML 貼不進、需手動）：
+#   1. App 用「平板」版面或手機版面皆可；進 Settings → Display
+#      把「縮放以符合螢幕(Scale to fit)」關閉，App 才會依實際螢幕寬伸縮。
+#   2. 本檔所有尺寸用 Parent.Width / Parent.Height 比例，單欄直向，手機可讀。
+#   3. 畫面層級兩屬性手動設定：
+#      Screen.Fill      = RGBA(243, 244, 246, 1)
+#      Screen.OnVisible = UpdateContext({locShowPopup: false, locShowAll: false})
+
+- conHeader:
+    Control: GroupContainer
+    Variant: ManualLayout
+    Properties:
+      X: =0
+      Y: =0
+      Width: =Parent.Width
+      Height: =100
+      Fill: =RGBA(31, 41, 55, 1)
+    Children:
+      - lblTitle:
+          Control: Label
+          Properties:
+            Text: |-
+              ="今日出勤查核　" & Text(Today(), "yyyy/m/d")
+            X: =16
+            Y: =10
+            Width: =Parent.Width * 0.66
+            Height: =30
+            Size: =17
+            FontWeight: =FontWeight.Semibold
+            Color: =RGBA(255, 255, 255, 1)
+      - lblUser:
+          Control: Label
+          Properties:
+            Text: |-
+              =User().FullName & "　" & User().Email
+            X: =16
+            Y: =40
+            Width: =Parent.Width * 0.5
+            Height: =22
+            Size: =11
+            Color: =RGBA(209, 213, 219, 1)
+      - btnToggleAll:
+          Control: Classic/Button
+          Properties:
+            Text: |-
+              =If(locShowAll, "今日", "全部紀錄")
+            OnSelect: |-
+              =UpdateContext({locShowAll: !locShowAll})
+            X: =Parent.Width - Parent.Width * 0.24 - 12
+            Y: =58
+            Width: =Parent.Width * 0.24
+            Height: =34
+            Fill: =RGBA(55, 65, 81, 1)
+            Color: =RGBA(255, 255, 255, 1)
+            Size: =12
+      - btnAdmin:
+          Control: Classic/Button
+          Properties:
+            Text: ="行政查核"
+            Visible: |-
+              =!IsBlank(LookUp(team_member, Lower(Email) = Lower(User().Email), '出勤存取權限'))
+            OnSelect: =Navigate(ScrAdmin)
+            X: =Parent.Width - Parent.Width * 0.24 * 2 - 20
+            Y: =58
+            Width: =Parent.Width * 0.24
+            Height: =34
+            Fill: =RGBA(180, 83, 9, 1)
+            Color: =RGBA(255, 255, 255, 1)
+            Size: =12
+
+- lblEmpty:
+    Control: Label
+    Properties:
+      Text: |-
+        =If(locShowAll, "查無你的出勤紀錄", "今日尚無你的出勤查核資料（DateString 可能尚未產生）")
+      Visible: =CountRows(galToday.AllItems) = 0
+      X: =16
+      Y: =Parent.Height * 0.35
+      Width: =Parent.Width - 32
+      Height: =60
+      Size: =15
+      Align: =Align.Center
+      Color: =RGBA(107, 114, 128, 1)
+
+- galToday:
+    Control: Gallery
+    Variant: Vertical
+    Properties:
+      Items: |-
+        =If(
+            locShowAll,
+            Sort(Filter(AttendanceHistory, Email = User().Email), ID, SortOrder.Descending),
+            Filter(AttendanceHistory, Email = User().Email, DateString = Text(Today(), "yyyy/m/d"))
+        )
+      X: =0
+      Y: =100
+      Width: =Parent.Width
+      Height: =Parent.Height - 100
+      TemplateSize: =168
+      TemplatePadding: =6
+    Children:
+      - recCard:
+          Control: Rectangle
+          Properties:
+            X: =8
+            Y: =4
+            Width: =Parent.TemplateWidth - 16
+            Height: =156
+            Fill: =RGBA(255, 255, 255, 1)
+      - lblPlan:
+          Control: Label
+          Properties:
+            Text: |-
+              =If(IsBlank(ThisItem.'方案名稱'), "（無延遲工作）", ThisItem.'方案名稱')
+            X: =20
+            Y: =12
+            Width: =Parent.TemplateWidth - 40
+            Height: =26
+            Size: =15
+            FontWeight: =FontWeight.Semibold
+            Color: =RGBA(17, 24, 39, 1)
+      - lblTask:
+          Control: Label
+          Properties:
+            Text: |-
+              =ThisItem.'任務名稱'
+            X: =20
+            Y: =40
+            Width: =Parent.TemplateWidth - 40
+            Height: =22
+            Size: =12
+            Color: =RGBA(55, 65, 81, 1)
+      - lblStatus:
+          Control: Label
+          Properties:
+            Text: |-
+              ="出勤：" & ThisItem.'實際出勤狀態' & "　" & ThisItem.'日期'
+            X: =20
+            Y: =64
+            Width: =Parent.TemplateWidth - 40
+            Height: =20
+            Size: =11
+            Color: =RGBA(107, 114, 128, 1)
+      - lblReplyNow:
+          Control: Label
+          Properties:
+            Text: |-
+              ="回覆：" & If(IsBlank(ThisItem.'表單回覆'), "（未回覆）", ThisItem.'表單回覆')
+            X: =20
+            Y: =86
+            Width: =Parent.TemplateWidth - 40
+            Height: =26
+            Size: =11
+            Color: =If(IsBlank(ThisItem.'表單回覆'), RGBA(220, 38, 38, 1), RGBA(22, 101, 52, 1))
+      - btnReply:
+          Control: Classic/Button
+          Properties:
+            Text: ="填寫回覆"
+            OnSelect: |-
+              =UpdateContext({locSelected: ThisItem, locShowPopup: true});
+              Reset(radReply)
+            X: =20
+            Y: =116
+            Width: =Parent.TemplateWidth - 40
+            Height: =40
+            Fill: =RGBA(37, 99, 235, 1)
+            Color: =RGBA(255, 255, 255, 1)
+            Size: =13
+
+- conOverlay:
+    Control: GroupContainer
+    Variant: ManualLayout
+    Properties:
+      X: =0
+      Y: =0
+      Width: =Parent.Width
+      Height: =Parent.Height
+      Fill: =RGBA(0, 0, 0, 0.45)
+      Visible: =locShowPopup
+    Children:
+      - conPopup:
+          Control: GroupContainer
+          Variant: ManualLayout
+          Properties:
+            X: =(Parent.Width - Self.Width) / 2
+            Y: =(Parent.Height - Self.Height) / 2
+            Width: =Min(Parent.Width - 24, 560)
+            Height: =Min(Parent.Height - 64, 540)
+            Fill: =RGBA(255, 255, 255, 1)
+          Children:
+            - lblPopTitle:
+                Control: Label
+                Properties:
+                  Text: ="填寫出勤回覆"
+                  X: =20
+                  Y: =16
+                  Width: =Parent.Width - 40
+                  Height: =30
+                  Size: =17
+                  FontWeight: =FontWeight.Semibold
+            - lblPopMeta:
+                Control: Label
+                Properties:
+                  Text: |-
+                    ="方案：" & locSelected.'方案名稱' & Char(10) &
+                     "任務：" & locSelected.'任務名稱' & Char(10) &
+                     "出勤狀態：" & locSelected.'實際出勤狀態'
+                  X: =20
+                  Y: =50
+                  Width: =Parent.Width - 40
+                  Height: =84
+                  Size: =12
+                  Color: =RGBA(75, 85, 99, 1)
+            - radReply:
+                Control: Classic/Radio
+                Properties:
+                  Items: |-
+                    =["已完成（請自行勾掉卡片）", "延遲（09:30已到公司在補進度）", "延遲（09:30沒到公司，請填寫假卡）", "如為其他狀況，請於5分鐘內更新卡片"]
+                  Default: |-
+                    =locSelected.'表單回覆'
+                  Layout: =Layout.Vertical
+                  X: =20
+                  Y: =142
+                  Width: =Parent.Width - 40
+                  Height: =Parent.Height - 142 - 68
+                  Size: =13
+            - btnCancel:
+                Control: Classic/Button
+                Properties:
+                  Text: ="取消"
+                  OnSelect: |-
+                    =UpdateContext({locShowPopup: false})
+                  X: =20
+                  Y: =Parent.Height - 56
+                  Width: =(Parent.Width - 48) / 2
+                  Height: =44
+                  Fill: =RGBA(229, 231, 235, 1)
+                  Color: =RGBA(31, 41, 55, 1)
+            - btnSubmit:
+                Control: Classic/Button
+                Properties:
+                  Text: ="送出"
+                  OnSelect: |-
+                    =Patch(AttendanceHistory, locSelected, {'表單回覆': radReply.Selected.Value});
+                    If(
+                        IsEmpty(Errors(AttendanceHistory, locSelected)),
+                        Notify("已送出回覆", NotificationType.Success);
+                        UpdateContext({locShowPopup: false}),
+                        Notify("送出失敗：" & First(Errors(AttendanceHistory, locSelected)).Message, NotificationType.Error)
+                    )
+                  X: =Parent.Width - 20 - (Parent.Width - 48) / 2
+                  Y: =Parent.Height - 56
+                  Width: =(Parent.Width - 48) / 2
+                  Height: =44
+                  Fill: =RGBA(37, 99, 235, 1)
+                  Color: =RGBA(255, 255, 255, 1)

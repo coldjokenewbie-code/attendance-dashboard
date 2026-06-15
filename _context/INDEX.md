@@ -1,19 +1,34 @@
 # 出勤專案 — 現況總覽 (INDEX)
-> 進場先讀。最後更新：2026-06-08
+> 進場先讀。最後更新：2026-06-15
 
 ## 一句話目標
 MS365 Power Apps 員工出勤儀表板；先重作模組一 Popup MVP，讓員工查看今日出勤查核並回寫 `表單回覆`。
 
+## 系統資料流（端到端）
+```
+① Power Automate 每日 09:30：查 Planner 延遲工作 → 通知行政 → Line 通知員工   ［自動］
+② 行政人工核對 → 填寬格式 Excel（橫向：每人一列／每日一欄）                  ［人工，本質工作］
+③ Office Scripts 寬轉長 → 寫入 SharePoint List AttendanceHistory            ［⚠ 自動化未完成，行政人工暫代］
+④ SharePoint List：AttendanceHistory（單一真相源，每任務一列）
+⑤ Power Apps Canvas App（模組一：今日查核 Gallery + Popup + Patch 回寫 表單回覆）
+⑥ 嵌入 SharePoint 頁面，員工瀏覽器自助查看／填寫                            ［未做］
+```
+- ①②③＝上游（產資料塞進 List）；④中樞；⑤⑥下游（員工自助介面）。
+- ①「09:30 / Planner / Line」為 2026-06-14 使用者口述補錄，先前文件未記；其餘與 handover 第二節一致。
+
 ## 目前狀態 / 進度
-- 已讀取交接檔 `_context/attendance-dashboard-handover.md`。
 - 三方討論後決議：重作 Canvas App，不修舊 App。
-- 最新工作紀錄：`_context/TaskLog_2026-06-08_attendance-dashboard-rebuild.md`。
-- 工作討論稿：`workingfiles/attendance-dashboard-rebuild-recommendation.html`。
-- ai-team CLI 協作流程參考：`_context/ai-team-agent-cli-reference.html`。
+- **✅ 模組一 MVP 完成**（2026-06-15 使用者確認）：響應式（手機優先）＋回覆改 4 選項單選，Gallery／Popup／回寫 `表單回覆` 實機驗證通過。已結案歸檔。
+  - `workingfiles/canvas/ScrToday_paste.pa.yaml`（畫面原始碼）
+  - `workingfiles/canvas/匯入指南.html`、`變更_回覆改單選.html`
+  - 結案紀錄：`_context/archive/ClosedTaskLog_2026-06-13_module1-canvas-yaml.md`
+- **最新工作紀錄**：`_context/TaskLog_2026-06-16_架構落實與晨間流程.md`（晨間 09:40 流程規格、實況釐清、發 Line 歸 Planner2Line）。
+- 欄位已從 `_context/AttendanceHistory.csv` 確認（九欄顯示名稱）。
 
 ## 待辦 / 下一步
-- 進 Power Apps Studio，依工作討論稿建立模組一 MVP。
-- 先確認 SharePoint List `AttendanceHistory` 欄位、內部欄位名稱、員工權限、`DateString` 格式。
+- **架構落實（待動工，已寫計畫）**：`_context/Plan_2026-06-15_excel-list-bridge.html` — Excel 主檔＋小清單介面＋Power Automate 橋接，含模組二（請假紀錄查詢）。
+- 上游 ③ Office Scripts 寬轉長自動化（目前人工暫代）；RowKey 需在此步驟產生（橋接前置）。
+- 模組三（假期餘額）、角色權限、⑥ SharePoint 嵌入。
 - 請 Claude 補上它的 ai-team CLI 協作版本：登入、短 prompt、卡住處理、避免直接讀寫檔案。
 - 請 Antigravity 補上它的 ai-team CLI 協作版本：權限需求、寫檔限制、編碼風險、signal 寫入慣例。
 - Claude / Antigravity 版本補齊後，推回 WTF repo，系統化成共用流程。

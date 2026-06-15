@@ -1,0 +1,161 @@
+# 行政查核頁簽 ScrAdmin（響應式・手機優先・paste-ready）
+# 用法：新增一個空白畫面命名 ScrAdmin → 全選複製本檔 → 畫布貼上（Cmd/Ctrl+V）
+# 前置：App 需已加入資料源 team_member（Excel，含「出勤存取權限」欄）與 AttendanceHistory。
+# 畫面層級手動設定：
+#   Screen.Fill = RGBA(243, 244, 246, 1)
+#
+# 功能：列出「當天所有員工」（依 AttendanceHistory 當日資料去重到人），
+#       行政選出勤狀態 → 寫回該人當天所有任務列的 實際出勤狀態。
+
+- conHeaderA:
+    Control: GroupContainer
+    Variant: ManualLayout
+    Properties:
+      X: =0
+      Y: =0
+      Width: =Parent.Width
+      Height: =76
+      Fill: =RGBA(17, 24, 39, 1)
+    Children:
+      - lblTitleA:
+          Control: Label
+          Properties:
+            Text: |-
+              ="行政出勤查核　" & Text(Today(), "yyyy/m/d")
+            X: =16
+            Y: =10
+            Width: =Parent.Width * 0.6
+            Height: =30
+            Size: =17
+            FontWeight: =FontWeight.Semibold
+            Color: =RGBA(255, 255, 255, 1)
+      - lblHintA:
+          Control: Label
+          Properties:
+            Text: ="逐人確認到勤，未到請選對應理由後儲存"
+            X: =16
+            Y: =44
+            Width: =Parent.Width * 0.6
+            Height: =22
+            Size: =11
+            Color: =RGBA(209, 213, 219, 1)
+      - btnBackA:
+          Control: Classic/Button
+          Properties:
+            Text: ="← 我的回覆"
+            OnSelect: =Navigate(ScrToday)
+            X: =Parent.Width - Parent.Width * 0.32 - 12
+            Y: =18
+            Width: =Parent.Width * 0.32
+            Height: =40
+            Fill: =RGBA(55, 65, 81, 1)
+            Color: =RGBA(255, 255, 255, 1)
+            Size: =12
+
+- lblEmptyA:
+    Control: Label
+    Properties:
+      Text: ="今日尚無員工資料（清單可能未同步）"
+      Visible: =CountRows(galPeople.AllItems) = 0
+      X: =16
+      Y: =Parent.Height * 0.35
+      Width: =Parent.Width - 32
+      Height: =60
+      Size: =15
+      Align: =Align.Center
+      Color: =RGBA(107, 114, 128, 1)
+
+- galPeople:
+    Control: Gallery
+    Variant: Vertical
+    Properties:
+      Items: |-
+        =Sort(
+            GroupBy(
+                Filter(AttendanceHistory, DateString = Text(Today(), "yyyy/m/d")),
+                Email, '姓名', '員工編號', "明細"
+            ),
+            '姓名'
+        )
+      X: =0
+      Y: =76
+      Width: =Parent.Width
+      Height: =Parent.Height - 76
+      TemplateSize: =148
+      TemplatePadding: =6
+    Children:
+      - recCardA:
+          Control: Rectangle
+          Properties:
+            X: =8
+            Y: =4
+            Width: =Parent.TemplateWidth - 16
+            Height: =136
+            Fill: =RGBA(255, 255, 255, 1)
+      - lblName:
+          Control: Label
+          Properties:
+            Text: |-
+              =ThisItem.'姓名' & "（" & ThisItem.'員工編號' & "）"
+            X: =20
+            Y: =10
+            Width: =Parent.TemplateWidth - 40
+            Height: =24
+            Size: =14
+            FontWeight: =FontWeight.Semibold
+            Color: =RGBA(17, 24, 39, 1)
+      - lblEmailA:
+          Control: Label
+          Properties:
+            Text: =ThisItem.Email
+            X: =20
+            Y: =34
+            Width: =Parent.TemplateWidth - 40
+            Height: =20
+            Size: =11
+            Color: =RGBA(107, 114, 128, 1)
+      - lblCurStatus:
+          Control: Label
+          Properties:
+            Text: |-
+              ="目前狀態：" & If(IsBlank(First(ThisItem.明細).'實際出勤狀態'), "（未設定）", First(ThisItem.明細).'實際出勤狀態') & "　任務 " & CountRows(ThisItem.明細) & " 筆"
+            X: =20
+            Y: =54
+            Width: =Parent.TemplateWidth - 40
+            Height: =20
+            Size: =11
+            Color: =RGBA(55, 65, 81, 1)
+      - drpStatus:
+          Control: Classic/DropDown
+          Properties:
+            Items: |-
+              =["0930已到", "1000已到", "10:00前已發**", "1000未到，已提醒", "1000未到，已發米米信", "1000未到，請假", "異地(其他縣市)", "已發**先去場館後進公司", "當日休假", "臨時請假"]
+            Default: |-
+              =First(ThisItem.明細).'實際出勤狀態'
+            X: =20
+            Y: =80
+            Width: =Parent.TemplateWidth - 150
+            Height: =44
+            Size: =12
+      - btnSaveStatus:
+          Control: Classic/Button
+          Properties:
+            Text: ="儲存"
+            OnSelect: |-
+              =UpdateIf(
+                  AttendanceHistory,
+                  Email = ThisItem.Email && DateString = Text(Today(), "yyyy/m/d"),
+                  {'實際出勤狀態': drpStatus.Selected.Value}
+              );
+              If(
+                  IsEmpty(Errors(AttendanceHistory)),
+                  Notify("已更新 " & ThisItem.'姓名' & " 的出勤狀態", NotificationType.Success),
+                  Notify("更新失敗：" & First(Errors(AttendanceHistory)).Message, NotificationType.Error)
+              )
+            X: =Parent.TemplateWidth - 124
+            Y: =80
+            Width: =104
+            Height: =44
+            Fill: =RGBA(37, 99, 235, 1)
+            Color: =RGBA(255, 255, 255, 1)
+            Size: =13

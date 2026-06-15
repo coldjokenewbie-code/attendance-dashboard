@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>行政查核頁簽 — 建置與匯入</title>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--warn:#b45309;--ok:#15803d;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Helvetica Neue",Arial,"Microsoft JhengHei",sans-serif;line-height:1.7;}
+  .wrap{max-width:900px;margin:0 auto;padding:36px 26px 80px;}
+  h1{font-size:23px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:22px;}
+  h2{font-size:18px;margin:30px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--accent);}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  code{background:#eef2ff;color:#3730a3;padding:1px 5px;border-radius:4px;font-size:13px;}
+  pre{background:#0f172a;color:#e2e8f0;padding:13px;border-radius:8px;overflow:auto;font-size:12.5px;}
+  pre code{background:none;color:inherit;padding:0;}
+  ol,ul{margin:6px 0;padding-left:22px;} li{margin:5px 0;}
+  table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13.5px;}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f5f9;}
+  .warn{border-left:4px solid var(--warn);background:#fffbeb;}
+  .ok{border-left:4px solid var(--ok);background:#f0fdf4;}
+  .file{font-family:ui-monospace,monospace;font-size:13px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>行政查核頁簽 — 建置與匯入</h1>
+<div class="sub">2026-06-16 ｜ Claude@Mac ｜ 同一 app 內、權限控制的行政專用頁簽</div>
+
+<div class="card">
+<b>設計</b>：行政頁簽是 app 內第二個畫面 <code>ScrAdmin</code>。<b>列當天所有員工</b>直接從 AttendanceHistory 當日資料去重到「人」（09:40 已同步全體），不靠 team_member。<b>team_member 只用來判權限</b>：ScrToday 的「行政查核」按鈕 <code>Visible</code> 直接算 LookUp，只有行政登入才看得到、才進得了 ScrAdmin。
+</div>
+
+<h2>1. team_member 準備</h2>
+<div class="card">
+<ol>
+<li>在 team_member 工作表新增欄 <b>出勤存取權限</b>，行政人員那列填值（任何非空值即視為行政；空白＝一般員工）。</li>
+<li>App 左側「資料」→ 新增資料 → 連 Excel（TaskDB.xlsx）→ 勾 <b>team_member</b> Table。資料源名須為 <code>team_member</code>。</li>
+</ol>
+<p class="warn">未驗證：判斷式目前用「<code>出勤存取權限</code> 非空白＝行政」。若你要用「是／否」或特定文字，告訴我，我把 <code>!IsBlank(...)</code> 改成 <code>=... ="是"</code> 之類。</p>
+</div>
+
+<h2>2. 建 ScrAdmin 畫面</h2>
+<div class="card">
+<ol>
+<li>Studio 左側「+ 新畫面」→ 空白 → 命名 <b>ScrAdmin</b>。</li>
+<li>選取畫面，設 <code>Screen.Fill = RGBA(243,244,246,1)</code>。</li>
+<li>開 <span class="file">ScrAdmin_paste.pa.yaml</span> 全選複製 → 畫布 Cmd/Ctrl+V。</li>
+</ol>
+</div>
+
+<h2>3. 更新 ScrToday（加行政入口）</h2>
+<div class="card">
+<p><span class="file">ScrToday_paste.pa.yaml</span> 已更新（Header 加高、加 <code>btnAdmin</code>）。最省事：刪掉 ScrToday 既有控件、重貼整份新 YAML。<code>btnAdmin</code> 的 Visible 已內建權限判斷、OnSelect 為 <code>Navigate(ScrAdmin)</code>。</p>
+</div>
+
+<h2>4. 行政頁簽功能</h2>
+<div class="card">
+<ul>
+<li>逐人一張卡（姓名／員工編號／Email／目前狀態／任務筆數）。</li>
+<li>下拉選出勤狀態 → 按「儲存」→ 寫回該人<b>當天所有任務列</b>的 <code>實際出勤狀態</code>。</li>
+</ul>
+<b>出勤狀態選項</b>
+<ol>
+<li>0930已到</li><li>1000已到</li><li>10:00前已發**</li>
+<li>1000未到，已提醒</li><li>1000未到，已發米米信</li><li>1000未到，請假</li>
+<li>異地(其他縣市)</li><li>已發**先去場館後進公司</li><li>當日休假</li><li>臨時請假</li>
+</ol>
+</div>
+
+<h2>5. 驗證</h2>
+<div class="card">
+<ol>
+<li>用<b>行政帳號</b>登入 → ScrToday 右上出現橘色「行政查核」鈕；一般員工帳號看不到。</li>
+<li>點進 ScrAdmin → 看到今日全體去重清單。</li>
+<li>選某人狀態 → 儲存 → 該人所有今日列的 <code>實際出勤狀態</code> 都更新。</li>
+<li>回 ScrToday（← 我的回覆），一般員工頁籤運作不變。</li>
+</ol>
+</div>
+
+<h2>6. 未驗證 / 提醒</h2>
+<div class="card warn">
+<ul>
+<li><b>UI 隱藏非安全邊界</b>：<code>Visible</code> 只是畫面層，懂技術者仍可能繞過。員工不能改 <code>實際出勤狀態</code> 的硬保障要靠 SharePoint 清單欄位／項目權限。</li>
+<li><code>GroupBy</code> / <code>UpdateIf</code> 對 SharePoint 非完全委派；當日資料量小可運作，資料變大需留意上限警告。</li>
+<li>team_member 走 Excel 連接器直讀（非委派，team_member 量小可接受）。</li>
+<li>狀態選項含 <code>**</code>／<code>米米信</code> 為照你原文，如需更名直接說。</li>
+</ul>
+</div>
+
+</div>
+</body>
+</html>
