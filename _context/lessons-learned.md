@@ -1,6 +1,19 @@
 # Lessons Learned
 
+## 2026-06-22（Power Apps / Power Automate 平台踩坑彙整）
+- **pa.yaml 貼上是「控件層級、一次一畫面」**：把兩個畫面塞同一檔整段貼會 PA1001（YamlInvalidSyntax）。維持「一檔＝一畫面、全選整段貼」。官方舊「preview 格式」貼上已淘汰，但單一畫面的控件清單仍可貼。
+- **GroupBy v3 語法用識別碼非字串**：群組欄名 `"明細"`(字串)→`'明細'`(識別碼)，否則「預期的識別碼名稱／引數無效」連鎖報錯。**更穩的是根本不用 GroupBy**：行政頁簽人員名冊直接用 team_member 表＋`LookUp` 取當日狀態，避開 GroupBy 的委派與語法坑。
+- **Power Automate OData `$filter` 用「內部欄名」**：中文欄或改名欄的內部名與顯示名不符 → 報「欄不存在」。`Title` 內部名固定，可用 `startswith(Title,'yyyyMMdd_')`。且 `$filter` 欄**不能手打運算式文字**（不會被計算、變字面字串），要嘛用動態內容引用 Compose、要嘛巢狀單引號會把內層字串(如時區)截壞。**能用 Filter array＋動態內容就別硬塞 `$filter`**。
+- **convertFromUtc 的 Windows 時區 ID 可能不被吃**：某些 PA 環境 `convertFromUtc(utcNow(),'Taipei Standard Time')` 報「時區無效」。台北固定 UTC+8 無日光節約 → 用 `addHours(utcNow(),8)` 最穩，完全不碰時區庫。
+- **SharePoint「Email」欄別建成「個人或群組」**：作為比對鍵的 email/識別欄要用「單行文字」，否則 `Email = User().Email` 比對失敗（個人欄是 record 非字串）、清單顯示成人名。識別/join 欄一律單行文字。
+- **Power Fx `=` 文字比對本就不分大小寫**：`Lower()` 多餘且會觸發委派警告，去掉即可。
+- **改名後的內建 Title**：清單檢視別名（如「ID (yyyyMMdd_Email)」）在 Power Automate「建立項目」仍顯示為 `Title`；唯一鍵填 `Title`。若報「`Item/Title` 已不存在」是舊動作殘留孤兒參照，刪舊動作重建即可。
+- **Canvas 垂直 gallery 列高固定**：無法每列依內容動態高。內容多寡不一時，用內嵌 gallery＋捲軸，或固定夠高（無完美的 per-row 自動高）。
+- **App 忠實呈現資料源、欄位不會自己錯開**：使用者回報「編號跟姓名對不上」，比對後是來源 team_member 的員工編號本身排錯（3 個林姓對調），非程式 bug。同一列的多欄不可能被程式錯開——先用 Email join 比對來源資料找出處，別預設是 UI 問題。
+- **沙盒產出的檔帶 `com.apple.provenance`（受保護、清不掉）**：macOS 會每次開檔重新隔離、跳 Gatekeeper。沙盒內（含關閉 sandbox 的 cp -X）都移不掉；只能由使用者在自己的 Terminal.app 重建檔案。匯入 SharePoint 不經 Gatekeeper、不受影響。
+
 ## 2026-06-16
+- **儲存選型準則：唯讀小表走 Excel 直連，多人寫＋需權限走清單**：Power Apps 可直連 SharePoint/OneDrive 上的 Excel（須格式化 Table），但僅適合「唯讀＋小量（<2000 列）＋低頻」——如請假餘額、team_member，這種建清單反而多餘。反之，會被多人並發寫、需欄位／項目級權限、或資料可能累積的，必須用 SharePoint 清單：如出勤 AttendanceHistory（員工填回覆＋行政填狀態＋0930 自動寫入三方並寫、`實際出勤狀態` 要員工唯讀），Excel 會鎖檔／互相覆蓋、做不到欄位權限、又非委派受 2000 列上限。**按讀寫特性分流，不是全清單或全 Excel。**
 - **要列的清單若上游已同步全體，就從現有資料去重，別反射性再接一個來源**：行政頁簽要「列當天所有員工」，第一直覺想接 team_member，但 09:40 flow 已把全體同步進 AttendanceHistory，直接 `GroupBy` 當日資料去重即可；team_member 只留作判權限。少接一個資料源＝少一層委派/同步風險。
 - **Power Apps 的 `Visible` 是畫面層、非安全邊界**：用 Visible 隱藏行政頁簽只擋一般員工的眼睛，敏感欄位（實際出勤狀態）的寫入硬保障必須靠 SharePoint 清單欄位／項目權限，不能只靠前端隱藏。設計權限時 UI 與資料源兩層都要顧。
 - **舊自動化的實際機制要先讀碼再設計，別照「架構名詞」猜**：我原以為發 Line 是 Power Automate 的 Line 連接器，規劃了「§3-5 段 C 發 Line」。實際發 Line 是獨立的 `Planner2Line`（Windows 桌機程式監聽 Outlook 延遲通知信→LINE Desktop 轉發，連結取自郵件正文＋自動縮網址）。已註冊專案本機就有 clone（見 projects-registry），花兩分鐘讀碼即釐清，勝過閉門規劃。接手涉及既有系統時，先定位並讀現行程式碼。

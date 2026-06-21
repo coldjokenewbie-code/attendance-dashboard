@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>0930 巡檢流程改造 — 最終版建置指南</title>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--warn:#b45309;--ok:#15803d;--del:#b91c1c;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Helvetica Neue",Arial,"Microsoft JhengHei",sans-serif;line-height:1.7;}
+  .wrap{max-width:980px;margin:0 auto;padding:34px 24px 90px;}
+  h1{font-size:23px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:22px;}
+  h2{font-size:18px;margin:30px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--accent);}
+  h3{font-size:15px;margin:16px 0 6px;color:#111827;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  code{background:#eef2ff;color:#3730a3;padding:1px 5px;border-radius:4px;font-size:12.5px;word-break:break-all;}
+  pre{background:#0f172a;color:#e2e8f0;padding:13px;border-radius:8px;overflow:auto;font-size:12.5px;line-height:1.5;}
+  pre code{background:none;color:inherit;padding:0;}
+  ol,ul{margin:6px 0;padding-left:22px;} li{margin:6px 0;}
+  table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13px;}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f5f9;}
+  .warn{border-left:4px solid var(--warn);background:#fffbeb;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .ok{border-left:4px solid var(--ok);background:#f0fdf4;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .tag{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;background:#dbeafe;color:#1e40af;font-weight:600;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>0930 巡檢流程改造 — 最終版建置指南</h1>
+<div class="sub">2026-06-22 ｜ Claude@Mac ｜ 就地編輯既有流程「0930每日巡檢Planer_v0」：寫入改 SharePoint 清單 + 全體補占位</div>
+
+<div class="warn">
+<b>動手前</b>：先把流程<b>另存複製一份</b>備份。本指南就在原流程上改，測過即沿用。
+</div>
+
+<h2>0. 這次要做的事（兩件）</h2>
+<div class="card">
+<ol>
+<li><b>段A</b>：原本「把延遲任務寫進 Excel」改成「寫進 SharePoint 清單 <code>AttendanceHistory</code>」，並補上員工編號；同時把該人 email 記進一個變數。</li>
+<li><b>段B</b>：對全體 <code>team_member</code>，凡「今天沒延遲」的人補一張占位列（讓行政之後能填到勤狀態）。用變數去重，<b>延遲者不會多列</b>。</li>
+</ol>
+Planner 掃描那一整段<b>完全不動</b>。本流程<b>不發郵件、不發 Line</b>。
+</div>
+
+<h2>1. 改造後整體結構</h2>
+<div class="card">
+<pre><code>觸發 Recurrence（週一～五 09:30）                 ← 不動
+└ 列出我擁有及我所屬的群組 / 測試用_篩選陣列        ← 不動
+└ ★ 列出資料表中的資料列_team_member              ← 讀一次 team_member（Excel）
+└ ★ 初始化變數 延遲Emails（陣列, 空）
+└ for_each_group_list_plans … 列出工作 … 逾期_篩選陣列  ← 不動
+      └ for_each_task → For_each（逐指派人）        ← 不動
+            └ 取得使用者設定檔_(V2)                 ← 不動
+            └ ★ 依Email篩員工編號（Filter array）
+            └ ◆ 建立項目（SharePoint, 寫 AttendanceHistory）   ← 段A（取代原 Excel 寫入）
+            └ ★ 附加至陣列變數 延遲Emails ← toLower(mail)
+└ ★ Apply to each（team_member）
+      └ 條件：延遲Emails 不含此人 Email ?
+            └ 是 → 建立項目（占位列 _TaskOnSchedule）            ← 段B</code></pre>
+<p style="color:var(--muted);font-size:12.5px">★＝新增　◆＝改既有　｜ 不用 Get items／$filter／DateString</p>
+</div>
+
+<h2>2. 前置：連線與站台</h2>
+<div class="card">
+第一次拉「SharePoint → 建立項目」時登入建立連線。站台一律：<br>
+<code>https://techartgroup.sharepoint.com/sites/PLANNER_CK</code>，清單 <code>AttendanceHistory</code>。
+</div>
+
+<h2>3.〔開頭新增〕讀 team_member + 初始化變數</h2>
+<div class="card">
+<ol>
+<li><b>列出資料表中的資料列</b>（Excel Online Business），命名 <code>列出資料表中的資料列_team_member</code>：選 <code>TaskDB.xlsx</code> → 表格 <b>team_member</b>。（19 列，不必開分頁。）</li>
+<li><b>初始化變數</b>：名稱 <code>延遲Emails</code>、類型 <b>陣列</b>、值留空。（記今天有延遲的人）</li>
+</ol>
+位置：放在 <code>for_each_group_list_plans</code> 之前。
+</div>
+
+<h2>4.〔段A〕寫進清單 + 記錄延遲者</h2>
+<div class="card">
+<p>在 <code>取得使用者設定檔_(V2)</code> 之後、原 Excel 寫入位置，依序做三件事：</p>
+
+<h3>4-1 依Email篩員工編號（Filter array）</h3>
+<table>
+<tr><th>欄</th><th>值</th></tr>
+<tr><td>來源 From</td><td><code>@outputs('列出資料表中的資料列_team_member')?['body/value']</code></td></tr>
+<tr><td>條件（進階模式）</td><td><code>@equals(toLower(item()?['Email']), toLower(outputs('取得使用者設定檔_(V2)')?['body/mail']))</code></td></tr>
+</table>
+
+<h3>4-2 建立項目（刪掉原「在表格中新增一列」，改這個）</h3>
+<p><b>SharePoint → 建立項目</b>，清單 AttendanceHistory。用「<b>進階參數</b>」勾出要填的欄。<span class="tag">主欄在 PA 顯示為 Title</span>（就是清單檢視的別名「ID (yyyyMMdd_Email)」同一欄）。</p>
+<table>
+<tr><th>欄（PA 顯示）</th><th>填入運算式</th></tr>
+<tr><td><b>Title</b></td><td><code>concat(formatDateTime(addHours(utcNow(),8),'yyyyMMdd'),'_',outputs('取得使用者設定檔_(V2)')?['body/mail'],'_',items('for_each_task')?['id'])</code></td></tr>
+<tr><td>員工編號</td><td><code>if(empty(body('依Email篩員工編號')),'',first(body('依Email篩員工編號'))?['員工編號'])</code></td></tr>
+<tr><td>日期</td><td><code>formatDateTime(addHours(utcNow(),8),'yyyy/M/d')</code></td></tr>
+<tr><td>Email</td><td><code>outputs('取得使用者設定檔_(V2)')?['body/mail']</code></td></tr>
+<tr><td>姓名</td><td><code>outputs('取得使用者設定檔_(V2)')?['body/displayName']</code></td></tr>
+<tr><td>方案名稱</td><td><code>items('for_each_plan_list_tasks')?['title']</code></td></tr>
+<tr><td>任務名稱</td><td><code>items('for_each_task')?['title']</code></td></tr>
+<tr><td>表單回覆 / 實際出勤狀態 / DateString</td><td>留空</td></tr>
+</table>
+
+<h3>4-3 附加至陣列變數</h3>
+<table>
+<tr><th>欄</th><th>值</th></tr>
+<tr><td>名稱</td><td><code>延遲Emails</code></td></tr>
+<tr><td>值</td><td><code>toLower(outputs('取得使用者設定檔_(V2)')?['body/mail'])</code></td></tr>
+</table>
+</div>
+
+<h2>5.〔段B〕補占位（變數去重，資料乾淨）</h2>
+<div class="card">
+<p>位置：整個 <code>for_each_group_list_plans</code> 之後。</p>
+<ol>
+<li><b>Apply to each</b>：來源 <code>@outputs('列出資料表中的資料列_team_member')?['body/value']</code>。</li>
+<li>內放<b>條件</b>：
+  <ul>
+  <li>左值（運算式）：<code>contains(variables('延遲Emails'), toLower(</code>〔team_member Email 動態內容〕<code>))</code></li>
+  <li>條件：<b>等於</b>　右值：<code>false</code></li>
+  </ul>
+</li>
+<li><b>是(Yes)</b> 分支 → <b>SharePoint 建立項目</b>（占位，team_member 欄用動態內容點選）：</li>
+</ol>
+<table>
+<tr><th>欄（PA 顯示）</th><th>填入</th></tr>
+<tr><td><b>Title</b></td><td>運算式 <code>concat(formatDateTime(addHours(utcNow(),8),'yyyyMMdd'),'_',</code> →〔插入 team_member 的 <b>Email</b> 動態內容〕→ <code>,'_TaskOnSchedule')</code></td></tr>
+<tr><td>姓名</td><td><b>要填</b>：從動態內容點 team_member 的「姓名」</td></tr>
+<tr><td>Email</td><td><b>要填</b>：從動態內容點 team_member 的「Email」</td></tr>
+<tr><td>員工編號</td><td><b>要填</b>：從動態內容點 team_member 的「員工編號」</td></tr>
+<tr><td>日期</td><td><code>formatDateTime(addHours(utcNow(),8),'yyyy/M/d')</code></td></tr>
+<tr><td>方案名稱 / 任務名稱 / 表單回覆 / 實際出勤狀態 / DateString</td><td>留空（不勾、不填）</td></tr>
+</table>
+<p class="ok">結果：延遲者每任務一列（段A）、沒延遲者一張占位列（段B），每人當天至少一列、且不重複。</p>
+</div>
+
+<h2>6. 測試</h2>
+<div class="card">
+<ol>
+<li>備份後，用 <b>手動測試（Test → Manually）</b> 跑一次。</li>
+<li>到清單 AttendanceHistory 看當天列：延遲者有方案/任務、員工編號有值、日期＝今天 <code>yyyy/M/d</code>、Title＝<code>yyyyMMdd_email_…</code>。</li>
+<li>沒延遲的人各有一張占位列（Title 以 <code>_TaskOnSchedule</code> 結尾、方案/任務空白）。</li>
+<li>延遲者<b>不會</b>多一張占位列。</li>
+<li>開員工儀表板（當天卡片出得來）、行政頁簽（全體列得出、可填狀態）。</li>
+</ol>
+</div>
+
+<h2>7. 注意彙整</h2>
+<div class="card warn">
+<ul>
+<li><b>主欄＝Title</b>：PA 的「建立項目」把主欄顯示為 <code>Title</code>（清單檢視別名是「ID (yyyyMMdd_Email)」）。唯一鍵填這欄。若報「<code>Item/Title</code> 已不存在」，那是舊動作殘留——刪掉舊「建立項目」用新的即可。</li>
+<li><b>時間</b>：<code>addHours(utcNow(),8)</code>＝台北時間（UTC+8、無日光節約），等同 <code>convertFromUtc(utcNow(),'Taipei Standard Time')</code>。兩者可互換；若某動作報「時區無效」就用 addHours 版。</li>
+<li><b>兩欄寫入者不同</b>：<code>表單回覆</code>＝員工自己填；<code>實際出勤狀態</code>＝僅行政填、員工唯讀。流程都留空。員工不能改「實際出勤狀態」的硬保障要靠 SharePoint 清單<b>欄位／項目權限</b>，不是只靠 App 隱藏。</li>
+<li><b>重複跑會疊占位列</b>：正式一天只跑一次無妨；測試時先清掉舊測試列再跑。</li>
+<li><b>Apply to each 預設循序</b>，附加變數不會競態（除非你手動開並行）。</li>
+<li><b>發 Line／郵件不在這支</b>：這支只寫清單。延遲通知信由另一支流程發、Planner2Line 轉 Line。</li>
+</ul>
+</div>
+
+</div>
+</body>
+</html>

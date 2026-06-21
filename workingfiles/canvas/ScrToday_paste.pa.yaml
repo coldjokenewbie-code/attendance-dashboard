@@ -1,14 +1,10 @@
-# 模組一 MVP — 今日出勤查核畫面（響應式・手機優先・paste-ready 控件 YAML）
-# 用法：建空白 Canvas App → 加入 SharePoint 資料來源 AttendanceHistory
-#       → 全選複製本檔 → Studio 畫布貼上（Cmd/Ctrl+V）
-#
-# ★ 響應式設定（YAML 貼不進、需手動）：
-#   1. App 用「平板」版面或手機版面皆可；進 Settings → Display
-#      把「縮放以符合螢幕(Scale to fit)」關閉，App 才會依實際螢幕寬伸縮。
-#   2. 本檔所有尺寸用 Parent.Width / Parent.Height 比例，單欄直向，手機可讀。
-#   3. 畫面層級兩屬性手動設定：
-#      Screen.Fill      = RGBA(243, 244, 246, 1)
-#      Screen.OnVisible = UpdateContext({locShowPopup: false, locShowAll: false})
+# 模組一 — 今日出勤查核（一般同事頁・響應式・paste-ready）
+# 用法：建畫面 ScrToday → 全選複製本檔 → 畫布貼上（Cmd/Ctrl+V）
+# 手動畫面屬性：
+#   Screen.Fill      = RGBA(243, 244, 246, 1)
+#   Screen.OnVisible = UpdateContext({locShowPopup: false})
+# 資料源：AttendanceHistory(清單)、team_member(Excel，判行政權限)
+# 只顯示「今日、本人、有延遲任務」的列；占位列(任務名稱空白)濾掉。
 
 - conHeader:
     Control: GroupContainer
@@ -26,10 +22,10 @@
             Text: |-
               ="今日出勤查核　" & Text(Today(), "yyyy/m/d")
             X: =16
-            Y: =10
-            Width: =Parent.Width * 0.66
-            Height: =30
-            Size: =17
+            Y: =12
+            Width: =Parent.Width * 0.62
+            Height: =34
+            Size: =20
             FontWeight: =FontWeight.Semibold
             Color: =RGBA(255, 255, 255, 1)
       - lblUser:
@@ -38,51 +34,36 @@
             Text: |-
               =User().FullName & "　" & User().Email
             X: =16
-            Y: =40
-            Width: =Parent.Width * 0.5
-            Height: =22
-            Size: =11
+            Y: =50
+            Width: =Parent.Width * 0.62
+            Height: =24
+            Size: =13
             Color: =RGBA(209, 213, 219, 1)
-      - btnToggleAll:
-          Control: Classic/Button
-          Properties:
-            Text: |-
-              =If(locShowAll, "今日", "全部紀錄")
-            OnSelect: |-
-              =UpdateContext({locShowAll: !locShowAll})
-            X: =Parent.Width - Parent.Width * 0.24 - 12
-            Y: =58
-            Width: =Parent.Width * 0.24
-            Height: =34
-            Fill: =RGBA(55, 65, 81, 1)
-            Color: =RGBA(255, 255, 255, 1)
-            Size: =12
       - btnAdmin:
           Control: Classic/Button
           Properties:
             Text: ="行政查核"
             Visible: |-
-              =!IsBlank(LookUp(team_member, Lower(Email) = Lower(User().Email), '出勤存取權限'))
+              =!IsBlank(LookUp(team_member, Email = User().Email, '出勤存取權限'))
             OnSelect: =Navigate(ScrAdmin)
-            X: =Parent.Width - Parent.Width * 0.24 * 2 - 20
-            Y: =58
-            Width: =Parent.Width * 0.24
-            Height: =34
+            X: =Parent.Width - Parent.Width * 0.28 - 14
+            Y: =32
+            Width: =Parent.Width * 0.28
+            Height: =40
             Fill: =RGBA(180, 83, 9, 1)
             Color: =RGBA(255, 255, 255, 1)
-            Size: =12
+            Size: =15
 
 - lblEmpty:
     Control: Label
     Properties:
-      Text: |-
-        =If(locShowAll, "查無你的出勤紀錄", "今日尚無你的出勤查核資料（DateString 可能尚未產生）")
+      Text: ="今天沒有需要回覆的延遲工作"
       Visible: =CountRows(galToday.AllItems) = 0
       X: =16
       Y: =Parent.Height * 0.35
       Width: =Parent.Width - 32
       Height: =60
-      Size: =15
+      Size: =16
       Align: =Align.Center
       Color: =RGBA(107, 114, 128, 1)
 
@@ -91,16 +72,17 @@
     Variant: Vertical
     Properties:
       Items: |-
-        =If(
-            locShowAll,
-            Sort(Filter(AttendanceHistory, Email = User().Email), ID, SortOrder.Descending),
-            Filter(AttendanceHistory, Email = User().Email, DateString = Text(Today(), "yyyy/m/d"))
+        =Filter(
+            AttendanceHistory,
+            Email = User().Email,
+            '日期' = Text(Today(), "yyyy/m/d"),
+            !IsBlank('任務名稱')
         )
       X: =0
       Y: =100
       Width: =Parent.Width
       Height: =Parent.Height - 100
-      TemplateSize: =168
+      TemplateSize: =280
       TemplatePadding: =6
     Children:
       - recCard:
@@ -109,53 +91,75 @@
             X: =8
             Y: =4
             Width: =Parent.TemplateWidth - 16
-            Height: =156
+            Height: =268
             Fill: =RGBA(255, 255, 255, 1)
       - lblPlan:
           Control: Label
           Properties:
             Text: |-
-              =If(IsBlank(ThisItem.'方案名稱'), "（無延遲工作）", ThisItem.'方案名稱')
+              ="【專案】" & ThisItem.'方案名稱'
             X: =20
-            Y: =12
+            Y: =16
             Width: =Parent.TemplateWidth - 40
-            Height: =26
-            Size: =15
+            Height: =28
+            Size: =17
             FontWeight: =FontWeight.Semibold
             Color: =RGBA(17, 24, 39, 1)
       - lblTask:
           Control: Label
           Properties:
             Text: |-
-              =ThisItem.'任務名稱'
+              ="【工作】" & ThisItem.'任務名稱'
             X: =20
-            Y: =40
-            Width: =Parent.TemplateWidth - 40
-            Height: =22
-            Size: =12
-            Color: =RGBA(55, 65, 81, 1)
-      - lblStatus:
-          Control: Label
-          Properties:
-            Text: |-
-              ="出勤：" & ThisItem.'實際出勤狀態' & "　" & ThisItem.'日期'
-            X: =20
-            Y: =64
-            Width: =Parent.TemplateWidth - 40
-            Height: =20
-            Size: =11
-            Color: =RGBA(107, 114, 128, 1)
-      - lblReplyNow:
-          Control: Label
-          Properties:
-            Text: |-
-              ="回覆：" & If(IsBlank(ThisItem.'表單回覆'), "（未回覆）", ThisItem.'表單回覆')
-            X: =20
-            Y: =86
+            Y: =46
             Width: =Parent.TemplateWidth - 40
             Height: =26
-            Size: =11
+            Size: =14
+            Color: =RGBA(55, 65, 81, 1)
+      - lblReplyHeader:
+          Control: Label
+          Properties:
+            Text: ="【工作延遲回覆（請勾選）】"
+            X: =20
+            Y: =78
+            Width: =Parent.TemplateWidth - 40
+            Height: =22
+            Size: =13
+            FontWeight: =FontWeight.Semibold
+            Color: =RGBA(37, 99, 235, 1)
+      - lblReplyVal:
+          Control: Label
+          Properties:
+            Text: |-
+              =If(IsBlank(ThisItem.'表單回覆'), "（未回覆）", ThisItem.'表單回覆')
+            X: =34
+            Y: =102
+            Width: =Parent.TemplateWidth - 54
+            Height: =30
+            Size: =15
             Color: =If(IsBlank(ThisItem.'表單回覆'), RGBA(220, 38, 38, 1), RGBA(22, 101, 52, 1))
+      - lblStatusHeader:
+          Control: Label
+          Properties:
+            Text: ="【實際出勤狀態（米米信/行政人員填寫）】"
+            X: =20
+            Y: =136
+            Width: =Parent.TemplateWidth - 40
+            Height: =22
+            Size: =13
+            FontWeight: =FontWeight.Semibold
+            Color: =RGBA(75, 85, 99, 1)
+      - lblStatusVal:
+          Control: Label
+          Properties:
+            Text: |-
+              =If(IsBlank(ThisItem.'實際出勤狀態'), "（未填）", ThisItem.'實際出勤狀態')
+            X: =34
+            Y: =160
+            Width: =Parent.TemplateWidth - 54
+            Height: =46
+            Size: =14
+            Color: =RGBA(75, 85, 99, 1)
       - btnReply:
           Control: Classic/Button
           Properties:
@@ -164,12 +168,12 @@
               =UpdateContext({locSelected: ThisItem, locShowPopup: true});
               Reset(radReply)
             X: =20
-            Y: =116
+            Y: =214
             Width: =Parent.TemplateWidth - 40
-            Height: =40
+            Height: =46
             Fill: =RGBA(37, 99, 235, 1)
             Color: =RGBA(255, 255, 255, 1)
-            Size: =13
+            Size: =16
 
 - conOverlay:
     Control: GroupContainer
@@ -189,45 +193,44 @@
             X: =(Parent.Width - Self.Width) / 2
             Y: =(Parent.Height - Self.Height) / 2
             Width: =Min(Parent.Width - 24, 560)
-            Height: =Min(Parent.Height - 64, 540)
+            Height: =Min(Parent.Height - 64, 580)
             Fill: =RGBA(255, 255, 255, 1)
           Children:
             - lblPopTitle:
                 Control: Label
                 Properties:
-                  Text: ="填寫出勤回覆"
+                  Text: ="填寫工作延遲回覆"
                   X: =20
                   Y: =16
                   Width: =Parent.Width - 40
-                  Height: =30
-                  Size: =17
+                  Height: =32
+                  Size: =19
                   FontWeight: =FontWeight.Semibold
             - lblPopMeta:
                 Control: Label
                 Properties:
                   Text: |-
-                    ="方案：" & locSelected.'方案名稱' & Char(10) &
-                     "任務：" & locSelected.'任務名稱' & Char(10) &
-                     "出勤狀態：" & locSelected.'實際出勤狀態'
+                    ="【專案】" & locSelected.'方案名稱' & Char(10) &
+                     "【工作】" & locSelected.'任務名稱'
                   X: =20
-                  Y: =50
+                  Y: =52
                   Width: =Parent.Width - 40
-                  Height: =84
-                  Size: =12
+                  Height: =72
+                  Size: =14
                   Color: =RGBA(75, 85, 99, 1)
             - radReply:
                 Control: Classic/Radio
                 Properties:
                   Items: |-
-                    =["已完成（請自行勾掉卡片）", "延遲（09:30已到公司在補進度）", "延遲（09:30沒到公司，請填寫假卡）", "如為其他狀況，請於5分鐘內更新卡片"]
+                    =["1. 已完成（請自行勾掉卡片）", "2. 延遲（09:30已到公司在補進度）", "3. 延遲（09:30沒到公司，請填寫假卡）", "4. 如為其他狀況，請於5分鐘內更新卡片"]
                   Default: |-
                     =locSelected.'表單回覆'
                   Layout: =Layout.Vertical
                   X: =20
-                  Y: =142
+                  Y: =132
                   Width: =Parent.Width - 40
-                  Height: =Parent.Height - 142 - 68
-                  Size: =13
+                  Height: =Parent.Height - 132 - 72
+                  Size: =15
             - btnCancel:
                 Control: Classic/Button
                 Properties:
@@ -235,11 +238,12 @@
                   OnSelect: |-
                     =UpdateContext({locShowPopup: false})
                   X: =20
-                  Y: =Parent.Height - 56
+                  Y: =Parent.Height - 58
                   Width: =(Parent.Width - 48) / 2
-                  Height: =44
+                  Height: =46
                   Fill: =RGBA(229, 231, 235, 1)
                   Color: =RGBA(31, 41, 55, 1)
+                  Size: =15
             - btnSubmit:
                 Control: Classic/Button
                 Properties:
@@ -253,8 +257,9 @@
                         Notify("送出失敗：" & First(Errors(AttendanceHistory, locSelected)).Message, NotificationType.Error)
                     )
                   X: =Parent.Width - 20 - (Parent.Width - 48) / 2
-                  Y: =Parent.Height - 56
+                  Y: =Parent.Height - 58
                   Width: =(Parent.Width - 48) / 2
-                  Height: =44
+                  Height: =46
                   Fill: =RGBA(37, 99, 235, 1)
                   Color: =RGBA(255, 255, 255, 1)
+                  Size: =15

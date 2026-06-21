@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出勤查核系統 — 端到端流程 v1</title>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--warn:#b45309;--ok:#15803d;--todo:#7c3aed;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Helvetica Neue",Arial,"Microsoft JhengHei",sans-serif;line-height:1.7;}
+  .wrap{max-width:1000px;margin:0 auto;padding:36px 26px 90px;}
+  h1{font-size:24px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:24px;}
+  h2{font-size:18px;margin:34px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);}
+  .stage{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:0;margin:14px 0;box-shadow:0 1px 3px rgba(0,0,0,.04);overflow:hidden;}
+  .stage-head{display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line);}
+  .num{flex:0 0 auto;width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;}
+  .stage-title{font-size:16px;font-weight:700;}
+  .stage-body{padding:12px 18px 16px;}
+  .pill{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:99px;margin-left:8px;font-weight:600;}
+  .p-auto{background:#dbeafe;color:#1e40af;}
+  .p-py{background:#dcfce7;color:#166534;}
+  .p-app{background:#fae8ff;color:#86198f;}
+  .p-todo{background:#ede9fe;color:#6d28d9;}
+  .meta{font-size:12.5px;color:var(--muted);margin:2px 0 10px;}
+  ul{margin:6px 0;padding-left:20px;} li{margin:5px 0;}
+  code{background:#eef2ff;color:#3730a3;padding:1px 5px;border-radius:4px;font-size:12.5px;word-break:break-all;}
+  .arrow{text-align:center;color:#9ca3af;font-size:20px;margin:-4px 0;}
+  table{border-collapse:collapse;width:100%;margin:10px 0;font-size:13.5px;}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;}
+  th{background:#f1f5f9;}
+  .warn{border-left:4px solid var(--warn);background:#fffbeb;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .todo{border-left:4px solid var(--todo);background:#f5f3ff;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .st{font-weight:700;display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;border-radius:5px;color:#fff;font-size:12px;}
+  .legend span{margin-right:14px;font-size:12.5px;}
+  .dot{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:middle;margin-right:4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>出勤查核系統 — 端到端流程 v1</h1>
+<div class="sub">2026-06-21 ｜ Claude@Mac ｜ 把口述流程順成完整管線，標註元件與待定項</div>
+
+<div class="legend" style="margin-bottom:6px">
+<span><span class="dot" style="background:#1e40af"></span>Power Automate 流程</span>
+<span><span class="dot" style="background:#166534"></span>桌機 Python（已有）</span>
+<span><span class="dot" style="background:#86198f"></span>Power App 畫面</span>
+<span><span class="dot" style="background:#6d28d9"></span>後續／規格未定</span>
+</div>
+
+<!-- 1 -->
+<div class="stage">
+  <div class="stage-head"><div class="num">1</div><div class="stage-title">0930 巡檢 Planner → 寫入清單<span class="pill p-auto">Power Automate</span></div></div>
+  <div class="stage-body">
+    <div class="meta">觸發：週一～五 09:30（Taipei）｜ 即既有「0930每日巡檢Planer_v0」改造（見《0930_Planner改寫_寫入清單_建置指南》）</div>
+    <ul>
+      <li><b>段A</b>：掃全公司 Planner → 篩「逾期且未完成」任務 → 逐指派人寫入清單 <code>AttendanceHistory</code>。延遲列每任務一列，唯一鍵 <code>ID (yyyyMMdd_Email)</code> ＝ <code>日期_email_任務id</code>。</li>
+      <li><b>段B</b>：讀回今日清單 → 對照 <code>team_member</code> 全體 → 把<b>沒延遲的人</b>補占位列，唯一鍵 ＝ <code>日期_email_TaskOnSchedule</code>。</li>
+      <li><b>結果</b>：當天全體每人在清單至少一列（延遲者有方案/任務、其餘為占位）。<code>表單回覆</code>、<code>實際出勤狀態</code> 此時皆空白。</li>
+    </ul>
+    <div class="meta">你把它列為步驟 1、2，技術上是<b>同一支流程的兩段</b>（段A 後接段B）。若你想拆成兩支獨立流程也可，告訴我。</div>
+  </div>
+</div>
+<div class="arrow">▼</div>
+
+<!-- 2 -->
+<div class="stage">
+  <div class="stage-head"><div class="num">2</div><div class="stage-title">讀清單延遲名單 → 逐人寄信（Line 仲介資料）<span class="pill p-auto">Power Automate</span></div></div>
+  <div class="stage-body">
+    <div class="meta">觸發：接在步驟 1 之後，或排程 09:40｜<b>須 09:45 前完成</b></div>
+    <ul>
+      <li>讀清單今日「有延遲」的列 → 去重到人 → <b>逐人寄一封信</b>到中繼信箱 <b>真核域 <code>domain.e@techartgroup.com</code></b>（Planner2Line 監聽的信箱）。</li>
+      <li>信件<b>寄件者須為白名單</b>：<code>domain.e@techartgroup.com</code>（或 <code>ihueychen</code>），否則 Planner2Line 會略過。</li>
+      <li>信件標題須符合 personal 路由格式：<code>工作延遲_姓名 | MM/DD</code>；<code>姓名</code> 要與 <code>contacts.json</code> 完全一致（去空白比對）。</li>
+      <li>信件正文放<b>員工儀表板連結</b>：Planner2Line 會從正文抽 URL 縮短後塞進 LINE 訊息。<b>因 App 以 <code>User().Email</code> 自動篩當事人，所有人放同一個 App 連結即可，不需逐人預填</b>。</li>
+      <li><b>這支流程才是「發延遲通知信」的那支</b>，與步驟 1 的巡檢流程是兩支。</li>
+    </ul>
+  </div>
+</div>
+<div class="arrow">▼</div>
+
+<!-- 3 -->
+<div class="stage">
+  <div class="stage-head"><div class="num">3</div><div class="stage-title">Planner2Line：Outlook → LINE<span class="pill p-py">桌機 Python・已運作</span></div></div>
+  <div class="stage-body">
+    <div class="meta">既有程式 <code>/Users/coma/Git_work/Planner2Line</code>，本次不改程式（每 30 秒輪詢 Outlook）</div>
+    <ul>
+      <li>監聽 Outlook → 解析主旨 → 依 <code>contacts.json</code> 找 LINE 對象 → 清理正文（自動縮網址）→ pywinauto 操控 LINE Desktop 發送。</li>
+      <li>三種路由：<b>personal</b>（<code>工作延遲_姓名</code>→該員 LINE，本流程用這個）／<b>summary</b>（<code>彙整通知_</code>→真核域 LINE「天工Planner CK」）／<b>weekly_summary</b>（<code>彙整周報</code>／<code>早加班狀況</code>→群組「天工開物工作群組」）。</li>
+      <li><b>唯一改動點</b>：把連結從「MS365 表單」改為「員工儀表板」——只改步驟 2 信件正文 URL 即可，Planner2Line 照舊轉發。</li>
+      <li>同事收到 LINE → 點連結進儀表板（登入後自動只看到自己今日卡片）填出勤回覆。</li>
+      <li class="meta">維運相依：新人須加進 <code>contacts.json</code>（姓名→LINE 名）；正式上線把 <code>config.json</code> 的 <code>env</code> 設 <code>prod</code>（否則訊息會帶「測試訊息_請忽略」前綴）、<code>outlook.account</code> 指到監聽信箱。</li>
+    </ul>
+  </div>
+</div>
+<div class="arrow">▼</div>
+
+<!-- 4 -->
+<div class="stage">
+  <div class="stage-head"><div class="num">4</div><div class="stage-title">員工儀表板：填「表單回覆」<span class="pill p-app">Power App</span></div></div>
+  <div class="stage-body">
+    <ul>
+      <li>員工進儀表板看到自己今日卡片 → 選 4 選項之一（見下方狀態表）→ 寫回 <code>AttendanceHistory.表單回覆</code>。</li>
+      <li>員工對 <code>實際出勤狀態</code> <b>唯讀</b>（那欄只有行政能填）。</li>
+    </ul>
+  </div>
+</div>
+<div class="arrow">▼</div>
+
+<!-- 5 -->
+<div class="stage">
+  <div class="stage-head"><div class="num">5</div><div class="stage-title">行政頁簽：填「實際出勤狀態」<span class="pill p-app">Power App</span></div></div>
+  <div class="stage-body">
+    <ul>
+      <li>行政人員登入 → 行政查核頁 → 逐人選出勤狀態（行政專用 10 選項）→ 寫回該人今日所有列的 <code>實際出勤狀態</code>。</li>
+      <li>與步驟 4 並行、互不衝突：<b>表單回覆＝員工寫；實際出勤狀態＝行政寫</b>。</li>
+    </ul>
+  </div>
+</div>
+<div class="arrow">▼</div>
+
+<!-- 6 -->
+<div class="stage">
+  <div class="stage-head"><div class="num">6</div><div class="stage-title">Planner 再巡檢與同步（依回覆狀態收斂）<span class="pill p-todo">規格未定</span></div></div>
+  <div class="stage-body">
+    <div class="meta">目的：以「最新一次更新」為準，把員工回覆與 Planner 實際變化同步回清單</div>
+    <ul>
+      <li>回覆 <b>1 已完成</b>：員工自行勾掉 Planner 卡片 → 卡片消失 → <b>刪除清單該列</b>。</li>
+      <li>回覆 <b>2 / 3 延遲</b>：保留。</li>
+      <li>回覆 <b>4 其他</b>：員工 5 分鐘內溝通並改 Planner → 再巡檢後該任務若不再逾期 → 比照已完成；若仍逾期 → 收斂為 2／3。</li>
+    </ul>
+    <div class="todo">待定：觸發方式（定時再掃？間隔多久？事件觸發？）、狀態 1 的「刪列」由流程自動或行政手動、再巡檢與步驟 1 是否合併。</div>
+  </div>
+</div>
+<div class="arrow">▼</div>
+
+<!-- 7 -->
+<div class="stage">
+  <div class="stage-head"><div class="num">7</div><div class="stage-title">清單 → Excel 備份（處理完歸檔）<span class="pill p-todo">規格未定</span></div></div>
+  <div class="stage-body">
+    <ul>
+      <li>當日處理完（查核＋回覆收斂後）→ 清單資料寫入 Excel 當備份；清單只留處理中／當日。</li>
+    </ul>
+    <div class="todo">待定：備份時機（每日收盤？）、清單清理策略（搬走或保留 N 天）。</div>
+  </div>
+</div>
+
+<h2>表單回覆狀態機（員工填的 4 選項）</h2>
+<table>
+<tr><th>值</th><th>選項文案</th><th>員工動作</th><th>對清單／Planner 的後果</th></tr>
+<tr><td><span class="st" style="background:#15803d">1</span></td><td>已完成（請自行勾掉卡片）</td><td>自行勾掉 Planner 卡片</td><td>卡片消失 → 清單該列刪除（步驟 6）</td></tr>
+<tr><td><span class="st" style="background:#2563eb">2</span></td><td>延遲（09:30已到公司在補進度）</td><td>補進度</td><td>保留</td></tr>
+<tr><td><span class="st" style="background:#b45309">3</span></td><td>延遲（09:30沒到公司，請填寫假卡）</td><td>填假卡</td><td>保留</td></tr>
+<tr><td><span class="st" style="background:#b91c1c">4</span></td><td>如為其他狀況，請於5分鐘內更新卡片</td><td>5 分內溝通並改 Planner</td><td>再巡檢後轉 1／2／3，卡片最終消失或顯示 2／3</td></tr>
+</table>
+
+<h2>儀表板模組：請假餘額查詢（獨立功能，與上方每日出勤管線無關）</h2>
+<div class="stage">
+  <div class="stage-head"><div class="num" style="background:#0d9488">＋</div><div class="stage-title">ScrLeave：年假餘額／請假紀錄查詢<span class="pill p-app">Power App</span></div></div>
+  <div class="stage-body">
+    <div class="meta">設計已定：唯讀小表（一年約幾百列 &lt; 2000）＋低頻 → <b>Excel 直連唯讀，不建清單</b>（符合儲存選型準則）</div>
+    <ul>
+      <li><b>資料源</b>：<b>獨立的請假 Excel 檔</b>（與 TaskDB.xlsx 是<b>不同檔案</b>，需另加一個 Excel 連線）；該範圍須先在 Excel <b>格式化為表格(Table)</b> 才能被連接器讀到。</li>
+      <li><b>餘額</b>：<code>LookUp(請假表, Lower(Email)=Lower(User().Email))</code> → 顯示剩餘年假卡片。</li>
+      <li><b>個人請假紀錄</b>：<code>Filter(請假表, Lower(Email)=Lower(User().Email))</code> → 列出該員一年的請假明細，<b>自動只顯示當事人</b>。</li>
+      <li><b>「我要請假」按鈕</b>：<code>Launch("外部請假表單URL")</code>——申請走既有外部表單，app 內不做申請邏輯。</li>
+    </ul>
+    <div class="todo">
+      <b>待辦（待你提供才能產 YAML）</b>
+      <ol style="margin:6px 0">
+        <li>請假 Excel：站台／檔名（或 sourcedoc）、<b>Table 名稱</b>（若尚未格式化為 Table 需先設）。</li>
+        <li>欄位清單（最好截圖或貼欄位列）；對應員工的鍵是 <code>Email</code> 還是 <code>員工編號</code>。</li>
+        <li>餘額是「已算好」（有「剩餘年假」欄）還是只有「配額」＋「已使用」要 app 自行 <code>配額 − 已用</code>。</li>
+        <li>外部請假表單的連結 URL。</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<h2>待你確認 / 補齊</h2>
+<div class="warn">
+<ol>
+<li><b>步驟 2 中繼信箱確認</b>：已知真核域＝<code>domain.e@techartgroup.com</code>（Planner2Line 監聽＋summary LINE 對象）。請確認步驟 2 的逐人信確實寄進這個信箱、且寄件者用白名單帳號（<code>domain.e</code> 或 <code>ihueychen</code>）。<code>config.json.outlook.account</code> 目前仍是佔位 <code>your@email.com</code>，上線要改成實際監聽帳號。</li>
+<li><b>步驟 1 段A/段B 一支還兩支</b>：我目前建置指南是「一支流程兩段」。你列成步驟 1、2，要拆兩支嗎？</li>
+<li><b>步驟 2 觸發點</b>：接在步驟 1 之後自動跑，還是獨立排程 09:40？如何保證 09:45 前送出。</li>
+<li><b>步驟 6 再巡檢</b>：觸發頻率、狀態 1 刪列由流程自動或行政手動。</li>
+<li><b>步驟 7 Excel 備份</b>：時機與清單清理策略。</li>
+<li><b>員工唯讀硬保障</b>：<code>實際出勤狀態</code> 員工不可改，須在 SharePoint 清單設欄位／項目權限（非靠 App 隱藏），何時設。</li>
+</ol>
+</div>
+
+</div>
+</body>
+</html>

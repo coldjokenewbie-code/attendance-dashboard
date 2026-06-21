@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出勤查核儀表板 — 第一版建置指南</title>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--warn:#b45309;--ok:#15803d;--del:#b91c1c;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Helvetica Neue",Arial,"Microsoft JhengHei",sans-serif;line-height:1.7;}
+  .wrap{max-width:920px;margin:0 auto;padding:34px 24px 90px;}
+  h1{font-size:23px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:22px;}
+  h2{font-size:18px;margin:30px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  code{background:#eef2ff;color:#3730a3;padding:1px 6px;border-radius:4px;font-size:13px;word-break:break-all;}
+  .file{font-family:ui-monospace,monospace;font-size:13.5px;font-weight:600;color:#0f172a;background:#e0e7ff;padding:2px 8px;border-radius:5px;}
+  ol,ul{margin:6px 0;padding-left:22px;} li{margin:6px 0;}
+  .warn{border-left:4px solid var(--warn);background:#fffbeb;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .ok{border-left:4px solid var(--ok);background:#f0fdf4;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .del{border-left:4px solid var(--del);background:#fef2f2;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .step{display:flex;gap:12px;align-items:flex-start;margin:14px 0;}
+  .n{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;}
+  table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13.5px;}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f5f9;}
+  .tag{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;background:#dbeafe;color:#1e40af;font-weight:600;margin-left:6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>出勤查核儀表板 — 第一版建置指南</h1>
+<div class="sub">2026-06-21 ｜ Claude@Mac ｜ 一般同事頁 + 行政專用頁簽（權限控制）・響應式手機優先</div>
+
+<div class="del">
+<b>上次 PA1001 的原因（已修正）</b>：我把兩個畫面塞進同一個檔，你整段貼上 → 出錯。Power Apps「貼上程式碼」<b>一次只能貼一個畫面的控件</b>。本版改回「<b>一個檔 = 一個畫面</b>」，每個檔<b>全選複製、整段貼上</b>就好（和你之前成功的做法一樣）。合併檔已刪除。
+</div>
+
+<div class="card">
+<b>兩個檔（在 <span class="file">workingfiles/canvas/</span>）</b>
+<table>
+<tr><th>檔案</th><th>對應畫面</th><th>內容</th></tr>
+<tr><td><span class="file">ScrToday_paste.pa.yaml</span></td><td>ScrToday</td><td>一般同事：今日卡片、填回覆、右上角行政入口</td></tr>
+<tr><td><span class="file">ScrAdmin_paste.pa.yaml</span></td><td>ScrAdmin</td><td>行政專用：當天全體去重、逐人填出勤狀態</td></tr>
+</table>
+</div>
+
+<h2>前置（只做一次）</h2>
+<div class="card">
+<div class="step"><div class="n">1</div><div>
+<b>加資料源</b>（App 左側「資料」→ 新增資料）：
+<ul>
+<li><b>AttendanceHistory</b> —— SharePoint 清單。</li>
+<li><b>team_member</b> —— Excel 連接器（須含 <code>Email</code> 與 <code>出勤存取權限</code> 欄）。</li>
+</ul>
+名稱要與此完全一致，公式才接得到。</div></div>
+
+<div class="step"><div class="n">2</div><div>
+<b>開響應式</b>：Settings → Display → 關閉「縮放以符合螢幕 (Scale to fit)」。<br>
+（本版尺寸全用 <code>Parent.Width / Parent.Height</code> 比例、單欄直向，手機可讀。）</div></div>
+</div>
+
+<h2>畫面 1：ScrToday（一般同事）<span class="tag">先做這個</span></h2>
+<div class="card">
+<div class="step"><div class="n">1</div><div>左側「+ 新畫面」→ 空白 → 命名 <b>ScrToday</b>。</div></div>
+<div class="step"><div class="n">2</div><div>選取畫面，設兩個屬性：
+<table>
+<tr><td><code>Fill</code></td><td><code>=RGBA(243, 244, 246, 1)</code></td></tr>
+<tr><td><code>OnVisible</code></td><td><code>=UpdateContext({locShowPopup: false, locShowAll: false})</code></td></tr>
+</table></div></div>
+<div class="step"><div class="n">3</div><div>開 <span class="file">ScrToday_paste.pa.yaml</span> → <b>全選複製</b>（Cmd+A、Cmd+C）。</div></div>
+<div class="step"><div class="n">4</div><div>回 Studio，選到 ScrToday 畫面 → 樹狀檢視該畫面按 <b>⋯ → 貼上 → 貼上程式碼</b>（或畫布 Cmd/Ctrl+V）。第一次貼會要你允許剪貼簿權限，按允許。</div></div>
+</div>
+
+<h2>畫面 2：ScrAdmin（行政專用頁簽）</h2>
+<div class="card">
+<div class="step"><div class="n">1</div><div>「+ 新畫面」→ 空白 → 命名 <b>ScrAdmin</b>。</div></div>
+<div class="step"><div class="n">2</div><div>選取畫面，設 <code>Fill = RGBA(243, 244, 246, 1)</code>。</div></div>
+<div class="step"><div class="n">3</div><div>開 <span class="file">ScrAdmin_paste.pa.yaml</span> → 全選複製。</div></div>
+<div class="step"><div class="n">4</div><div>選到 ScrAdmin 畫面 → ⋯ → 貼上 → 貼上程式碼。</div></div>
+</div>
+
+<h2>權限怎麼運作</h2>
+<div class="card">
+ScrToday 右上角的橘色「<b>行政查核</b>」鈕，<code>Visible</code> 內建判斷：
+<p><code>=!IsBlank(LookUp(team_member, Email=User().Email, '出勤存取權限'))</code></p>
+只有 team_member 裡 <code>出勤存取權限</code> 非空白（你的資料是 <code>行政管理</code>）的帳號才看得到這顆鈕、才能進 ScrAdmin。一般員工看不到。（<code>=</code> 比對本就不分大小寫，故不需 <code>Lower()</code>，可免委派警告。）
+<div class="warn" style="margin-top:10px"><b>注意</b>：UI 隱藏只是畫面層、非安全邊界。員工不能改 <code>實際出勤狀態</code> 的硬保障，要靠 SharePoint 清單的<b>欄位／項目權限</b>設定，這顆 Visible 擋不住懂技術的人。</div>
+</div>
+
+<h2>測試</h2>
+<div class="card">
+<ol>
+<li><b>一般員工帳號</b>登入：看到自己今日卡片；右上<b>沒有</b>行政查核鈕；「填寫回覆」可選 4 選項送出。</li>
+<li><b>行政帳號</b>（陳怡惠 / 黃文郁）登入：右上出現橘色「行政查核」→ 點進 ScrAdmin → 當天全體逐人列出 → 選出勤狀態 → 儲存 → 回寫該人當天所有列。</li>
+<li>切「全部紀錄 / 今日」確認歷史查得到。</li>
+</ol>
+</div>
+
+<h2>第一版範圍（這版有 / 沒有）</h2>
+<div class="card">
+<ul>
+<li><b>有</b>：員工看今日＋歷史、填回覆；行政頁簽逐人填出勤狀態；權限控制；響應式。</li>
+<li><b>資料源</b>：AttendanceHistory＝清單、team_member＝Excel（依你指定，先不改清單版）。</li>
+<li><b>沒有（後續）</b>：請假餘額查詢 ScrLeave、0930 流程改寫、週報加請假、員工唯讀的清單權限設定。</li>
+</ul>
+</div>
+
+</div>
+</body>
+</html>
