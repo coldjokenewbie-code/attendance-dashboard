@@ -118,21 +118,23 @@ Planner 掃描那一整段<b>完全不動</b>。本流程<b>不發郵件、不�
 <li><b>Apply to each</b>：來源 <code>@outputs('列出資料表中的資料列_team_member')?['body/value']</code>。</li>
 <li>內放<b>條件</b>：
   <ul>
-  <li>左值（運算式）：<code>contains(variables('延遲Emails'), toLower(</code>〔team_member Email 動態內容〕<code>))</code></li>
+  <li>左值（切 fx，貼整段）：<code>contains(variables('延遲Emails'), toLower(items('Apply_to_each')?['Email']))</code></li>
   <li>條件：<b>等於</b>　右值：<code>false</code></li>
   </ul>
 </li>
 <li><b>是(Yes)</b> 分支 → <b>SharePoint 建立項目</b>（占位，team_member 欄用動態內容點選）：</li>
 </ol>
+<p class="warn"><b>填法分辨</b>：有 <code>concat</code>／<code>formatDateTime</code> 的＝點欄位切到「<b>運算式 fx</b>」貼整段；只是單一欄位的＝直接從「<b>動態內容</b>」清單點 team_member 那欄。</p>
 <table>
-<tr><th>欄（PA 顯示）</th><th>填入</th></tr>
-<tr><td><b>Title</b></td><td>運算式 <code>concat(formatDateTime(addHours(utcNow(),8),'yyyyMMdd'),'_',</code> →〔插入 team_member 的 <b>Email</b> 動態內容〕→ <code>,'_TaskOnSchedule')</code></td></tr>
-<tr><td>姓名</td><td><b>要填</b>：從動態內容點 team_member 的「姓名」</td></tr>
-<tr><td>Email</td><td><b>要填</b>：從動態內容點 team_member 的「Email」</td></tr>
-<tr><td>員工編號</td><td><b>要填</b>：從動態內容點 team_member 的「員工編號」</td></tr>
-<tr><td>日期</td><td><code>formatDateTime(addHours(utcNow(),8),'yyyy/M/d')</code></td></tr>
-<tr><td>方案名稱 / 任務名稱 / 表單回覆 / 實際出勤狀態 / DateString</td><td>留空（不勾、不填）</td></tr>
+<tr><th>欄（PA 顯示）</th><th>填法</th><th>內容</th></tr>
+<tr><td><b>Title</b></td><td>fx 貼整段</td><td><code>concat(formatDateTime(addHours(utcNow(),8),'yyyyMMdd'),'_',items('Apply_to_each')?['Email'],'_TaskOnSchedule')</code></td></tr>
+<tr><td>姓名</td><td>動態內容</td><td>點 team_member 的「姓名」</td></tr>
+<tr><td>Email</td><td>動態內容</td><td>點 team_member 的「Email」</td></tr>
+<tr><td>員工編號</td><td>動態內容</td><td>點 team_member 的「員工編號」</td></tr>
+<tr><td>日期</td><td>fx 貼整段</td><td><code>formatDateTime(addHours(utcNow(),8),'yyyy/M/d')</code></td></tr>
+<tr><td>方案名稱 / 任務名稱 / 表單回覆 / 實際出勤狀態 / DateString</td><td>—</td><td>留空（不勾、不填）</td></tr>
 </table>
+<p style="font-size:12.5px;color:var(--muted)"><code>items('Apply_to_each')?['Email']</code>＝目前迴圈這位同事的 Email。<code>Apply_to_each</code> 是你那個迴圈的名字（空白改底線）；若報「找不到 Apply_to_each」，換成迴圈標題列顯示的名字（如 <code>Apply_to_each_2</code>）。</p>
 <p class="ok">結果：延遲者每任務一列（段A）、沒延遲者一張占位列（段B），每人當天至少一列、且不重複。</p>
 </div>
 
@@ -150,6 +152,7 @@ Planner 掃描那一整段<b>完全不動</b>。本流程<b>不發郵件、不�
 <h2>7. 注意彙整</h2>
 <div class="card warn">
 <ul>
+<li><b>改/重建清單欄位會讓「建立項目」整個壞掉</b>：SharePoint 欄位刪除重建後內部名會變（如 <code>field_1…field_9</code>），流程檢查程式會報一堆「<code>Item/Title</code>／<code>field_N</code> 已不存在於作業模式中」。修法：刪掉該「建立項目」動作重加、重選清單 AttendanceHistory 載入現欄位、用進階參數重勾重填。<b>欄位定版後別再刪改</b>。</li>
 <li><b>主欄＝Title</b>：PA 的「建立項目」把主欄顯示為 <code>Title</code>（清單檢視別名是「ID (yyyyMMdd_Email)」）。唯一鍵填這欄。若報「<code>Item/Title</code> 已不存在」，那是舊動作殘留——刪掉舊「建立項目」用新的即可。</li>
 <li><b>時間</b>：<code>addHours(utcNow(),8)</code>＝台北時間（UTC+8、無日光節約），等同 <code>convertFromUtc(utcNow(),'Taipei Standard Time')</code>。兩者可互換；若某動作報「時區無效」就用 addHours 版。</li>
 <li><b>兩欄寫入者不同</b>：<code>表單回覆</code>＝員工自己填；<code>實際出勤狀態</code>＝僅行政填、員工唯讀。流程都留空。員工不能改「實際出勤狀態」的硬保障要靠 SharePoint 清單<b>欄位／項目權限</b>，不是只靠 App 隱藏。</li>

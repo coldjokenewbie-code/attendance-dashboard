@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>0955 再巡檢與同步 — 建置規格</title>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--warn:#b45309;--ok:#15803d;--del:#b91c1c;--todo:#7c3aed;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Helvetica Neue",Arial,"Microsoft JhengHei",sans-serif;line-height:1.7;}
+  .wrap{max-width:980px;margin:0 auto;padding:34px 24px 90px;}
+  h1{font-size:23px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:22px;}
+  h2{font-size:18px;margin:30px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--accent);}
+  h3{font-size:15px;margin:16px 0 6px;color:#111827;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  code{background:#eef2ff;color:#3730a3;padding:1px 5px;border-radius:4px;font-size:12.5px;word-break:break-all;}
+  pre{background:#0f172a;color:#e2e8f0;padding:13px;border-radius:8px;overflow:auto;font-size:12.5px;line-height:1.5;}
+  pre code{background:none;color:inherit;padding:0;}
+  ol,ul{margin:6px 0;padding-left:22px;} li{margin:6px 0;}
+  table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13px;}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f5f9;}
+  .warn{border-left:4px solid var(--warn);background:#fffbeb;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .ok{border-left:4px solid var(--ok);background:#f0fdf4;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .del{border-left:4px solid var(--del);background:#fef2f2;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .todo{border-left:4px solid var(--todo);background:#f5f3ff;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .tag{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;background:#dbeafe;color:#1e40af;font-weight:600;}
+  .tag-todo{background:#ede9fe;color:#6d28d9;}
+  .pick{background:#ecfeff;color:#155e75;padding:1px 6px;border-radius:4px;font-size:12.5px;font-weight:600;}
+  .st{font-weight:700;display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;border-radius:5px;color:#fff;font-size:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>0955 再巡檢與同步 — 建置規格</h1>
+<div class="sub">2026-06-22 ｜ Claude@Mac ｜ 新增 cloud flow「0955再巡檢與同步」：以最新狀態收斂清單（端到端流程步驟 6）</div>
+
+<div class="warn">
+<b>核心觀念</b>：① 所有運算式一律用 <b>fx 插入成紫色 chip</b>，不要直接打字（否則被當字串）。② 清單中文欄的<b>內部名是 field_N</b>，運算式只用內部名：<code>field_1 員工編號／field_2 日期／field_3 Email／field_4 姓名／field_5 方案名稱／field_6 任務名稱／field_7 表單回覆／field_8 實際出勤狀態／field_9 DateString</code>；主欄維持 <code>Title</code>。③ 時間一律 <code>addHours(utcNow(),8)</code>（台北 UTC+8），不要用 <code>convertFromUtc</code>（環境不一定支援）。④ 本流程<b>會刪資料</b>，動手前務必先看本頁最後的「待確認（PO 裁示）」。
+</div>
+
+<h2>0. 這支流程要做的事</h2>
+<div class="card">
+<p>觸發約 <b>09:55</b>（Line 約 09:45 發出後 10 分鐘，留給員工回覆與改 Planner 的緩衝）。目的：<b>以「最新一次更新」為準</b>，把員工的「表單回覆」與 Planner 的<b>當前實際狀態</b>同步回清單 <code>AttendanceHistory</code>。</p>
+<p>做法：① <b>重新掃描 Planner</b> 取得「目前仍逾期」的任務 id 集合（手法照 0930）。② <b>讀取清單今天的延遲列</b>（排除占位列）。③ <b>逐列</b>依「表單回覆 × 是否仍逾期」決定處置（刪列／保留／收斂）。</p>
+<table>
+<tr><th>表單回覆 field_7</th><th>Planner 目前狀態</th><th>處置</th></tr>
+<tr><td><span class="st" style="background:#15803d">1</span> 已完成</td><td>（不論，員工已自勾掉 → 卡片應已消失）</td><td><b>刪除清單該列</b></td></tr>
+<tr><td><span class="st" style="background:#2563eb">2</span> 延遲(已到公司補進度)</td><td>—</td><td><b>保留</b></td></tr>
+<tr><td><span class="st" style="background:#b45309">3</span> 延遲(沒到公司·填假卡)</td><td>—</td><td><b>保留</b></td></tr>
+<tr><td rowspan="2"><span class="st" style="background:#b91c1c">4</span> 其他(5分內改卡片)</td><td>不再逾期（不在重掃逾期集合）</td><td>比照已完成 → <b>刪列</b></td></tr>
+<tr><td>仍逾期（仍在重掃逾期集合）</td><td>收斂為 2／3 <span class="tag tag-todo">待確認</span></td></tr>
+</table>
+<p style="font-size:12.5px;color:var(--muted)">空白 / 其它未列值的回覆，預設「保留、不動」（員工尚未回覆，留待人工或隔日處理）。</p>
+</div>
+
+<h2>1. 整體結構</h2>
+<div class="card">
+<pre><code>觸發 Recurrence（週一～五 09:55, Taipei）
+└ 列出我擁有及我所屬的群組（office365groups / ListOwnedGroups_V3）   ← 照 0930
+└ 群組_篩選陣列（@not(equals(displayName,'null'))）                  ← 照 0930
+└ 初始化變數 仍逾期TaskIds（陣列, 空）                              ← ★ 收集重掃逾期 id
+└ for_each_group（@body('群組_篩選陣列')）
+│   └ 列出群組的方案（planner / ListGroupPlans）                     ← 照 0930
+│   └ for_each_plan（@outputs('列出群組的方案')?['body/value']）
+│       └ 列出工作（planner / ListTasks_V3）                         ← 照 0930
+│       └ 逾期_篩選陣列（Query：dueDateTime 過期 且 未完成）          ← 照 0930
+│       └ 選取_逾期id（Select 文字模式：item()?['id']）               ← ★
+│       └ 附加至陣列變數 仍逾期TaskIds（union 進變數）                ← ★
+└ 取得清單項目（SharePoint / 篩選查詢＝fx concat startswith Title）   ← ★ 讀今日列
+└ 今日延遲列（Filter array：排除 _TaskOnSchedule 占位列）            ← ★
+└ Apply_to_each_列（@body('今日延遲列'), 迴圈項＝清單物件）           ← ★ 逐列處置
+    └ 設定變數/Compose 本列任務id（從 Title 取出）
+    └ Compose 本列仍逾期？ contains(仍逾期TaskIds, 任務id)
+    └ 切換 Switch（依 field_7 表單回覆）
+        ├ 1 → 刪除項目（ID＝item()?['ID']）
+        ├ 2 / 3 → 不動（保留）
+        ├ 4 → 條件：仍逾期？
+        │       是 → 收斂 2/3（更新項目，依 PO 裁示）  ⚠ 待確認
+        │       否 → 刪除項目（比照已完成）
+        └ 預設 → 不動（空白回覆＝未回覆，保留）</code></pre>
+<p style="color:var(--muted);font-size:12.5px">★＝本流程新增　｜ Planner 掃描段（群組→方案→工作→逾期篩選）<b>整段照 0930 definition.json 抄</b> operationId 與條件</p>
+</div>
+
+<h2>2. 前置：建立流程與連線</h2>
+<div class="card">
+<ol>
+<li>新建 <b>排程雲端流程（Scheduled cloud flow）</b>，命名 <code>0955再巡檢與同步</code>。</li>
+<li>需要的連接器（沿用 0930 既有連線即可）：<b>Office 365 群組</b>、<b>Planner</b>、<b>SharePoint</b>。本流程<b>不需 Excel、不發信、不發 Line</b>。</li>
+<li>站台一律 <code>https://techartgroup.sharepoint.com/sites/PLANNER_CK</code>、清單 <code>AttendanceHistory</code>。</li>
+</ol>
+</div>
+
+<h2>3. 觸發 Recurrence</h2>
+<div class="card">
+<table>
+<tr><th>欄</th><th>值</th></tr>
+<tr><td>頻率</td><td>週（Week），間隔 1</td></tr>
+<tr><td>時區</td><td>Taipei Standard Time（觸發器的時區欄位可選，這裡 OK；流程內運算式仍一律用 <code>addHours(utcNow(),8)</code>）</td></tr>
+<tr><td>在這些日子</td><td>週一、週二、週三、週四、週五</td></tr>
+<tr><td>於這些時間</td><td>時 = 9　分 = 55</td></tr>
+</table>
+<p class="warn"><b>時序</b>：本流程依賴 0945 發信＋員工回覆已完成。09:55 是預設緩衝；若實務上員工常來不及回覆，請 PO 調整觸發時間（見待確認）。</p>
+</div>
+
+<h2>4. 重掃 Planner，建「仍逾期任務 id 集合」</h2>
+<div class="card">
+<p>這段<b>結構完全照 0930</b>（operationId、逾期條件一字不改），只是<b>不寫清單</b>，改把「仍逾期任務的 id」收進一個變數，給後面比對用。</p>
+
+<h3>4-1 列出群組 + 篩選（照 0930）</h3>
+<table>
+<tr><th>動作</th><th>連接器 / operationId</th><th>參數</th></tr>
+<tr><td>列出我擁有及我所屬的群組</td><td>office365groups / <code>ListOwnedGroups_V3</code></td><td>extractSensitivityLabel = false</td></tr>
+<tr><td>群組_篩選陣列（Filter array）</td><td>—</td><td>來源 <code>@outputs('列出我擁有及我所屬的群組')?['body/value']</code>；條件（進階）<code>@not(equals(item()?['displayName'],'null'))</code></td></tr>
+</table>
+
+<h3>4-2 初始化變數</h3>
+<table>
+<tr><th>欄</th><th>值</th></tr>
+<tr><td>名稱</td><td><code>仍逾期TaskIds</code></td></tr>
+<tr><td>類型</td><td>陣列（Array）</td></tr>
+<tr><td>值</td><td>留空</td></tr>
+</table>
+<p style="font-size:12.5px;color:var(--muted)">位置：放在 <code>for_each_group</code> 之前。Apply to each 預設循序，附加變數不會競態（除非手動開並行——本流程<b>務必關閉</b> for_each 的並行控制，否則 union 變數會掉資料）。</p>
+
+<h3>4-3 群組 / 方案 / 工作 / 逾期篩選（照 0930）</h3>
+<table>
+<tr><th>動作</th><th>連接器 / operationId</th><th>參數</th></tr>
+<tr><td><b>for_each_group</b></td><td>Foreach</td><td>來源 <code>@body('群組_篩選陣列')</code></td></tr>
+<tr><td>└ 列出群組的方案</td><td>planner / <code>ListGroupPlans</code></td><td>groupId = <code>@items('for_each_group')?['id']</code></td></tr>
+<tr><td>└ <b>for_each_plan</b></td><td>Foreach</td><td>來源 <code>@outputs('列出群組的方案')?['body/value']</code></td></tr>
+<tr><td>　└ 列出工作</td><td>planner / <code>ListTasks_V3</code></td><td>groupId = <code>@items('for_each_group')?['id']</code>；id（planId）= <code>@items('for_each_plan')?['id']</code></td></tr>
+<tr><td>　└ 逾期_篩選陣列（Query）</td><td>—</td><td>見下方逾期條件</td></tr>
+</table>
+<p>逾期條件（Filter array → 進階模式，fx 整段，照 0930 一字不改）：</p>
+<pre><code>@and(less(coalesce(item()?['dueDateTime'], '9999-12-31T23:59:59Z'), utcNow()), less(coalesce(item()?['percentComplete'], 0), 100))</code></pre>
+<p style="font-size:12.5px;color:var(--muted)">這段內部仍用 <code>utcNow()</code>（與到期日同為 UTC 比較，正確）；只有「顯示／清單篩選用的台北日期」才用 <code>addHours(utcNow(),8)</code>。兩者不要混。</p>
+
+<h3>4-4 取出逾期 id 並併入變數</h3>
+<p>在 <code>逾期_篩選陣列</code> 之後（仍在 for_each_plan 內）放兩個動作：</p>
+<table>
+<tr><th>動作</th><th>設定</th></tr>
+<tr><td><b>選取_逾期id</b>（Select，<span class="pick">文字模式</span>·單框）</td><td>來源 From <code>@body('逾期_篩選陣列')</code>；對應 Map（fx 插入）<code>item()?['id']</code> → 輸出<b>字串陣列</b> <code>["taskid1","taskid2",…]</code></td></tr>
+<tr><td><b>附加至陣列變數 仍逾期TaskIds</b><br>（建議改用「設定變數」做 union 去重，見下）</td><td>名稱 <code>仍逾期TaskIds</code>；值（fx）<code>union(variables('仍逾期TaskIds'), body('選取_逾期id'))</code></td></tr>
+</table>
+<div class="warn">
+<b>「附加至陣列變數」vs「設定變數＋union」</b>：「附加至陣列變數」一次只能加<b>單一元素</b>，若直接餵一個陣列會塞成「陣列中的陣列」（巢狀），後面 <code>contains</code> 比對會失準。本流程一個方案會回傳<b>多個逾期 id</b>，所以這裡用 <b>設定變數（Set variable）</b> 把 <code>union(舊值, 本方案逾期id陣列)</code> 寫回，順帶去重、且維持扁平字串陣列。最終 <code>仍逾期TaskIds</code> ＝全公司目前仍逾期的 task id 字串陣列。</div>
+</div>
+
+<h2>5. 讀清單今日延遲列</h2>
+<div class="card">
+<h3>5-1 取得清單項目（SharePoint）</h3>
+<ol>
+<li><b>SharePoint → 取得項目</b>，命名 <code>取得清單項目</code>：站台 PLANNER_CK、清單 AttendanceHistory。</li>
+<li><b>篩選查詢（Filter Query）</b>：清空 → 點 <b>fx</b> → 貼整段（變紫色 chip，<b>欄位內不要再打字</b>）：
+<pre><code>concat('startswith(Title,''', formatDateTime(addHours(utcNow(),8),'yyyyMMdd'), '_'')')</code></pre>
+會算出 <code>startswith(Title,'20260622_')</code>（<code>''</code> 是跳脫單引號）。<b>Top Count 5000</b>。</li>
+</ol>
+<p class="warn"><b>只用 Title 做 $filter</b>：Title 內部名固定為 <code>Title</code>、ASCII 安全；中文欄／改名欄的 OData <code>$filter</code> 會報「欄不存在」。日期一律靠 Title 前綴篩，不要對 field_2／field_9 下 $filter。</p>
+
+<h3>5-2 今日延遲列（Filter array，排除占位）</h3>
+<table>
+<tr><th>欄</th><th>值</th></tr>
+<tr><td>來源 From</td><td><code>@outputs('取得清單項目')?['body/value']</code></td></tr>
+<tr><td>條件（進階模式，fx）</td><td><code>@not(endsWith(item()?['Title'],'_TaskOnSchedule'))</code></td></tr>
+</table>
+<p class="ok">輸出 <code>body('今日延遲列')</code> ＝今天所有<b>延遲列</b>（每筆對應一個逾期任務），占位列已排除。後面逐列處置就跑這個。</p>
+</div>
+
+<h2>6. 逐列比對與處置</h2>
+<div class="card">
+<p><b>Apply to each</b>，命名 <code>Apply_to_each_列</code>，來源 <code>@body('今日延遲列')</code>。迴圈項＝<b>清單物件</b>（不是字串），所以裡面引用欄位是 <code>items('Apply_to_each_列')?['field_7']</code>、<code>...?['Title']</code>、<code>...?['ID']</code> 這種寫法。</p>
+
+<h3>6-1〔取本列任務 id〕Compose</h3>
+<p>命名 <code>本列任務id</code>，值（fx）。Title 格式為 <code>yyyyMMdd_email_任務id</code>，但 email 內含 <code>_</code>、任務 id 也可能以 <code>_</code> 開頭，所以<b>不能用固定 split index</b>。建議：用 <code>last(split(...))</code> 取最後一段：</p>
+<pre><code>last(split(items('Apply_to_each_列')?['Title'], '_'))</code></pre>
+<div class="warn"><b>風險（標待確認）</b>：若任務 id 本身含 <code>_</code> 或以 <code>_</code> 開頭，<code>last(split(...,'_'))</code> 會只取到尾段、切錯。更穩的替代：<b>不從 Title 取 id 再 equals</b>，改直接用「<b>整體包含比對</b>」——對重掃逾期集合做 <code>contains(string(variables('仍逾期TaskIds')), 本列任務id)</code> 仍有子字串誤判風險。最穩做法見 6-2 的建議。請 PO／你確認任務 id 的實際字元規則後定版。</div>
+
+<h3>6-2〔判斷本列是否仍逾期〕Compose</h3>
+<p>命名 <code>本列仍逾期</code>，值（fx）。最穩的判斷是「重掃逾期集合是否含本列任務 id」。因為 <code>仍逾期TaskIds</code> 是<b>完整 task id 字串陣列</b>，用陣列 <code>contains</code>（精確比對整個元素，不是子字串）最安全：</p>
+<pre><code>contains(variables('仍逾期TaskIds'), outputs('本列任務id'))</code></pre>
+<div class="ok"><b>為何用陣列 contains 而非字串 contains</b>：陣列 <code>contains(array, value)</code> 比對「整個元素相等」，不會把 <code>abc</code> 誤判進 <code>abcd</code>。前提是 <code>本列任務id</code> 真的等於 Planner 回傳的完整 id（取決於 6-1 的切法是否正確）。若 6-1 切不乾淨，這裡才會出錯——這也是 6-1 標待確認的原因。</div>
+<p style="font-size:12.5px;color:var(--muted)">「不再逾期」＝該 task <b>不在</b>重掃逾期集合：可能是員工已勾完成（percentComplete=100）、或到期日被改到未來——兩種都會讓它退出逾期集合，符合「比照已完成」的意圖。</p>
+
+<h3>6-3〔依表單回覆處置〕Switch</h3>
+<p>加 <b>Switch（切換）</b>，開關值（fx）：<code>items('Apply_to_each_列')?['field_7']</code>（field_7＝表單回覆）。</p>
+<table>
+<tr><th>Case（等於）</th><th>動作</th></tr>
+<tr><td><b>1</b>（已完成）</td><td><b>刪除項目</b>（SharePoint）：清單 AttendanceHistory；項目 ID（fx）<code>items('Apply_to_each_列')?['ID']</code></td></tr>
+<tr><td><b>2</b></td><td>無動作（保留）。可放一個 Compose 註記「保留：2」便於追蹤。</td></tr>
+<tr><td><b>3</b></td><td>無動作（保留）。</td></tr>
+<tr><td><b>4</b>（其他）</td><td>放<b>條件</b>：<code>@equals(outputs('本列仍逾期'), false)</code>。<br>　• <b>是（不再逾期）</b> → <b>刪除項目</b>（ID 同上）＝比照已完成。<br>　• <b>否（仍逾期）</b> → <b>收斂 2/3</b>：更新項目 <span class="tag tag-todo">待確認</span>（見待確認清單，目前不要自動硬寫 2 或 3）。</td></tr>
+<tr><td><b>預設（Default）</b></td><td>無動作（空白＝員工尚未回覆，保留待人工／隔日）。</td></tr>
+</table>
+<div class="del">
+<b>刪除項目要用整數 ID，不是 Title</b>：SharePoint「刪除項目」的「Id」欄要填清單項目的整數主鍵，也就是「取得項目」回傳的 <code>ID</code> 欄（<code>items('Apply_to_each_列')?['ID']</code>），<b>不是</b> Title 字串。填 Title 會刪不掉或報錯。
+</div>
+</div>
+
+<h2>7. 待確認（PO 裁示）</h2>
+<div class="todo">
+<p>以下四點規格<b>模糊或具破壞性</b>，我<b>不自行發明</b>，列出選項請 PO 裁示後再定版：</p>
+
+<h3>① 回覆=4 且「仍逾期」要收斂為 2 還是 3 — 自動分不出</h3>
+<ul>
+<li><b>問題</b>：2＝「已到公司在補進度」、3＝「沒到公司·填假卡」，差別是<b>員工是否到公司</b>，這資訊 Planner／清單裡<b>沒有</b>，自動化無從判斷。</li>
+<li><b>建議（擇一）</b>：
+  <ol>
+  <li><b>不自動改，保留原回覆 4</b>＋在 field_8 或備註標「待人工」，由行政在頁簽決定 2/3。（最安全，我建議這個）</li>
+  <li>一律收斂為 <b>3</b>（沒到公司·假卡），偏保守。</li>
+  <li>一律收斂為 <b>2</b>（補進度中），偏寬鬆。</li>
+  <li>不收斂，原樣保留 4，視為「未結案」隔日人工跟。</li>
+  </ol>
+</li>
+</ul>
+
+<h3>② 自動「刪除清單列」具破壞性 — 是否改為較安全替代</h3>
+<ul>
+<li><b>問題</b>：流程自動硬刪資料，誤判（例：任務 id 切錯、Planner 暫時讀不到、員工誤點 1）就<b>救不回</b>。</li>
+<li><b>替代方案與 trade-off</b>：
+  <table style="margin-top:6px">
+  <tr><th>方案</th><th>做法</th><th>trade-off</th></tr>
+  <tr><td>A 真刪（規格原文）</td><td>Switch 直接「刪除項目」</td><td>清單最乾淨；<b>不可逆、無稽核痕跡</b></td></tr>
+  <tr><td>B 軟刪／標記（建議）</td><td>不刪，改「更新項目」把 field_8 或新增一個「狀態」欄標成 <code>已完成-待歸檔</code>；步驟 7 備份流程再實際移除</td><td>可逆、留痕、行政可覆核；清單當天會多保留幾列</td></tr>
+  <tr><td>C 搬備份後刪</td><td>先寫一份到備份 Excel／清單，再刪原列</td><td>留痕＋清單乾淨；多一段寫入、較複雜</td></tr>
+  </table>
+</li>
+<li><b>我的建議</b>：先上 <b>B（軟刪／標記）</b>，跑穩一兩週、確認任務 id 比對零誤判後，再視需要切到 A。詳見本頁最後「自動刪列風險」段落。</li>
+</ul>
+
+<h3>③ 從 Title 取任務 id 的方法 — Title 結構有雙底線風險</h3>
+<ul>
+<li><b>問題</b>：Title＝<code>yyyyMMdd_email_任務id</code>，但 email 含 <code>_</code>、任務 id 也可能含/起頭 <code>_</code>，固定 index split 會切錯。</li>
+<li><b>建議</b>：① 確認 Planner task id 的實際字元規則（是否純英數、是否含底線）。② 若 task id <b>不含底線</b>，<code>last(split(Title,'_'))</code> 即可且安全。③ 若可能含底線，改用「在寫入時就保留乾淨 id」：建議 0930 寫清單時<b>多寫一個純 id 欄</b>（如某個 field_N），這支流程直接讀該欄做<b>陣列 contains</b> 精確比對，<b>完全不靠 Title 解析</b>（最穩，建議推這個）。④ 不建議用 <code>contains(string(集合), id)</code> 子字串比對（短 id 會誤中長 id）。</li>
+</ul>
+
+<h3>④「不再逾期」如何判定</h3>
+<ul>
+<li><b>定義</b>：本流程「重掃 Planner→逾期集合」後，該 task <b>不在</b>集合即視為「不再逾期」。涵蓋兩種情形：(a) 已完成（percentComplete=100），(b) 到期日被改到未來。兩者都讓它退出逾期集合，符合「比照已完成」。</li>
+<li><b>待 PO 確認</b>：情形 (b)「只是把到期日往後改、實際沒做完」是否也該當「比照已完成刪列」？若不希望，需要更嚴格的判定（例如：只認 percentComplete=100 才算完成），這要在重掃時<b>另存一份「已 100% 完成」的 id 集合</b>分開判斷。請 PO 表態是否需要區分。</li>
+</ul>
+</div>
+
+<h2>8. 測試計畫</h2>
+<div class="card">
+<ol>
+<li><b>備資料</b>：先確認清單今天已有延遲列（由 0930 寫入，或手動建幾筆），涵蓋 field_7 ＝ 1 / 2 / 3 / 4 / 空白 各至少一筆。</li>
+<li><b>造對照情境</b>：到 Planner 把其中一兩個「回覆=4」對應的任務<b>勾完成或把到期日改到未來</b>（讓它退出逾期集合）；另留一個「回覆=4」的任務<b>維持逾期</b>。</li>
+<li><b>手動測試</b>（Test → Manually）跑一次。</li>
+<li><b>驗收</b>：
+  <ul>
+  <li>回覆=1 的列 → 已刪除（或軟刪標記，依採用方案）。</li>
+  <li>回覆=2、3 的列 → 原樣保留、未被動。</li>
+  <li>回覆=4 且任務已不逾期 → 已刪除（比照完成）。</li>
+  <li>回覆=4 且任務仍逾期 → 依 PO 裁示處置（保留待人工／收斂 2/3）。</li>
+  <li>回覆空白的列 → 未被動。</li>
+  <li>占位列（<code>_TaskOnSchedule</code>）<b>完全不受影響</b>（已被 6-2 的篩選排除）。</li>
+  </ul>
+</li>
+<li><b>邊界</b>：① <code>仍逾期TaskIds</code> 是否扁平字串陣列（展開變數輸出檢查，不可有巢狀 <code>[[...]]</code>）。② <code>本列任務id</code> 是否＝Planner 完整 id（抽查幾列比對）。③ for_each 是否關閉並行（避免 union 掉資料）。</li>
+<li><b>回歸</b>：跑完看員工儀表板、行政頁簽資料是否一致；隔日 0930／0945 是否照常。</li>
+</ol>
+</div>
+
+<h2>9. 注意彙整</h2>
+<div class="card warn">
+<ul>
+<li><b>關閉 for_each 並行</b>：本流程用變數 union 累積逾期 id，務必把 Planner 掃描各層 Foreach 的「設定 → 並行控制」<b>關閉</b>（循序），否則並行寫變數會掉資料、漏判逾期。</li>
+<li><b>欄位內部名是 field_N</b>：引用清單欄一律 field_N（表單回覆＝field_7、實際出勤狀態＝field_8）；不要用中文顯示名做運算式。</li>
+<li><b>$filter 只認 Title</b>：當日篩選用 <code>startswith(Title,'yyyyMMdd_')</code>，且用 fx concat 組整段、不可手打；中文/改名欄下 $filter 會「欄不存在」。</li>
+<li><b>刪除要用整數 ID</b>：刪除項目填 <code>ID</code>（取得項目回傳的整數主鍵），非 Title。</li>
+<li><b>Select 文字模式 vs 物件模式</b>：4-4 的「選取_逾期id」用<b>文字模式</b>，輸出是字串陣列；6 的 Apply to each 來源是<b>清單物件陣列</b>，迴圈項是物件、要 <code>items(...)?['field_N']</code>。兩者型別不同別搞混。</li>
+<li><b>時間二分法</b>：清單篩選／顯示日期用 <code>addHours(utcNow(),8)</code>（台北）；逾期條件內與 dueDateTime 比較用 <code>utcNow()</code>（同為 UTC）。不要混用。</li>
+<li><b>本流程不發信、不發 Line、不寫 Excel</b>：只重掃 Planner＋讀清單＋處置清單列。</li>
+<li><b>占位列零影響</b>：6-2 篩掉 <code>_TaskOnSchedule</code> 後才進迴圈，占位列不會被刪改。</li>
+</ul>
+</div>
+
+<h2>10. 對「自動刪列風險」的具體建議</h2>
+<div class="del">
+<p><b>建議：上線首版採「軟刪／標記」（待確認 ②方案 B），不要一開始就自動真刪。</b></p>
+<ul>
+<li><b>為何</b>：本流程是否刪列，完全押在「任務 id 從 Title 解析正確」＋「重掃逾期集合完整」兩件事上。前者有雙底線切錯風險（待確認③），後者受 Planner 連線瞬時錯誤影響。任一失準，A 方案會<b>誤刪、且不可逆、無痕</b>。</li>
+<li><b>軟刪做法</b>：Switch 命中「應刪」時，不呼叫「刪除項目」，改「更新項目」把一個狀態欄（建議新增專用欄，或暫借 field_8 但要避開行政語意衝突）標成 <code>已完成-待歸檔</code>；實際移除交給步驟 7 的「清單→Excel 備份」流程，在備份成功後才刪。這樣留痕、可覆核、可回滾。</li>
+<li><b>切換條件</b>：跑穩<b>一到兩週</b>、確認 (1) <code>本列任務id</code> 抽查全對、(2) 無誤刪/漏判、(3) Planner 重掃穩定，再評估切到 A（真刪）。</li>
+<li><b>更穩的根因修法</b>：請 0930 寫清單時多寫一個<b>純任務 id 欄</b>，本流程直接讀該欄做陣列精確 contains，<b>不靠 Title 解析</b>——這能同時消掉待確認①③的大半風險，強烈建議優先採行。</li>
+</ul>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,6 +1,12 @@
 # Lessons Learned
 
 ## 2026-06-22（Power Apps / Power Automate 平台踩坑彙整）
+- **Power Automate 運算式必須用「fx 插入成 token」，不可在欄位直接打字**：直接打 `formatDateTime/concat/toLower/...` 會被當「字面字串」不計算（症狀：執行輸出出現整段運算式文字、或 Select 報「請輸入有效的 JSON」）。這是本次 0945 反覆卡關的真正主因。判斷：欄位裡是灰字＝字面(錯)、彩色 chip＝運算式(對)。**指南一律提供可整段貼的運算式，並註明「用 fx 插入」**。
+- **SharePoint 清單欄位「內部名」≠ 顯示名**：CSV 匯入/中文欄常變 `field_N`（Email→field_3、姓名→field_4…）；運算式用顯示名 `item()?['Email']` 會回 null。**從「取得項目」一次執行的原始輸出 JSON key 即可確認對照**，別猜。Title、Email(若 ASCII)有時保留原名，但本案連 Email 都成 field_3。
+- **Filter array 是「相對於迴圈值」過濾，不是原樣輸出**：「輸入有列、輸出卻空」＝where 對該列不成立（常是右側 `items('loop')` 值錯），不是該列有問題。**最快定位＝把比較一側寫死**（如 `equals(item()?['field_3'],'某email')`）跑一次：過＝右側(迴圈值)錯、不過＝左側(欄位)錯。
+- **Select 文字模式(字串陣列) vs 鍵/值模式(物件陣列) 會改變下游 `items()` 型別**：兩者與消費端引用必須一致（字串用 `items('loop')`、物件用 `items('loop')?['key']`）。模式不確定時，`@or(equals(...,items()), contains(toLower(replace(string(items()),' ','')), '"key":"val"'))` 可同時涵蓋兩種。**但 Select 的值仍須是被計算的運算式**，否則兩種都不中。
+- **低代碼某元件反覆搞不定時，換成更可靠的等價做法**：0945 的「Select 去重 email」屢卡 → 改用既有 team_member(Excel) 當人員名冊跑迴圈（姓名/Email 走 Excel header、清單只引 field_3），直接移除會壞的 Select。與行政頁簽同模式。
+- **ai-team 繞圈時找第二個 agent（Codex headless）拿獨立診斷有用，但真正卡點常是缺執行期資料**：先用「寫死測試」取得 run output 證據再下判斷，勝過反覆改公式空想。
 - **pa.yaml 貼上是「控件層級、一次一畫面」**：把兩個畫面塞同一檔整段貼會 PA1001（YamlInvalidSyntax）。維持「一檔＝一畫面、全選整段貼」。官方舊「preview 格式」貼上已淘汰，但單一畫面的控件清單仍可貼。
 - **GroupBy v3 語法用識別碼非字串**：群組欄名 `"明細"`(字串)→`'明細'`(識別碼)，否則「預期的識別碼名稱／引數無效」連鎖報錯。**更穩的是根本不用 GroupBy**：行政頁簽人員名冊直接用 team_member 表＋`LookUp` 取當日狀態，避開 GroupBy 的委派與語法坑。
 - **Power Automate OData `$filter` 用「內部欄名」**：中文欄或改名欄的內部名與顯示名不符 → 報「欄不存在」。`Title` 內部名固定，可用 `startswith(Title,'yyyyMMdd_')`。且 `$filter` 欄**不能手打運算式文字**（不會被計算、變字面字串），要嘛用動態內容引用 Compose、要嘛巢狀單引號會把內層字串(如時區)截壞。**能用 Filter array＋動態內容就別硬塞 `$filter`**。
