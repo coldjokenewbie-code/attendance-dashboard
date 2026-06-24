@@ -24,9 +24,61 @@
   .warn{border-left:4px solid var(--warn);background:#fffbeb;padding:12px 16px;border-radius:8px;margin:10px 0;}
   .ok{border-left:4px solid var(--ok);background:#f0fdf4;padding:12px 16px;border-radius:8px;margin:10px 0;}
   .tag{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;background:#dbeafe;color:#1e40af;font-weight:600;}
+  /* 浮動修改待辦 */
+  #todo{position:fixed;top:16px;right:16px;width:272px;z-index:9999;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.16);font-size:13px;overflow:hidden;}
+  #todo .hd{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#0f172a;color:#fff;cursor:pointer;user-select:none;}
+  #todo .hd b{font-size:13px;}
+  #todo .hd .pg{margin-left:auto;font-size:12px;background:#1e293b;padding:2px 9px;border-radius:99px;}
+  #todo .hd .pg.alldone{background:#15803d;}
+  #todo .hd .cv{font-size:11px;opacity:.85;width:14px;text-align:center;}
+  #todo .bd{padding:6px;max-height:62vh;overflow:auto;}
+  #todo.collapsed .bd,#todo.collapsed .ft{display:none;}
+  #todo .it{display:flex;gap:8px;align-items:flex-start;padding:8px;border-radius:8px;}
+  #todo .it:hover{background:#f1f5f9;}
+  #todo .it input{margin-top:2px;width:16px;height:16px;flex:none;cursor:pointer;}
+  #todo .it .tx{cursor:pointer;line-height:1.45;}
+  #todo .it .tx .n{font-weight:700;color:var(--accent);}
+  #todo .it .tx small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px;}
+  #todo .it.done .tx,#todo .it.done .tx .n{text-decoration:line-through;color:var(--muted);}
+  #todo .ft{display:flex;justify-content:flex-end;padding:4px 10px 10px;}
+  #todo .ft button{font-size:11.5px;color:var(--muted);background:none;border:1px solid var(--line);border-radius:6px;padding:3px 9px;cursor:pointer;}
+  #todo .ft button:hover{background:#f1f5f9;}
+  @keyframes flashbg{0%{background:#fde68a;}100%{background:transparent;}}
+  .flash{animation:flashbg 1.7s ease-out;border-radius:6px;}
+  @media(max-width:780px){
+    #todo{top:auto;bottom:0;left:0;right:0;width:auto;border-radius:12px 12px 0 0;}
+    #todo .bd{max-height:44vh;}
+    .wrap{padding-bottom:240px;}
+  }
 </style>
 </head>
 <body>
+<div id="todo">
+  <div class="hd" onclick="todoToggle()"><b>🛠 修改待辦</b><span class="pg" id="todoPg">0/5</span><span class="cv" id="todoCv">▼</span></div>
+  <div class="bd">
+    <div class="it" data-k="cond">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('fix-condition')"><span class="n">① 段B 條件「左值」改為 contains(…)</span><small>誤填為 Title 字串，占位不寫入 → §5</small></span>
+    </div>
+    <div class="it" data-k="append">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('fix-append')"><span class="n">② 段A「附加至陣列變數」值改 fx 插入（@toLower）</span><small>現為字面值，延遲Emails 不含 email、延遲者重複補占位 → §4-3</small></span>
+    </div>
+    <div class="it" data-k="test">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('step-test')"><span class="n">③ 清今日測試列 → 手動執行 → 驗占位</span><small>驗：延遲Emails 含實際 email、非延遲者各一占位、延遲者不重複 → §6</small></span>
+    </div>
+    <div class="it" data-k="sort">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('sort-quick')"><span class="n">④ 檢視改 Title 遞減排序（最新置頂）</span><small>日期欄文字排序錯位，改依 yyyyMMdd 前綴的 Title → §8-1</small></span>
+    </div>
+    <div class="it" data-k="datecol">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('sort-proper')"><span class="n">⑤（可選）日期改真日期欄 日期D＋流程補寫＋回填</span><small>僅需依日期區間篩選／分組時做 → §8-2</small></span>
+    </div>
+  </div>
+  <div class="ft"><button onclick="todoReset()">重設打勾</button></div>
+</div>
 <div class="wrap">
 
 <h1>0930 巡檢流程改造 — 最終版建置指南</h1>
@@ -103,12 +155,13 @@ Planner 掃描那一整段<b>完全不動</b>。本流程<b>不發郵件、不�
 <tr><td>表單回覆 / 實際出勤狀態 / DateString</td><td>留空</td></tr>
 </table>
 
-<h3>4-3 附加至陣列變數</h3>
+<h3 id="fix-append">4-3 附加至陣列變數</h3>
 <table>
 <tr><th>欄</th><th>值</th></tr>
 <tr><td>名稱</td><td><code>延遲Emails</code></td></tr>
 <tr><td>值</td><td><code>toLower(outputs('取得使用者設定檔_(V2)')?['body/mail'])</code></td></tr>
 </table>
+<p class="warn"><b>值須以 fx 插入</b>（存為 <code>@toLower(...)</code>）。直接輸入文字會存為字面字串，<code>延遲Emails</code> 不含實際 email，段B <code>contains</code> 無法比對，延遲者重複補占位。判別：彩色 chip 為運算式、灰字為字面值。</p>
 </div>
 
 <h2>5.〔段B〕補占位（變數去重，資料乾淨）</h2>
@@ -116,10 +169,13 @@ Planner 掃描那一整段<b>完全不動</b>。本流程<b>不發郵件、不�
 <p>位置：整個 <code>for_each_group_list_plans</code> 之後。</p>
 <ol>
 <li><b>Apply to each</b>：來源 <code>@outputs('列出資料表中的資料列_team_member')?['body/value']</code>。</li>
-<li>內放<b>條件</b>：
+<li id="fix-condition">內放<b>條件</b>：
   <ul>
-  <li>左值（切 fx，貼整段）：<code>contains(variables('延遲Emails'), toLower(items('Apply_to_each')?['Email']))</code></li>
-  <li>條件：<b>等於</b>　右值：<code>false</code></li>
+  <li><b>左值</b>（切 fx，貼整段）：<code>contains(variables('延遲Emails'), toLower(items('Apply_to_each')?['Email']))</code></li>
+  <li><b>運算子</b>：等於　｜　<b>右值</b>：切 <b>fx</b> 打 <code>false</code>（boolean，存成 <code>@false</code>）。</li>
+  <li><div class="warn" style="margin:4px 0">
+  <b>左值</b>須為上方 <code>contains(...)</code>，勿填入 Title 運算式 <code>concat(...,'_TaskOnSchedule')</code>；誤填後條件為 <code>equals(字串,false)</code>，恆 false，占位不寫入。<br>
+  <b>右值</b>須以 fx 插入布林（存為 <code>@false</code>）；於欄位直接輸入會存為字串 <code>'false'</code>，<code>equals(布林,'false')</code> 同樣恆 false。</div></li>
   </ul>
 </li>
 <li><b>是(Yes)</b> 分支 → <b>SharePoint 建立項目</b>（占位，team_member 欄用動態內容點選）：</li>
@@ -138,7 +194,7 @@ Planner 掃描那一整段<b>完全不動</b>。本流程<b>不發郵件、不�
 <p class="ok">結果：延遲者每任務一列（段A）、沒延遲者一張占位列（段B），每人當天至少一列、且不重複。</p>
 </div>
 
-<h2>6. 測試</h2>
+<h2 id="step-test">6. 測試</h2>
 <div class="card">
 <ol>
 <li>備份後，用 <b>手動測試（Test → Manually）</b> 跑一次。</li>
@@ -162,6 +218,42 @@ Planner 掃描那一整段<b>完全不動</b>。本流程<b>不發郵件、不�
 </ul>
 </div>
 
+<h2 id="sort-fix">8. 排序：最新資料置頂</h2>
+<div class="card">
+<p><code>日期</code> 欄為單行文字、格式 <code>yyyy/M/d</code> 非零填補，文字排序錯位（<code>2026/12/1</code> 排在 <code>2026/3/2</code> 前、<code>2026/6/9</code> 排在 <code>2026/6/24</code> 後）。下列二擇一。</p>
+
+<h3 id="sort-quick">8-1 快解（零改動）：檢視改依 Title 遞減</h3>
+<p>Title（別名「ID (yyyyMMdd_Email)」、值為 <code>20260624_email_…</code>）開頭 <code>yyyyMMdd</code> 為固定寬度零填補，文字排序即等於時間排序。</p>
+<ol>
+<li>暫時：點該欄標題 → <b>Z 到 A</b>（最新置頂）。</li>
+<li>永久：右上檢視下拉 → <b>編輯目前檢視</b> → 「排序」第一欄選 <b>ID (yyyyMMdd_Email)</b> → 勾<b>以遞減順序顯示</b> → 確定。</li>
+</ol>
+<p class="ok">回填的歷史列亦正確（其 Title 同為 yyyyMMdd 前綴）；優於依「建立時間」排序——回填列建立時間擠在匯入當下、不反映業務日期。</p>
+
+<h3 id="sort-proper">8-2 正解（可選）：日期改真「日期及時間」欄</h3>
+<p>僅當需直接依日期做區間篩選／分組／月報時採用。</p>
+<ol>
+<li>清單新增欄 <code>日期D</code>，類型「日期及時間」、格式僅日期。</li>
+<li>0930 流程<b>兩個</b>「建立項目」（段A 延遲列、段B 占位列）各補欄 <code>日期D</code>，以 fx 插入：<br><code>formatDateTime(addHours(utcNow(),8),'yyyy-MM-dd')</code></li>
+<li>既有列以 Quick Edit 或一次性流程回填 <code>日期D</code>。</li>
+<li>檢視排序改依 <code>日期D</code> 遞減。</li>
+</ol>
 </div>
+
+</div>
+<script>
+(function(){
+  var KEY='todo0930fix_v1';
+  var items=[].slice.call(document.querySelectorAll('#todo .it'));
+  function save(){var s={};items.forEach(function(it){s[it.dataset.k]=it.querySelector('input').checked;});try{localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}}
+  function load(){var s={};try{s=JSON.parse(localStorage.getItem(KEY)||'{}');}catch(e){}items.forEach(function(it){var on=!!s[it.dataset.k];it.querySelector('input').checked=on;it.classList.toggle('done',on);});}
+  function prog(){var done=items.filter(function(it){return it.querySelector('input').checked;}).length;var pg=document.getElementById('todoPg');pg.textContent=(done===items.length?'✅ ':'')+done+'/'+items.length;pg.classList.toggle('alldone',done===items.length);}
+  window.todoCheck=function(cb){cb.closest('.it').classList.toggle('done',cb.checked);save();prog();};
+  window.todoGo=function(id){var el=document.getElementById(id);if(!el)return;el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');};
+  window.todoToggle=function(){var t=document.getElementById('todo');t.classList.toggle('collapsed');document.getElementById('todoCv').textContent=t.classList.contains('collapsed')?'▲':'▼';};
+  window.todoReset=function(){items.forEach(function(it){it.querySelector('input').checked=false;it.classList.remove('done');});save();prog();};
+  load();prog();
+})();
+</script>
 </body>
 </html>
