@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>表單回覆 10:00 後唯讀 — ScrToday 變更</title>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--warn:#b45309;--ok:#15803d;--del:#b91c1c;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Helvetica Neue",Arial,"Microsoft JhengHei",sans-serif;line-height:1.7;}
+  .wrap{max-width:920px;margin:0 auto;padding:34px 24px 90px;}
+  h1{font-size:22px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:22px;}
+  h2{font-size:17px;margin:28px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--accent);}
+  h3{font-size:14.5px;margin:16px 0 6px;color:#111827;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  code{background:#eef2ff;color:#3730a3;padding:1px 5px;border-radius:4px;font-size:12.5px;word-break:break-all;}
+  pre{background:#0f172a;color:#e2e8f0;padding:13px;border-radius:8px;overflow:auto;font-size:12.5px;line-height:1.55;}
+  pre code{background:none;color:inherit;padding:0;}
+  ol,ul{margin:6px 0;padding-left:22px;} li{margin:6px 0;}
+  table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13px;}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f5f9;}
+  .warn{border-left:4px solid var(--warn);background:#fffbeb;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .ok{border-left:4px solid var(--ok);background:#f0fdf4;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .del{border-left:4px solid var(--del);background:#fef2f2;padding:12px 16px;border-radius:8px;margin:10px 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>表單回覆 10:00 後唯讀 — ScrToday 變更</h1>
+<div class="sub">2026-06-22 ｜ Claude@Mac（ai-team：Codex 驗收）｜ 一般同事 10:00 後不能改回覆，只有行政可改</div>
+
+<div class="warn">
+<b>需求</b>：回覆狀態的填寫截止在「<b>今天 10:00</b>」（與表單題目「請確認後於今天『10點前』回覆狀態」一致）。10:00 後一般同事的回覆<b>唯讀</b>，只有<b>行政人員</b>仍可修改。
+</div>
+
+<h2>0. 改三個地方（都在 ScrToday）</h2>
+<div class="card">
+<table>
+<tr><th>#</th><th>控件 / 屬性</th><th>做什麼</th></tr>
+<tr><td>1</td><td>Screen <code>ScrToday.OnVisible</code></td><td>多存一個 <code>locIsAdmin</code> 變數（判是否行政）</td></tr>
+<tr><td>2</td><td><code>radReply.DisplayMode</code></td><td>10:00 後且非行政 → 唯讀（View）</td></tr>
+<tr><td>3</td><td><code>btnSubmit.DisplayMode</code> ＋ <code>OnSelect</code></td><td>同條件鎖送出，<b>且 OnSelect 內再自衛一次</b></td></tr>
+</table>
+</div>
+
+<h2>1. ScrToday.OnVisible（畫面屬性，手動設）</h2>
+<div class="card">
+<p>原本：<code>UpdateContext({locShowPopup: false})</code> → 改成多帶 <code>locIsAdmin</code>：</p>
+<pre><code>UpdateContext({
+    locShowPopup: false,
+    locIsAdmin: !IsBlank(LookUp(team_member, Email = User().Email, '出勤存取權限'))
+})</code></pre>
+<p style="font-size:12.5px;color:var(--muted)">行政判定與 <code>btnAdmin.Visible</code> 同一條件；存成變數後 DisplayMode 不必每次重算 LookUp（Codex 建議）。</p>
+</div>
+
+<h2>2. radReply.DisplayMode</h2>
+<div class="card">
+<pre><code>=If(locIsAdmin Or Hour(Now()) &lt; 10, DisplayMode.Edit, DisplayMode.View)</code></pre>
+<ul>
+<li><code>Hour(Now()) &lt; 10</code>＝今天 10:00:00 前可編、10:00 起唯讀。</li>
+<li>行政（<code>locIsAdmin</code>）不受時間限制，恆可編。</li>
+<li><code>DisplayMode.View</code>＝顯示但不可改（比 Disabled 乾淨）。</li>
+</ul>
+</div>
+
+<h2>3. btnSubmit：DisplayMode ＋ OnSelect 自衛</h2>
+<div class="card">
+<h3>DisplayMode（同 radReply）</h3>
+<pre><code>=If(locIsAdmin Or Hour(Now()) &lt; 10, DisplayMode.Edit, DisplayMode.View)</code></pre>
+<h3>OnSelect（在原 Patch 外包一層時間/行政判斷）</h3>
+<pre><code>=If(
+    !(locIsAdmin Or Hour(Now()) &lt; 10),
+    Notify("10:00 後僅行政人員可修改回覆", NotificationType.Error),
+    Patch(AttendanceHistory, locSelected, {'表單回覆': radReply.Selected.Value});
+    If(
+        IsEmpty(Errors(AttendanceHistory, locSelected)),
+        Notify("已送出回覆", NotificationType.Success);
+        UpdateContext({locShowPopup: false}),
+        Notify("送出失敗：" &amp; First(Errors(AttendanceHistory, locSelected)).Message, NotificationType.Error)
+    )
+)</code></pre>
+<div class="warn"><b>為何 OnSelect 也要判一次</b>：<code>DisplayMode</code> 只擋畫面外觀，<code>Patch</code> 若被其他入口或殘留狀態觸發仍會寫入。把同一條件加在 <code>OnSelect</code> 內，雙保險（Codex F 指出）。</div>
+</div>
+
+<h2>4. 重要：這是「畫面政策鎖」，不是硬安全</h2>
+<div class="del">
+<p><code>DisplayMode</code>／<code>Visible</code> 都是<b>前端 UI 層</b>，不是安全邊界（專案 lessons 已記）。技術上有能力的人仍可能繞過 UI 直接寫清單。</p>
+<ul>
+<li><b>務實結論</b>：對內部一般同事，UI 鎖即足夠政策效果。</li>
+<li><b>若要真正硬保障</b>「10:00 後一般同事不可寫 field_7」：成本較高，做法是把寫入改走受控的 Power Automate／API、由流程用<b>伺服器時間</b>判斷並拒絕一般同事；或把清單權限設成一般同事不可直接編輯、只能透過受控流程寫。是否要做請 PO 評估（非本次必做）。</li>
+<li><code>Hour(Now())</code> 取<b>裝置本地時間</b>；裝置時間被改會影響 UI 鎖（台灣內部使用可接受）。要嚴謹同樣得靠伺服器時間判斷。</li>
+</ul>
+</div>
+
+<h2>5. 測試</h2>
+<div class="card">
+<ol>
+<li>一般同事帳號、<b>10:00 前</b>開卡片：可選回覆、可送出。</li>
+<li>一般同事帳號、<b>10:00 後</b>：radReply 唯讀、btnSubmit 灰掉；若仍觸發送出 → 跳「10:00 後僅行政人員可修改回覆」。</li>
+<li>行政帳號（team_member 有「出勤存取權限」）：任何時間都可改、可送出。</li>
+</ol>
+</div>
+
+</div>
+</body>
+</html>

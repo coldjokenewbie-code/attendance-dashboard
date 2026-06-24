@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>0955 再巡檢與同步 — 建置指南（複製 0930・不刪只標註）</title>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--warn:#b45309;--ok:#15803d;--del:#b91c1c;--keep:#0f766e;--add:#7c3aed;--todo:#7c3aed;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Helvetica Neue",Arial,"Microsoft JhengHei",sans-serif;line-height:1.7;}
+  .wrap{max-width:980px;margin:0 auto;padding:34px 24px 90px;}
+  h1{font-size:23px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:22px;}
+  h2{font-size:18px;margin:30px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--accent);}
+  h3{font-size:15px;margin:16px 0 6px;color:#111827;}
+  h4{margin:14px 0 4px;font-size:14px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  code{background:#eef2ff;color:#3730a3;padding:1px 5px;border-radius:4px;font-size:12.5px;word-break:break-all;}
+  pre{background:#0f172a;color:#e2e8f0;padding:13px;border-radius:8px;overflow:auto;font-size:12.5px;line-height:1.5;}
+  pre code{background:none;color:inherit;padding:0;}
+  ol,ul{margin:6px 0;padding-left:22px;} li{margin:6px 0;}
+  table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13px;}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f5f9;}
+  .warn{border-left:4px solid var(--warn);background:#fffbeb;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .ok{border-left:4px solid var(--ok);background:#f0fdf4;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .del{border-left:4px solid var(--del);background:#fef2f2;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .todo{border-left:4px solid var(--todo);background:#f5f3ff;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .tag{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;font-weight:600;}
+  .t-keep{background:#ccfbf1;color:#0f766e;} .t-del{background:#fee2e2;color:#b91c1c;} .t-add{background:#ede9fe;color:#6d28d9;} .t-edit{background:#dbeafe;color:#1e40af;}
+  .legend span{margin-right:14px;font-size:12.5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>0955 再巡檢與同步 — 建置指南</h1>
+<div class="sub">2026-06-22 ｜ Claude@Mac（ai-team：與 Codex 五輪討論定案）｜ 做法：<b>把 0930 流程「另存複本」後最小改</b>。<b>本流程不刪任何清單列，只「標註」</b></div>
+
+<div class="warn">
+<b>核心做法</b>：<b>不從零做</b>。把上線中的 <code>0930每日巡檢Planer進清單_v1</code> 用「<b>另存複本</b>」複製成 0955，<b>掃描段一字不動</b>，只刪掉「寫清單／占位」段、加上「讀清單→標註」段。<b>0930 原流程完全不碰。</b>
+</div>
+<div class="ok">
+<b>重大設計（使用者定）：0955 不刪任何列，以 Planner 實況校正 field_7</b>。員工回覆／改 Planner 後，0955 只「<b>覆寫 field_7</b>」三種：① 原勾 1/4 <b>且卡片真的退出逾期</b> → 標註「同事已修改狀態」（保留原回覆）；② 原勾 1/4 <b>但卡片仍逾期</b>（沒真的做）→ <b>歸到 3（要請假）並註記「卡片仍延遲」</b>；③ 沒回覆 → 回填「3.」。2/3 不動。無刪除＝無誤刪風險。
+</div>
+<div class="warn">
+<b>四個共通鐵則</b>（同 0930/0945）：① 運算式一律用 <b>fx 插入成紫色 chip</b>，不要在欄位直接打字。② 清單中文欄的內部名是 <b>field_N</b>：<code>field_1 員工編號／field_2 日期／field_3 Email／field_4 姓名／field_5 方案名稱／field_6 任務名稱／field_7 表單回覆／field_8 實際出勤狀態／field_9 DateString</code>；主欄維持 <code>Title</code>。③ 時間一律 <code>addHours(utcNow(),8)</code>（台北 UTC+8）。④ <b>field_7 存的是完整標籤字串</b>（見下），比對一律 <code>startsWith(trim(coalesce(field_7,'')),'1.')</code>，不要 <code>equals('1')</code>。
+</div>
+
+<h2>0. 這支流程要做什麼</h2>
+<div class="card">
+<p>觸發約 <b>09:55</b>（0945 發信後 10 分鐘，留員工回覆與改 Planner 的緩衝）。目的：<b>重掃一次 Planner</b>，把「已不再逾期」的列依原回覆做<b>標註</b>，把「沒回覆」的列<b>回填為 3.</b>。<b>不刪任何列。</b></p>
+
+<h3>field_7 表單回覆的實際值（員工從儀表板 radio 選；完整標籤）</h3>
+<table>
+<tr><th>值（field_7 實際存的字串）</th><th>含意</th></tr>
+<tr><td><code>1. 已完成（請自行勾掉卡片）</code></td><td>已完成</td></tr>
+<tr><td><code>2. 延遲（09:30已到公司在補進度）</code></td><td>延遲·到公司補進度</td></tr>
+<tr><td><code>3. 延遲（09:30沒到公司，請填寫假卡）</code></td><td>延遲·沒到·假卡</td></tr>
+<tr><td><code>4. 如為其他狀況，請於5分鐘內更新卡片</code></td><td>其他·5分內改卡片</td></tr>
+</table>
+<p style="font-size:12.5px;color:var(--muted)">表單(Forms)與儀表板(radio)的前綴可能差一個空白（<code>3.</code> vs <code>3. </code>）；用 <code>startsWith(...,'3.')</code> 兩者都中。回填用的「3.」字串請以<b>員工實際走的入口</b>（儀表板 radio）那版為準（見 §6-3）。</p>
+
+<h3>處置真值表（不刪、只覆寫 field_7）</h3>
+<table>
+<tr><th>原 field_7</th><th>Planner 目前（重掃後）</th><th>處置（覆寫 field_7）</th></tr>
+<tr><td>1. 或 4.</td><td><b>已不在逾期集合</b>（真的完成/改了卡片＝狀態異動）</td><td class="t-edit" style="border-left:none"><code>原勾選「<i>原回覆</i>」，同事已修改狀態</code></td></tr>
+<tr><td>1. 或 4.</td><td><b>仍在逾期集合</b>（沒真的改，卡片還延遲）</td><td><b>歸到 3</b>：<code>3. 延遲（09:30沒到公司，請填寫假卡）（原勾選「<i>原回覆</i>」，卡片仍延遲）</code></td></tr>
+<tr><td>2. 或 3.</td><td>不論</td><td><b>不動</b></td></tr>
+<tr><td>空白／其他（未回覆）</td><td>不論</td><td><code>3. 延遲（09:30沒到公司，請填寫假卡）</code></td></tr>
+</table>
+<div class="ok" style="font-size:12.5px"><b>關鍵邏輯</b>：勾 1（已完成）或 4（改卡片）<b>只是宣稱</b>；要以 Planner 實況為準。<b>卡片若還在逾期</b>＝沒真的做 → <b>一律歸到 3（要請假/假卡）並註記「卡片仍延遲」、保留原勾選</b>。<b>只有卡片真的退出逾期</b>才算「已修改狀態」。</div>
+<p style="font-size:12.5px;color:var(--muted)">「狀態異動」＝重掃 Planner 後該任務已不在「仍逾期」集合（完成或到期日改掉都算）。已處理過的列（field_7 以「原勾選」或「3.」開頭）<b>再跑也不會被二次覆寫</b>（見 §6-3 防呆）。</p>
+</div>
+
+<h2>1. 整體結構（★＝新增　✎＝改　🗑＝刪　＝＝照舊不動）</h2>
+<div class="card">
+<pre><code>觸發 Recurrence（週一～五 09:30 → ✎改 09:55）
+＝ 列出我擁有及我所屬的群組                    （照舊）
+＝ 測試用_篩選陣列                             （照舊）
+🗑 列出資料表中的資料列_team_member            （刪：0955 不需要）
+✎ 初始化變數  延遲Emails → 改名 仍逾期TaskIds  （沿用這個動作，型別維持 array）
+＝ for_each_group_list_plans                   （照舊，務必關並行）
+   ＝ 列出群組的方案                            （照舊）
+   ＝ for_each_plan_list_tasks                  （照舊，務必關並行）
+      ＝ 列出工作                               （照舊）
+      ＝ 逾期_篩選陣列                          （★保留！直接拿來建仍逾期集合）
+      🗑 for_each_task（整個寫入子樹一起刪）     （刪：取得設定檔／依Email/建立項目/附加）
+      ★ for_each_逾期任務（Apply to each over 逾期_篩選陣列）
+         └ ★ 附加至陣列變數 仍逾期TaskIds ← item()?['id']  （勿用 Set+union 自我參照）
+🗑 Apply_to_each（占位段，含 條件／建立項目_1）  （刪）
+★ 取得清單項目          （SharePoint：$filter Title 前綴＋開 pagination）
+★ 今日延遲列            （Filter：排除 _TaskOnSchedule 占位列）
+★ Apply_to_each_列      （逐清單列）
+   ★ filter_本列仍逾期  （巢狀 Filter：endsWith(Title,'_'+id)，基本模式）
+   ★ Compose×3：本列原勾選1或4／本列仍逾期／本列未回覆（布林，fx）
+   ★ 條件_原1或4＝true ?
+       是 → 條件_仍逾期＝true ?
+              是 → 更新項目：歸到 3.（原勾選…，卡片仍延遲）
+              否 → 更新項目：原勾選…，同事已修改狀態
+       否 → 條件_未回覆＝true ?
+              是 → 更新項目：field_7 = 3.
+              否 → 不動</code></pre>
+<p style="font-size:12.5px;color:var(--muted)">新版「條件」沒有進階模式，故布林先用 Compose 算好，條件只比 <code>=true</code>（單列、靠巢狀分支，免 And/Or 群組）（見 §6-3）。</p>
+<p class="legend"><span><span class="tag t-keep">照舊</span> 0930 既有、不動</span><span><span class="tag t-edit">改</span> 改一個小地方</span><span><span class="tag t-del">刪</span> 整段移除</span><span><span class="tag t-add">新增</span> 0955 新加</span></p>
+<p style="font-size:12.5px;color:var(--muted)">和上一版相比：<b>不再建「已完成集合」、不再有刪除動作</b>；改成<b>直接沿用 0930 既有的 <code>逾期_篩選陣列</code></b> 建「仍逾期集合」，用「不在集合＝異動」判斷。對 0930 的複用更徹底。</p>
+</div>
+
+<h2>2. 複製 0930 → 改名 → 改觸發</h2>
+<div class="card">
+<ol>
+<li>到 Power Automate 開 <code>0930每日巡檢Planer進清單_v1</code> →「<b>另存複本（Save As）</b>」→ 命名 <code>0955再巡檢與同步</code>。連線會一併帶過來，不必重設。</li>
+<li>開新複本，<b>觸發 Recurrence</b>：把「分」從 <b>30 改成 55</b>（時＝9、週一～五、時區 Taipei 維持）。</li>
+</ol>
+<p class="warn"><b>並行控制要關</b>：本流程用變數 <code>union</code> 累積「仍逾期 id」。<code>for_each_group_list_plans</code> 與 <code>for_each_plan_list_tasks</code> 兩層 Foreach 的「設定 → 並行控制」<b>必須關閉（循序）</b>，否則並行寫變數會掉資料。0930 預設循序，複本沿用即可，但<b>請逐一打開確認是關的</b>。</p>
+</div>
+
+<h2>3. 刪掉「寫清單／占位」段（複本上刪，0930 不動）</h2>
+<div class="card">
+<p>在複本上依序刪除這些 0930 用來「寫資料」的動作（0955 只讀＋覆寫，不需要它們）。有相依性，照順序刪：</p>
+<ol>
+<li>刪 <code>for_each_task</code>（整個 Foreach 連同裡面的 <code>For_each</code>／<code>取得使用者設定檔_(V2)</code>／<code>依Email篩員工編號</code>／<code>建立項目</code>／<code>附加至陣列變數</code>）。</li>
+<li>刪 <code>Apply_to_each</code>（最外層占位迴圈，含 <code>條件</code> 與 <code>建立項目_1</code>）。</li>
+<li>刪 <code>列出資料表中的資料列_team_member</code>（Excel 讀取，用不到）。</li>
+</ol>
+<div class="ok"><b>注意：<code>逾期_篩選陣列</code> 要「保留」</b>（和上一版不同）。它正是「目前仍逾期」的來源，§5 直接拿它建集合。</div>
+</div>
+
+<h2>4. 沿用 InitializeVariable，改成「仍逾期 id 集合」</h2>
+<div class="card">
+<p>直接沿用 0930 的 <code>初始化變數</code>（原 <code>延遲Emails</code>）：</p>
+<table>
+<tr><td>動作</td><td>沿用既有 <code>初始化變數</code>（InitializeVariable）</td></tr>
+<tr><td>名稱</td><td>改成 <code>仍逾期TaskIds</code></td></tr>
+<tr><td>類型</td><td><b>陣列（Array）</b>，值留空</td></tr>
+</table>
+<p style="font-size:12.5px;color:var(--muted)">位置維持在 <code>for_each_group_list_plans</code> 之前。</p>
+</div>
+
+<h2>5.〔新增〕掃描時收集「仍逾期任務 id」</h2>
+<div class="card">
+<div class="del"><b>不要用「設定變數＋union」自我參照</b>：新版 Power Automate <b>禁止 Set variable 的值引用自己</b>（會存檔失敗：<code>WorkflowRunActionInputsInvalidProperty — Self reference is not supported</code>）。改用 <b>「附加至陣列變數」</b>——這正是 0930 既有 <code>附加至陣列變數</code> 的同款做法。</div>
+<p>在 <code>for_each_plan_list_tasks</code> 裡、<b>既有 <code>逾期_篩選陣列</code> 之後</b>，加一個小迴圈逐筆把逾期 id 附加進變數：</p>
+<table>
+<tr><th>動作</th><th>設定</th></tr>
+<tr><td><b>Apply to each</b>，命名 <code>for_each_逾期任務</code></td><td>來源 <code>@body('逾期_篩選陣列')</code></td></tr>
+<tr><td>└ <b>附加至陣列變數</b>（AppendToArrayVariable）</td><td>名稱 <code>仍逾期TaskIds</code>；值（fx）<code>items('for_each_逾期任務')?['id']</code></td></tr>
+</table>
+<div class="ok"><b>為何這樣可行</b>：「附加至陣列變數」是專門的累加動作，<b>不算自我參照、不會報錯</b>；逐筆附加<b>單一字串 id</b> → 得到<b>扁平</b>字串陣列（不像直接附加整個陣列會變巢狀）。跨方案的 task id 天生不重複，不需去重。<b>務必維持 for_each 循序（關並行）</b>，附加才不競態（同 0930）。</div>
+<p style="font-size:12.5px;color:var(--muted)">（不再需要「選取_逾期id」Select 與「設定變數」——若你已建了，刪掉那個自我參照的 Set variable 即可。）</p>
+</div>
+
+<h2>6.〔新增〕讀清單今日延遲列，做標註</h2>
+<div class="card">
+<h3>6-1 取得清單項目（SharePoint）</h3>
+<ol>
+<li><b>SharePoint → 取得項目</b>，命名 <code>取得清單項目</code>：站台 <code>https://techartgroup.sharepoint.com/sites/PLANNER_CK</code>、清單 <code>AttendanceHistory</code>。</li>
+<li><b>篩選查詢</b>：點 <b>fx</b> 貼整段：
+<pre><code>concat('startswith(Title,''', formatDateTime(addHours(utcNow(),8),'yyyyMMdd'), '_'')')</code></pre></li>
+<li><b>進階選項 → 開啟「分頁（Pagination）」、門檻 5000。</b></li>
+</ol>
+<p class="warn"><b>$filter 只認 Title</b>：中文／改名欄下 OData <code>$filter</code> 會「欄不存在」。當日篩選一律靠 Title 前綴、用 fx concat 組、不可手打。</p>
+
+<h3>6-2 今日延遲列（Filter array，排除占位）</h3>
+<table>
+<tr><td>來源 From</td><td><code>@outputs('取得清單項目')?['body/value']</code></td></tr>
+<tr><td>條件（基本模式·一列）</td><td>左值（點欄位→fx）<code>endsWith(item()?['Title'],'_TaskOnSchedule')</code>　｜　運算子 <b>等於</b>　｜　右值 <code>false</code>　<span style="color:var(--muted)">（Filter array 若有進階模式，也可改貼 <code>@not(endsWith(item()?['Title'],'_TaskOnSchedule'))</code>）</span></td></tr>
+</table>
+
+<h3>6-3 Apply_to_each_列（逐列標註）</h3>
+<p><b>Apply to each</b>，命名 <code>Apply_to_each_列</code>，來源 <code>@body('今日延遲列')</code>。迴圈項是清單物件，欄位用 <code>items('Apply_to_each_列')?['field_7']</code>、<code>...?['Title']</code>、<code>...?['ID']</code>。</p>
+
+<div class="warn"><b>新版「條件（Condition）」沒有進階模式</b>（不能貼整段運算式，只能逐列建構）。解法：<b>把每個布林先用「撰寫 (Compose)」算出來</b>（Compose 的輸入框可貼整段 fx），<b>「條件」只比 <code>outputs(...) 等於 true</code></b>。下面照此排，全程不需要進階模式。</div>
+
+<h4>① filter_本列仍逾期（巢狀 Filter array）</h4>
+<table>
+<tr><td>來源 From</td><td><code>@variables('仍逾期TaskIds')</code></td></tr>
+<tr><td>條件（基本模式·一列）</td><td>左值（點欄位→fx）<code>endsWith(items('Apply_to_each_列')?['Title'], concat('_', item()))</code>　｜　運算子 <b>等於</b>　｜　右值 <code>true</code></td></tr>
+</table>
+<div class="ok"><b>為何用 endsWith 不拆 Title</b>：清單 Title 結尾固定是 <code>_&lt;完整 Planner task id&gt;</code>，<code>endsWith(Title,'_'+id)</code> 錨定整個 id 尾段，email/id 含底線都不影響，<b>不必動 0930、不必加欄</b>。<code>item()</code>＝Filter 當前 task id、<code>items('Apply_to_each_列')</code>＝外層列。<br><b>本列仍逾期 ＝ <code>not(empty(body('filter_本列仍逾期')))</code></b>（在仍逾期集合＝卡片還延遲、沒真的改）。</div>
+
+<h4>② 先用三個「撰寫 (Compose)」算布林（fx 可貼整段，不受「條件沒進階模式」影響）</h4>
+<p>在 Apply_to_each_列 內、filter 之後依序加三個 <b>撰寫 (Compose)</b>，每個輸入點 <b>fx</b> 貼整段：</p>
+<table>
+<tr><th>Compose 命名</th><th>輸入（fx 貼整段）</th></tr>
+<tr><td><code>本列原勾選1或4</code></td><td><code>or(startsWith(trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'1.'),startsWith(trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'4.'))</code></td></tr>
+<tr><td><code>本列仍逾期</code></td><td><code>not(empty(body('filter_本列仍逾期')))</code></td></tr>
+<tr><td><code>本列未回覆</code></td><td><code>and(not(startsWith(trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'1.')),not(startsWith(trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'2.')),not(startsWith(trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'3.')),not(startsWith(trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'4.')),not(startsWith(trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'原勾選')))</code></td></tr>
+</table>
+<p style="font-size:12.5px;color:var(--muted)">右值打 <code>true</code> 即可；若比對不靈，右值改點 fx 輸入 <code>true</code>（布林）。以下條件都是「單列＝true」，靠<b>巢狀分支</b>區分，<b>不需 And/Or 群組</b>。</p>
+
+<h4>③ 條件_原1或4（基本模式·一列）：<code>本列原勾選1或4 等於 true</code> ?</h4>
+
+<p><b>是（Yes）分支</b> → 再加一個 <b>條件_仍逾期</b>（一列）：<code>本列仍逾期 等於 true</code> ?</p>
+<ul>
+<li><b>是＝卡片仍延遲（宣稱了但沒真的做）</b> → <b>SharePoint → 更新項目</b>：Id(fx) <code>items('Apply_to_each_列')?['ID']</code>、Title(fx) <code>items('Apply_to_each_列')?['Title']</code>（帶原值，必填欄不可空）、<b>field_7</b>(fx)：
+<pre><code>concat('3. 延遲（09:30沒到公司，請填寫假卡）（原勾選「', trim(coalesce(items('Apply_to_each_列')?['field_7'],'')), '」，卡片仍延遲）')</code></pre>
+（開頭「3.」＝<b>歸到 3、要請假</b>；括號內保留原勾選＋「卡片仍延遲」。）</li>
+<li><b>否＝卡片已退出逾期（真的改了）</b> → <b>更新項目</b>：Id、Title（同上）、<b>field_7</b>(fx)：
+<pre><code>concat('原勾選「', trim(coalesce(items('Apply_to_each_列')?['field_7'],'')), '」，同事已修改狀態')</code></pre></li>
+</ul>
+
+<p><b>否（No）分支</b>（原 field_7 不是 1./4.）→ 加 <b>條件_未回覆</b>（一列）：<code>本列未回覆 等於 true</code> ?</p>
+<ul>
+<li><b>是</b> → <b>更新項目</b>：Id、Title（帶原值）、<b>field_7</b>(fx) ＝
+<pre><code>'3. 延遲（09:30沒到公司，請填寫假卡）'</code></pre>
+（請與員工實際入口的「3.」字串一致；走儀表板就用此 radio 版。）</li>
+<li><b>否</b> → 不放任何動作（保留；2./3. 與已處理過的列走這裡）。</li>
+</ul>
+<div class="ok"><b>再跑防呆（Codex 驗）</b>：處理後 field_7 變「3. …（…卡片仍延遲）」、「原勾選…，同事已修改狀態」或「3. …」。再跑時：<code>本列原勾選1或4</code> 因不再以 1./4. 開頭＝false；<code>本列未回覆</code> 因 <code>not(startsWith '原勾選')</code>＋「3.」被 <code>startsWith '3.'</code> 擋＝false → <b>不會二次覆寫</b>。所有比對先 <code>trim(coalesce(...))</code> 防前置空白。</div>
+</div>
+
+<h2>7. 上線前必確認</h2>
+<div class="card">
+<ul>
+<li><b>field_7 的「3.」回填字串</b>：以員工實際入口（儀表板 radio）那版為準，貼一筆真實值核對前綴與全形括號。</li>
+<li><b>更新項目要帶 Title（原值）</b>：Title 是必填欄，不帶會報錯或被清空。只改 field_7，其餘欄不提供＝保持不變。</li>
+<li><b>兩層 Foreach 並行已關</b>（§2）；<b>取得清單項目已開 pagination 5000</b>（§6-1）。</li>
+<li><b>Title 結尾格式穩定為 <code>_&lt;taskId&gt;</code></b>：0930 寫入即如此；勿手改 Title，否則 endsWith 會誤判。</li>
+</ul>
+</div>
+
+<h2>8. PO 裁示（請使用者確認）</h2>
+<div class="todo">
+<ol>
+<li><b>0955 不刪任何列、以 Planner 實況校正 field_7</b>（已依你指示）：①原1/4＋已退出逾期 → 標註「同事已修改狀態」；②<b>原1/4＋卡片仍逾期 → 歸到 3（要請假）＋註記「卡片仍延遲」</b>；③未回覆 → 回填 3.。2./3. 不動。確認此為最終行為。</li>
+<li><b>覆寫 field_7（員工欄）</b>：處理後該列員工頁 radio 會顯示無選取（值非選項）；因該列已結案且 10:00 後唯讀，可接受（Codex 同意）。不另加稽核欄（最小改動）。</li>
+<li><b>歸 3 的列＝要請假</b>：field_7 開頭是「3.」，與真正勾 3 的人同樣進入「需填假卡」流程；括號內保留原勾選與「卡片仍延遲」供行政辨識。</li>
+<li><b>觸發頻率</b>：設計對「一天多跑」已防呆；預設一天一次 09:55，要否多次由你定。</li>
+</ol>
+</div>
+
+<h2>9. 測試計畫</h2>
+<div class="card">
+<ol>
+<li><b>備資料</b>：清單今天有延遲列，涵蓋 field_7＝1./2./3./4./空白 各至少一筆。</li>
+<li><b>造對照</b>：到 Planner 把一個「回覆1.」與一個「回覆4.」對應任務<b>勾完成或改到期日到未來</b>（讓它退出逾期）；另留一個「回覆1.」與一個「回覆4.」<b>維持逾期</b>（模擬宣稱了但沒真的改）。</li>
+<li><b>手動測試</b>（Test → Manually）跑一次。</li>
+<li><b>驗收</b>：
+  <ul>
+  <li>回覆1./4. 且<b>已退出逾期</b> → field_7 變「原勾選「…」，同事已修改狀態」。</li>
+  <li>回覆1./4. 但<b>仍逾期</b> → field_7 變「3. 延遲（…假卡）（原勾選「…」，卡片仍延遲）」（開頭 3.）。</li>
+  <li>回覆2./3. → <b>原樣保留</b>。</li>
+  <li>空白 → field_7 變「3. 延遲（09:30沒到公司，請填寫假卡）」。</li>
+  <li>占位列（<code>_TaskOnSchedule</code>）→ 完全不受影響。</li>
+  <li><b>再跑一次</b>：上述已處理列<b>不再變動</b>。</li>
+  </ul>
+</li>
+<li><b>邊界</b>：① <code>仍逾期TaskIds</code> 是扁平字串陣列（無巢狀）。② 抽查一列被標註的，確認 endsWith 命中正確。③ 兩層 Foreach 並行確關。</li>
+</ol>
+</div>
+
+<h2>10. 注意彙整</h2>
+<div class="card warn">
+<ul>
+<li><b>0930 原流程不動</b>：改動只在「另存複本」的 0955 上做。</li>
+<li><b>本流程不刪任何列</b>：只覆寫 field_7（標註／回填）。</li>
+<li><b>關 Foreach 並行</b>：用「附加至陣列變數」累積，所有 Foreach（含新加的 <code>for_each_逾期任務</code>）必須循序。</li>
+<li><b>累積變數用「附加至陣列變數」，不要 Set variable 自我參照</b>（新版設計工具會擋：Self reference not supported）。</li>
+<li><b>欄位內部名 field_N</b>；<b>$filter 只認 Title</b>（fx concat、不可手打）。</li>
+<li><b>更新項目用整數 ID＋帶原 Title</b>（必填欄）。</li>
+<li><b>新版「條件」無進階模式</b>：布林先用 Compose 算，條件只比 <code>=true</code>（§6-3）。</li>
+<li><b>比對一律 <code>startsWith(trim(coalesce(field_7,'')),'N.')</code></b>，不要 equals。</li>
+<li><b>本流程不發信、不發 Line、不寫 Excel、不碰 team_member、不建列、不刪列</b>。</li>
+</ul>
+</div>
+
+</div>
+</body>
+</html>

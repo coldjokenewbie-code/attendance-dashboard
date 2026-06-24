@@ -2,7 +2,8 @@
 # 用法：建畫面 ScrToday → 全選複製本檔 → 畫布貼上（Cmd/Ctrl+V）
 # 手動畫面屬性：
 #   Screen.Fill      = RGBA(243, 244, 246, 1)
-#   Screen.OnVisible = UpdateContext({locShowPopup: false})
+#   Screen.OnVisible = UpdateContext({locShowPopup: false, locIsAdmin: !IsBlank(LookUp(team_member, Email = User().Email, '出勤存取權限'))})
+#   （locIsAdmin：判斷是否行政；供 10:00 後回覆唯讀鎖用，行政不受鎖。UI 鎖非硬安全，見 變更_回覆10點後唯讀.html）
 # 資料源：AttendanceHistory(清單)、team_member(Excel，判行政權限)
 # 只顯示「今日、本人、有延遲任務」的列；占位列(任務名稱空白)濾掉。
 
@@ -231,6 +232,9 @@
                   Width: =Parent.Width - 40
                   Height: =Parent.Height - 132 - 72
                   Size: =15
+                  # 10:00 後一般同事唯讀（行政 locIsAdmin 不受鎖）。UI 鎖非硬安全。
+                  DisplayMode: |-
+                    =If(locIsAdmin Or Hour(Now()) < 10, DisplayMode.Edit, DisplayMode.View)
             - btnCancel:
                 Control: Classic/Button
                 Properties:
@@ -248,14 +252,21 @@
                 Control: Classic/Button
                 Properties:
                   Text: ="送出"
+                  # 同一時間/行政判斷也加在 OnSelect：DisplayMode 只擋畫面、Patch 仍須自衛（Codex F）
                   OnSelect: |-
-                    =Patch(AttendanceHistory, locSelected, {'表單回覆': radReply.Selected.Value});
-                    If(
-                        IsEmpty(Errors(AttendanceHistory, locSelected)),
-                        Notify("已送出回覆", NotificationType.Success);
-                        UpdateContext({locShowPopup: false}),
-                        Notify("送出失敗：" & First(Errors(AttendanceHistory, locSelected)).Message, NotificationType.Error)
+                    =If(
+                        !(locIsAdmin Or Hour(Now()) < 10),
+                        Notify("10:00 後僅行政人員可修改回覆", NotificationType.Error),
+                        Patch(AttendanceHistory, locSelected, {'表單回覆': radReply.Selected.Value});
+                        If(
+                            IsEmpty(Errors(AttendanceHistory, locSelected)),
+                            Notify("已送出回覆", NotificationType.Success);
+                            UpdateContext({locShowPopup: false}),
+                            Notify("送出失敗：" & First(Errors(AttendanceHistory, locSelected)).Message, NotificationType.Error)
+                        )
                     )
+                  DisplayMode: |-
+                    =If(locIsAdmin Or Hour(Now()) < 10, DisplayMode.Edit, DisplayMode.View)
                   X: =Parent.Width - 20 - (Parent.Width - 48) / 2
                   Y: =Parent.Height - 58
                   Width: =(Parent.Width - 48) / 2
