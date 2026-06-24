@@ -24,6 +24,8 @@
 - **採納外部 agent(Codex)建議要用自有系統知識守門**：Codex 不知 Planner2Line 架構，建議「寄信 To 改成個人 Email」；實際逐人路由靠**主旨姓名**對 `contacts.json`、To 必須是中繼信箱 `domain.e`。涉及專屬系統的建議，Tech Lead 須以掌握的架構**否決**，不照單全收（呼應「先讀現行碼再設計」）。
 - **接手既有 Power Automate 流程先解壓實際匯出 definition.json，別靠指南/記憶猜 action 名稱**：zip 內 `Microsoft.Flow/flows/<guid>/definition.json` 有真 action 名、真欄繫結、真 URL、真連線參照——一次坐實「`選取` 寫成 `item()?['Email']` 映 null（清單內部名是 field_3）」「`篩選` where 寫死測試 email」等病灶，且讓指南用真名寫、可直接照改。
 - **並行兩個 Claude CLI 用 git worktree＋分支隔離**：同 repo 兩 CLI 各自 `git worktree add` 到獨立目錄＋獨立分支，working tree／git index 完全隔離、互不可見、不互踩 `git add`；共用紀錄檔（TaskLog/lessons/INDEX）改「**各寫各的新檔**」避免 merge 衝突；各自完工 merge main（後者先 pull）。
+- **SharePoint 清單排序：日期欄是文字且非零填補就排不對，改用 yyyyMMdd 鍵排序**：`日期` 單行文字、格式 `yyyy/M/d`（非零填補）時文字排序錯位（`2026/12/1` 排在 `2026/3/2` 前、`2026/6/9` 排在 `2026/6/24` 後）。快解：檢視改依 **Title 遞減**——Title＝`yyyyMMdd_…` 固定寬度零填補，**文字序＝時間序**，最新置頂；對回填列亦正確（優於依「建立時間」，回填列建立時間擠在匯入當下、不反映業務日期）。正解：另建真「日期及時間」欄供區間篩選/分組。**設計時識別/排序鍵就用零填補固定寬度字串。**
+- **git worktree 的「資料夾」是本機產物、不隨 remote 同步；跨機只能靠分支/commit**：`git push` 只帶分支與 commit，worktree 目錄結構不會過去。要在另一台複製「多資料夾並行佈局」＝先把各分支 `push -u origin <branch>`，新機 `git clone` 後對每支 `git worktree add <相對路徑> <branch>` 重建。換機鐵律：**離機前先 commit+push**，未提交的東西一律不過去。可把重建步驟寫進 `INDEX.md` 頂段（放 main 上，新機 clone 預設分支即讀到），讓新機 Claude 主動協助重建。
 
 ## 2026-06-16
 - **儲存選型準則：唯讀小表走 Excel 直連，多人寫＋需權限走清單**：Power Apps 可直連 SharePoint/OneDrive 上的 Excel（須格式化 Table），但僅適合「唯讀＋小量（<2000 列）＋低頻」——如請假餘額、team_member，這種建清單反而多餘。反之，會被多人並發寫、需欄位／項目級權限、或資料可能累積的，必須用 SharePoint 清單：如出勤 AttendanceHistory（員工填回覆＋行政填狀態＋0930 自動寫入三方並寫、`實際出勤狀態` 要員工唯讀），Excel 會鎖檔／互相覆蓋、做不到欄位權限、又非委派受 2000 列上限。**按讀寫特性分流，不是全清單或全 Excel。**
