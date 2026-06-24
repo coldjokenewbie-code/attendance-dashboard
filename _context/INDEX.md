@@ -1,24 +1,13 @@
 # 出勤專案 — 現況總覽 (INDEX)
 > 進場先讀。最後更新：2026-06-24
 
-## ⚠ 跨機接續：Windows 端開工待辦（2026-06-24 由 Mac 寫入）
-> Windows 上的 Claude 一讀到此段，請主動協助使用者**重建 worktree 分支資料夾**，與 Mac 佈局一致；完成後把本段標記「✅ 已重建」或刪除。
-
-- 佈局目標（三資料夾＝三分支，並列同層）：
-  - `attendance-dashboard` → `main`
-  - `attendance-0945` → `flow-0945`（0945 排程寄信名冊版／0930 占位除錯指南）
-  - `attendance-0955` → `flow-0955`（0955 再巡檢與同步）
-- 前置確認：`git ls-remote --heads origin` 應同時有 `main`／`flow-0945`／`flow-0955`。
-  - 若缺 `flow-0955`：表示 Mac 的 0955 CLI 尚未 push，先提醒使用者在該機 `commit + push` 再繼續。
-- 重建步驟（在 clone 下來、預設在 main 的 `attendance-dashboard` 目錄執行）：
-  ```
-  git clone https://github.com/coldjokenewbie-code/attendance-dashboard.git   # 若尚未 clone
-  cd attendance-dashboard
-  git fetch origin
-  git worktree add ../attendance-0945 flow-0945
-  git worktree add ../attendance-0955 flow-0955
-  ```
-- 跨機紀律：每次換機前先在當前機 `commit + push`；worktree 資料夾本身不會同步，只有已提交的 commit 會過去。
+## ✅ 跨機接續：Windows 端 worktree 已重建（2026-06-24 [Claude@Win] 完成）
+> 三資料夾並列佈局已在 DESKTOP-7SF21LR 重建完成，與 Mac 一致：
+> - `E:\Git_work\attendance-dashboard` → `main`
+> - `E:\Git_work\attendance-0945` → `flow-0945`
+> - `E:\Git_work\attendance-0955` → `flow-0955`
+>
+> 跨機紀律：每次換機前先在當前機 `commit + push`；worktree 資料夾本身不會同步，只有已提交的 commit 會過去。
 
 ## 一句話目標
 MS365 Power Apps 員工出勤儀表板；先重作模組一 Popup MVP，讓員工查看今日出勤查核並回寫 `表單回覆`。
@@ -41,7 +30,8 @@ MS365 Power Apps 員工出勤儀表板；先重作模組一 Popup MVP，讓員�
   - `workingfiles/canvas/ScrToday_paste.pa.yaml`（畫面原始碼）
   - `workingfiles/canvas/匯入指南.html`、`變更_回覆改單選.html`
   - 結案紀錄：`_context/archive/ClosedTaskLog_2026-06-13_module1-canvas-yaml.md`
-- **最新工作紀錄**：`_context/TaskLog_2026-06-16_架構落實與晨間流程.md`（晨間 09:40 流程規格、實況釐清、發 Line 歸 Planner2Line）。
+- **模組一介面更新（2026-06-24 [Claude@Win]）**：行政頁重作成表格版＋自動存（`workingfiles/canvas/ScrAdmin_table.pa.yaml`）；ScrAdmin／ScrToday 統一簡約淺色風格。**待 PO 實機驗收**。
+- **最新工作紀錄**：`_context/TaskLog_2026-06-24_儀表板表格化與淺色改版.md`（表格化＋自動存 bug 鏈＋雙頁淺色＋ai-team 審查）。前一份：`_context/TaskLog_2026-06-16_架構落實與晨間流程.md`。
 - 欄位已從 `_context/AttendanceHistory.csv` 確認（九欄顯示名稱）。
 
 ## 待辦 / 下一步

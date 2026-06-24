@@ -1,5 +1,12 @@
 # Lessons Learned
 
+## 2026-06-24 [Claude@Win]（Canvas gallery 逐列自動存 + 控件版本 + ai-team CLI on Windows）
+- **gallery 內 OnChange 自動存「無限迴圈＋通知洗版」根因＝控件 Items 沒載入→Selected 變空→無 guard→不斷寫空值**：前版用未驗證的 `Classic/ComboBox`，陣列 Items 沒正常繫結→只剩預設「待確認」、Selected 空，OnChange 又沒擋空值→寫空→資料刷新→重算 Default→再 fire，無限循環。修法兩段：(1) 換「Items 穩定顯示」控件——`Classic/DropDown@2.3.1`＋`Items.Value: =Value`；(2) OnChange 三重 guard：`!IsBlank(Self.Selected.Value) && <>「（待確認）」 && <> 現值` 才寫。寫回後現值＝選值→guard 再為假→斷迴圈。雙控件（下拉＋自由文字欄）寫同一欄時各加同款 guard 即不互相覆蓋（文字欄寫自訂值→下拉 Default 落清單外→選取變空→`!IsBlank` guard 擋住，不會用空值蓋掉）。
+- **gallery 逐列「目前值」用 `AddColumns(... As alias, Col, LookUp(...))` 在 Items 階段一次 join，別在每個控件 Default 內各自 LookUp**：每列重複 LookUp 不穩、易「全部顯示預設值」。Default 改讀 `ThisItem.<新欄>`。**巢狀 LookUp 內引用外層列必須用 `As` 命名**（`Sort(team_member,…) As tm` → `Email = tm.Email`）；寫 `ThisRecord.Email` 會指到內層 LookUp 的資料源而非外層列——Codex 建議就犯此錯，採納外部 agent 的程式碼要逐行守門。
+- **pa.yaml 控件版本只用「使用者自己匯出裡出現過」的**：擅自挑 `Classic/ComboBox@2.4.0`（沒驗證）疑似沒正常繫結釀 bug。匯出實證可貼：`Label@2.5.1 / GroupContainer@1.5.0 / Classic/Button@2.2.0 / Classic/DropDown@2.3.1 / Gallery@2.15.0 / Rectangle@2.3.0`。清單沒有的控件優先改用已驗證控件達同效；要用就標「版本推測、貼不上換 PA 提示版本」。舊格式（無 @version）若該畫面已實證可貼（ScrToday＋Classic/Radio）就**原格式只改 style**，別為統一而轉新版引入版本風險。
+- **Windows PowerShell 叫 codex/agy headless：長 prompt 含雙引號用 `$var` 直傳會被原生參數解析拆碎**（codex 報 `unexpected argument`、agy exit 255；PS 5.1 對含 `"` 字串的自動加引號會壞）。正解走 stdin：`Get-Content -Raw prompt.txt | codex exec -s read-only --skip-git-repo-check -`（`-` 讀 stdin、`-o out.txt` 收最終訊息）。agy 同理需 stdin/檔案餵入，直傳必壞。
+- **ai-team 以 PO 硬需求否決 agent 建議**：Codex 主張「OnChange 不該寫 SharePoint、改加儲存鈕 Patch」，但使用者明示「不要儲存鈕」→ Tech Lead 採其對的部分（AddColumns 預 join）、否決加鈕，改以 guard 解迴圈。UpdateIf vs Patch：本資料模型每人每日多工作列、狀態複寫全列＝原設計語意，保留 `UpdateIf`（Codex 的 Patch 假設每人每日單列，不符）。
+
 ## 2026-06-22（Power Apps / Power Automate 平台踩坑彙整）
 - **Power Automate 運算式必須用「fx 插入成 token」，不可在欄位直接打字**：直接打 `formatDateTime/concat/toLower/...` 會被當「字面字串」不計算（症狀：執行輸出出現整段運算式文字、或 Select 報「請輸入有效的 JSON」）。這是本次 0945 反覆卡關的真正主因。判斷：欄位裡是灰字＝字面(錯)、彩色 chip＝運算式(對)。**指南一律提供可整段貼的運算式，並註明「用 fx 插入」**。
 - **SharePoint 清單欄位「內部名」≠ 顯示名**：CSV 匯入/中文欄常變 `field_N`（Email→field_3、姓名→field_4…）；運算式用顯示名 `item()?['Email']` 會回 null。**從「取得項目」一次執行的原始輸出 JSON key 即可確認對照**，別猜。Title、Email(若 ASCII)有時保留原名，但本案連 Email 都成 field_3。
