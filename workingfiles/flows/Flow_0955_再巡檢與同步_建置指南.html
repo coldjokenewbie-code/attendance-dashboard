@@ -29,9 +29,86 @@
   .tag{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;font-weight:600;}
   .t-keep{background:#ccfbf1;color:#0f766e;} .t-del{background:#fee2e2;color:#b91c1c;} .t-add{background:#ede9fe;color:#6d28d9;} .t-edit{background:#dbeafe;color:#1e40af;}
   .legend span{margin-right:14px;font-size:12.5px;}
+  /* 浮動修改待辦 */
+  #todo{position:fixed;top:16px;right:16px;width:272px;z-index:9999;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.16);font-size:13px;overflow:hidden;}
+  #todo .hd{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#0f172a;color:#fff;cursor:pointer;user-select:none;}
+  #todo .hd b{font-size:13px;}
+  #todo .hd .pg{margin-left:auto;font-size:12px;background:#1e293b;padding:2px 9px;border-radius:99px;}
+  #todo .hd .pg.alldone{background:#15803d;}
+  #todo .hd .cv{font-size:11px;opacity:.85;width:14px;text-align:center;}
+  #todo .bd{padding:6px;max-height:62vh;overflow:auto;}
+  #todo.collapsed .bd,#todo.collapsed .ft{display:none;}
+  #todo .it{display:flex;gap:8px;align-items:flex-start;padding:8px;border-radius:8px;}
+  #todo .it:hover{background:#f1f5f9;}
+  #todo .it input{margin-top:2px;width:16px;height:16px;flex:none;cursor:pointer;}
+  #todo .it .tx{cursor:pointer;line-height:1.45;}
+  #todo .it .tx .n{font-weight:700;color:var(--accent);}
+  #todo .it .tx small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px;}
+  #todo .it.done .tx,#todo .it.done .tx .n{text-decoration:line-through;color:var(--muted);}
+  #todo .ft{display:flex;justify-content:flex-end;padding:4px 10px 10px;}
+  #todo .ft button{font-size:11.5px;color:var(--muted);background:none;border:1px solid var(--line);border-radius:6px;padding:3px 9px;cursor:pointer;}
+  #todo .ft button:hover{background:#f1f5f9;}
+  @keyframes flashbg{0%{background:#fde68a;}100%{background:transparent;}}
+  .flash{animation:flashbg 1.7s ease-out;border-radius:6px;}
+  @media(max-width:780px){
+    #todo{top:auto;bottom:0;left:0;right:0;width:auto;border-radius:12px 12px 0 0;}
+    #todo .bd{max-height:44vh;}
+    .wrap{padding-bottom:240px;}
+  }
 </style>
 </head>
 <body>
+<div id="todo">
+  <div class="hd" onclick="todoToggle()"><b>🛠 修改待辦</b><span class="pg" id="todoPg">0/11</span><span class="cv" id="todoCv">▼</span></div>
+  <div class="bd">
+    <div class="it" data-k="saveas">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('do-saveas')"><span class="n">① 另存複本 0930 v1 → 命名 0955再巡檢與同步</span><small>沿用既有連線；0930 本體不動 → §2</small></span>
+    </div>
+    <div class="it" data-k="trigger">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('do-trigger')"><span class="n">② 觸發改 09:55；兩層 Foreach 關並行</span><small>循序才不掉累積變數 → §2</small></span>
+    </div>
+    <div class="it" data-k="del">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('do-del')"><span class="n">③ 刪三段：for_each_task 子樹／Apply_to_each 占位／team_member 讀取</span><small>0955 不寫入、不需要 → §3</small></span>
+    </div>
+    <div class="it" data-k="var">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('do-var')"><span class="n">④ 沿用初始化變數 → 改名 仍逾期TaskIds（array）</span><small>不必新增動作 → §4</small></span>
+    </div>
+    <div class="it" data-k="collect">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('do-collect')"><span class="n">⑤ 加 for_each_逾期任務 ＋ 附加至陣列變數（id）</span><small>逐筆附加扁平字串；勿用 Set+union 自我參照 → §5</small></span>
+    </div>
+    <div class="it" data-k="getitems">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('do-getitems')"><span class="n">⑥ 加 取得清單項目（$filter Title 前綴＋開 pagination）</span><small>當日列、Top 5000 → §6-1</small></span>
+    </div>
+    <div class="it" data-k="today">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('do-today')"><span class="n">⑦ 加 今日延遲列（Filter 排除 _TaskOnSchedule）</span><small>占位列不進處理 → §6-2</small></span>
+    </div>
+    <div class="it" data-k="compose">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('do-compose')"><span class="n">⑧ 加 Apply_to_each_列：filter_本列仍逾期 ＋ 三個 Compose 布林</span><small>新版條件無進階模式，布林先 Compose → §6-3</small></span>
+    </div>
+    <div class="it" data-k="cond">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('do-cond')"><span class="n">⑨ 加 巢狀條件 ＋ 三個更新項目（歸3註記／已修改狀態／回填3）</span><small>條件只比 =true；刪除一律不做 → §6-3</small></span>
+    </div>
+    <div class="it" data-k="preflight">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('do-preflight')"><span class="n">⑩ 上線前確認：field_7「3.」字串／更新帶原 Title／並行・pagination</span><small>四項缺一不可 → §7</small></span>
+    </div>
+    <div class="it" data-k="test">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('do-test')"><span class="n">⑪ 手動測試（Test → Manually）驗五情境＋再跑防呆</span><small>1/4×逾期 vs 不逾期、2/3、空白、占位 → §9</small></span>
+    </div>
+  </div>
+  <div class="ft"><button onclick="todoReset()">重設打勾</button></div>
+</div>
+
 <div class="wrap">
 
 <h1>0955 再巡檢與同步 — 建置指南</h1>
@@ -106,16 +183,16 @@
 <p style="font-size:12.5px;color:var(--muted)">和上一版相比：<b>不再建「已完成集合」、不再有刪除動作</b>；改成<b>直接沿用 0930 既有的 <code>逾期_篩選陣列</code></b> 建「仍逾期集合」，用「不在集合＝異動」判斷。對 0930 的複用更徹底。</p>
 </div>
 
-<h2>2. 複製 0930 → 改名 → 改觸發</h2>
+<h2 id="do-saveas">2. 複製 0930 → 改名 → 改觸發</h2>
 <div class="card">
 <ol>
 <li>到 Power Automate 開 <code>0930每日巡檢Planer進清單_v1</code> →「<b>另存複本（Save As）</b>」→ 命名 <code>0955再巡檢與同步</code>。連線會一併帶過來，不必重設。</li>
 <li>開新複本，<b>觸發 Recurrence</b>：把「分」從 <b>30 改成 55</b>（時＝9、週一～五、時區 Taipei 維持）。</li>
 </ol>
-<p class="warn"><b>並行控制要關</b>：本流程用變數 <code>union</code> 累積「仍逾期 id」。<code>for_each_group_list_plans</code> 與 <code>for_each_plan_list_tasks</code> 兩層 Foreach 的「設定 → 並行控制」<b>必須關閉（循序）</b>，否則並行寫變數會掉資料。0930 預設循序，複本沿用即可，但<b>請逐一打開確認是關的</b>。</p>
+<p class="warn" id="do-trigger"><b>並行控制要關</b>：本流程用「附加至陣列變數」累積「仍逾期 id」。<code>for_each_group_list_plans</code> 與 <code>for_each_plan_list_tasks</code> 兩層 Foreach 的「設定 → 並行控制」<b>必須關閉（循序）</b>，否則並行寫變數會掉資料。0930 預設循序，複本沿用即可，但<b>請逐一打開確認是關的</b>。</p>
 </div>
 
-<h2>3. 刪掉「寫清單／占位」段（複本上刪，0930 不動）</h2>
+<h2 id="do-del">3. 刪掉「寫清單／占位」段（複本上刪，0930 不動）</h2>
 <div class="card">
 <p>在複本上依序刪除這些 0930 用來「寫資料」的動作（0955 只讀＋覆寫，不需要它們）。有相依性，照順序刪：</p>
 <ol>
@@ -126,7 +203,7 @@
 <div class="ok"><b>注意：<code>逾期_篩選陣列</code> 要「保留」</b>（和上一版不同）。它正是「目前仍逾期」的來源，§5 直接拿它建集合。</div>
 </div>
 
-<h2>4. 沿用 InitializeVariable，改成「仍逾期 id 集合」</h2>
+<h2 id="do-var">4. 沿用 InitializeVariable，改成「仍逾期 id 集合」</h2>
 <div class="card">
 <p>直接沿用 0930 的 <code>初始化變數</code>（原 <code>延遲Emails</code>）：</p>
 <table>
@@ -137,7 +214,7 @@
 <p style="font-size:12.5px;color:var(--muted)">位置維持在 <code>for_each_group_list_plans</code> 之前。</p>
 </div>
 
-<h2>5.〔新增〕掃描時收集「仍逾期任務 id」</h2>
+<h2 id="do-collect">5.〔新增〕掃描時收集「仍逾期任務 id」</h2>
 <div class="card">
 <div class="del"><b>不要用「設定變數＋union」自我參照</b>：新版 Power Automate <b>禁止 Set variable 的值引用自己</b>（會存檔失敗：<code>WorkflowRunActionInputsInvalidProperty — Self reference is not supported</code>）。改用 <b>「附加至陣列變數」</b>——這正是 0930 既有 <code>附加至陣列變數</code> 的同款做法。</div>
 <p>在 <code>for_each_plan_list_tasks</code> 裡、<b>既有 <code>逾期_篩選陣列</code> 之後</b>，加一個小迴圈逐筆把逾期 id 附加進變數：</p>
@@ -152,7 +229,7 @@
 
 <h2>6.〔新增〕讀清單今日延遲列，做標註</h2>
 <div class="card">
-<h3>6-1 取得清單項目（SharePoint）</h3>
+<h3 id="do-getitems">6-1 取得清單項目（SharePoint）</h3>
 <ol>
 <li><b>SharePoint → 取得項目</b>，命名 <code>取得清單項目</code>：站台 <code>https://techartgroup.sharepoint.com/sites/PLANNER_CK</code>、清單 <code>AttendanceHistory</code>。</li>
 <li><b>篩選查詢</b>：點 <b>fx</b> 貼整段：
@@ -161,13 +238,13 @@
 </ol>
 <p class="warn"><b>$filter 只認 Title</b>：中文／改名欄下 OData <code>$filter</code> 會「欄不存在」。當日篩選一律靠 Title 前綴、用 fx concat 組、不可手打。</p>
 
-<h3>6-2 今日延遲列（Filter array，排除占位）</h3>
+<h3 id="do-today">6-2 今日延遲列（Filter array，排除占位）</h3>
 <table>
 <tr><td>來源 From</td><td><code>@outputs('取得清單項目')?['body/value']</code></td></tr>
 <tr><td>條件（基本模式·一列）</td><td>左值（點欄位→fx）<code>endsWith(item()?['Title'],'_TaskOnSchedule')</code>　｜　運算子 <b>等於</b>　｜　右值 <code>false</code>　<span style="color:var(--muted)">（Filter array 若有進階模式，也可改貼 <code>@not(endsWith(item()?['Title'],'_TaskOnSchedule'))</code>）</span></td></tr>
 </table>
 
-<h3>6-3 Apply_to_each_列（逐列標註）</h3>
+<h3 id="do-compose">6-3 Apply_to_each_列（逐列標註）</h3>
 <p><b>Apply to each</b>，命名 <code>Apply_to_each_列</code>，來源 <code>@body('今日延遲列')</code>。迴圈項是清單物件，欄位用 <code>items('Apply_to_each_列')?['field_7']</code>、<code>...?['Title']</code>、<code>...?['ID']</code>。</p>
 
 <div class="warn"><b>新版「條件（Condition）」沒有進階模式</b>（不能貼整段運算式，只能逐列建構）。解法：<b>把每個布林先用「撰寫 (Compose)」算出來</b>（Compose 的輸入框可貼整段 fx），<b>「條件」只比 <code>outputs(...) 等於 true</code></b>。下面照此排，全程不需要進階模式。</div>
@@ -189,7 +266,7 @@
 </table>
 <p style="font-size:12.5px;color:var(--muted)">右值打 <code>true</code> 即可；若比對不靈，右值改點 fx 輸入 <code>true</code>（布林）。以下條件都是「單列＝true」，靠<b>巢狀分支</b>區分，<b>不需 And/Or 群組</b>。</p>
 
-<h4>③ 條件_原1或4（基本模式·一列）：<code>本列原勾選1或4 等於 true</code> ?</h4>
+<h4 id="do-cond">③ 條件_原1或4（基本模式·一列）：<code>本列原勾選1或4 等於 true</code> ?</h4>
 
 <p><b>是（Yes）分支</b> → 再加一個 <b>條件_仍逾期</b>（一列）：<code>本列仍逾期 等於 true</code> ?</p>
 <ul>
@@ -210,7 +287,7 @@
 <div class="ok"><b>再跑防呆（Codex 驗）</b>：處理後 field_7 變「3. …（…卡片仍延遲）」、「原勾選…，同事已修改狀態」或「3. …」。再跑時：<code>本列原勾選1或4</code> 因不再以 1./4. 開頭＝false；<code>本列未回覆</code> 因 <code>not(startsWith '原勾選')</code>＋「3.」被 <code>startsWith '3.'</code> 擋＝false → <b>不會二次覆寫</b>。所有比對先 <code>trim(coalesce(...))</code> 防前置空白。</div>
 </div>
 
-<h2>7. 上線前必確認</h2>
+<h2 id="do-preflight">7. 上線前必確認</h2>
 <div class="card">
 <ul>
 <li><b>field_7 的「3.」回填字串</b>：以員工實際入口（儀表板 radio）那版為準，貼一筆真實值核對前綴與全形括號。</li>
@@ -230,7 +307,7 @@
 </ol>
 </div>
 
-<h2>9. 測試計畫</h2>
+<h2 id="do-test">9. 測試計畫</h2>
 <div class="card">
 <ol>
 <li><b>備資料</b>：清單今天有延遲列，涵蓋 field_7＝1./2./3./4./空白 各至少一筆。</li>
@@ -266,5 +343,19 @@
 </div>
 
 </div>
+<script>
+(function(){
+  var KEY='todo0955_v1';
+  var items=[].slice.call(document.querySelectorAll('#todo .it'));
+  function save(){var s={};items.forEach(function(it){s[it.dataset.k]=it.querySelector('input').checked;});try{localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}}
+  function load(){var s={};try{s=JSON.parse(localStorage.getItem(KEY)||'{}');}catch(e){}items.forEach(function(it){var on=!!s[it.dataset.k];it.querySelector('input').checked=on;it.classList.toggle('done',on);});}
+  function prog(){var done=items.filter(function(it){return it.querySelector('input').checked;}).length;var pg=document.getElementById('todoPg');pg.textContent=(done===items.length?'✅ ':'')+done+'/'+items.length;pg.classList.toggle('alldone',done===items.length);}
+  window.todoCheck=function(cb){cb.closest('.it').classList.toggle('done',cb.checked);save();prog();};
+  window.todoGo=function(id){var el=document.getElementById(id);if(!el)return;el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');};
+  window.todoToggle=function(){var t=document.getElementById('todo');t.classList.toggle('collapsed');document.getElementById('todoCv').textContent=t.classList.contains('collapsed')?'▲':'▼';};
+  window.todoReset=function(){items.forEach(function(it){it.querySelector('input').checked=false;it.classList.remove('done');});save();prog();};
+  load();prog();
+})();
+</script>
 </body>
 </html>
