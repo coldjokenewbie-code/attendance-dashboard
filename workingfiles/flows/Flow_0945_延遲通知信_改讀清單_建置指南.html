@@ -3,126 +3,200 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0945 延遲通知信 — 改讀清單 建置指南</title>
+<title>0945 延遲通知信 — 名冊版 就地編輯指南</title>
 <style>
   :root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--warn:#b45309;--ok:#15803d;--del:#b91c1c;}
   *{box-sizing:border-box;}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Helvetica Neue",Arial,"Microsoft JhengHei",sans-serif;line-height:1.7;}
-  .wrap{max-width:980px;margin:0 auto;padding:34px 24px 90px;}
+  .wrap{max-width:1000px;margin:0 auto;padding:34px 24px 100px;}
   h1{font-size:23px;margin:0 0 4px;}
   .sub{color:var(--muted);font-size:14px;margin-bottom:22px;}
-  h2{font-size:18px;margin:30px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--accent);}
+  h2{font-size:18px;margin:32px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--accent);}
   h3{font-size:15px;margin:16px 0 6px;color:#111827;}
   .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.03);}
   code{background:#eef2ff;color:#3730a3;padding:1px 5px;border-radius:4px;font-size:12.5px;word-break:break-all;}
   pre{background:#0f172a;color:#e2e8f0;padding:13px;border-radius:8px;overflow:auto;font-size:12.5px;line-height:1.5;}
   pre code{background:none;color:inherit;padding:0;}
-  ol,ul{margin:6px 0;padding-left:22px;} li{margin:6px 0;}
+  ol,ul{margin:6px 0;padding-left:22px;} li{margin:7px 0;}
   table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13px;}
   th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top;}
   th{background:#f1f5f9;}
   .warn{border-left:4px solid var(--warn);background:#fffbeb;padding:12px 16px;border-radius:8px;margin:10px 0;}
   .ok{border-left:4px solid var(--ok);background:#f0fdf4;padding:12px 16px;border-radius:8px;margin:10px 0;}
-  .pick{background:#ecfeff;color:#155e75;padding:1px 6px;border-radius:4px;font-size:12.5px;font-weight:600;}
+  .del{border-left:4px solid var(--del);background:#fef2f2;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .now{border-left:4px solid var(--accent);background:#eff6ff;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:5px;margin-right:6px;vertical-align:1px;}
+  .t-keep{background:#dcfce7;color:#166534;} .t-del{background:#fee2e2;color:#991b1b;} .t-add{background:#dbeafe;color:#1e40af;} .t-edit{background:#fef3c7;color:#92400e;}
+  .step{counter-increment:s;}
 </style>
 </head>
 <body>
 <div class="wrap">
 
-<h1>0945 延遲通知信 — 改讀「清單」建置指南</h1>
-<div class="sub">2026-06-22 ｜ Claude@Mac ｜ 在既有「0945每日專案延誤通知EMAIL」上改：來源 Excel→SharePoint 清單、連結改儀表板</div>
+<h1>0945 延遲通知信 — 名冊版「就地編輯」指南</h1>
+<div class="sub">2026-06-22 ｜ Claude@Mac（Tech Lead）＋ Codex 三輪審查 ｜ 對象流程：<code>0945清單每日專案延誤通知EMAIL_v1</code>（依實際匯出 definition.json 寫，action 名稱為真名）</div>
 
 <div class="warn">
-<b>核心觀念</b>：① 所有運算式都用 <b>fx 插入成紫色 chip</b>，不要直接打字（否則被當字串）。② 此清單中文欄的<b>內部名是 field_N</b>，運算式要用內部名：<code>field_1 員工編號／field_2 日期／field_3 Email／field_4 姓名／field_5 方案名稱／field_6 任務名稱</code>。<code>Title</code> 維持 <code>Title</code>。
+<b>三條鐵則（先記）</b><br>
+① 所有運算式都要<b>切「進階模式 / 切換到輸入整個陣列」或點 fx</b>插成<b>彩色 chip</b>，<u>不可直接打字</u>（灰字＝被當字面字串，必失敗）。<br>
+② SharePoint 清單中文欄的<b>內部名是 field_N</b>：<code>field_3＝Email、field_4＝姓名</code>；Excel 名冊欄是<b>原 header</b>：<code>Email、姓名</code>（不是 field_N）。<br>
+③ 寄信 <b>收件者 To 永遠是 <code>domain.e@techartgroup.com</code></b>（中繼信箱）。逐人路由是 Planner2Line 讀<b>主旨的姓名</b>對 contacts.json 轉發 LINE，<u>不靠 To</u>。<b>別把 To 改成個人 Email。</b>
 </div>
 
-<div class="card">
-<b>現況（不用重建，只改 3 處）</b>：觸發 09:45 → <code>列出表格中的列</code>(Excel 今日) → <code>選取</code>(Email) → <code>UniqueEmails</code>(union 去重) → <code>apply_to_each_mail</code>{ 篩本人列、算件數、組任務明細(Forms連結)、寄信到 domain.e、等10秒 }。<br>
-要改：① 來源 Excel→清單　② 下游改引用 body('延遲列')　③ 連結 Forms→儀表板。
+<h2>0. 你現在卡的：篩選_延遲任務數量「一直出問題」</h2>
+<div class="now">
+<b>病灶</b>：這條 where 只有在 <code>apply_to_each_mail</code> 的 foreach <b>已經改成跑 Excel 名冊</b>時才成立。若 foreach 還停在舊的 <code>UniqueEmails</code>（字串陣列），迴圈值是<b>字串</b>，對它取 <code>?['Email']</code>／<code>?['field_3']</code> 會直接失敗。<br>
+<b>所以單改這條沒用</b>——必須照下面 §3 的<b>順序</b>整段改（先加 Excel 名冊＋改 foreach，<u>再</u>改這條 where）。改完的最終正確形：
+<pre><code>@equals(
+  toLower(trim(string(coalesce(item()?['field_3'],'')))),
+  toLower(trim(string(coalesce(items('apply_to_each_mail')?['Email'],''))))
+)</code></pre>
+左側 <code>item()?['field_3']</code>＝正在被篩的「延遲列」那筆的 Email；右側 <code>items('apply_to_each_mail')?['Email']</code>＝目前迴圈到的<b>名冊那個人</b>的 Email。用 <code>string(coalesce(...,''))</code> 防 null／型別。
 </div>
 
-<h2>改造後整體結構</h2>
+<h2>1. 為什麼舊版會壞（要砍掉的）</h2>
 <div class="card">
-<pre><code>觸發 Recurrence（週一～五 09:45）                 ← 不動
-└ ◆ 取得清單項目（SharePoint, 篩選查詢＝一段 fx concat startswith Title）  ← 取代 Excel
-└ ★ 篩選陣列 延遲列（Title 不以 _TaskOnSchedule 結尾→排除占位）
-└ ◆ 選取（文字模式 fx：toLower(Email)；來源 body('延遲列')）→ 字串陣列
-└ UniqueEmails（union 去重）                       ← 不動
-└ apply_to_each_mail（逐 email 字串）
-   └ ◆ 篩選_延遲任務數量（body('延遲列') where toLower(Email)=items(...)）
-   └ Compose_任務數量 = length                     ← 不動
-   └ ◆ 傳送電子郵件 V2（domain.e；正文放儀表板連結，不逐筆列任務）
-   └ 延遲 Wait 10 秒                               ← 不動</code></pre>
-<p style="color:var(--muted);font-size:12.5px">★＝新增　◆＝改既有　｜ 欄名用清單現有名稱、運算式直接貼；日期/篩選只靠 Title</p>
+<ul>
+<li><span class="tag t-del">壞</span><code>選取</code>(Select)：<code>select{Email: toLower(item()?['Email'])}</code> —— 清單內部名是 <code>field_3</code>，用 <code>Email</code> 映出 <b>null</b>；<code>UniqueEmails</code> 去重後剩一個 null，迴圈只跑一次。</li>
+<li><span class="tag t-del">壞</span><code>篩選_延遲任務數量</code> 的 where 還<b>寫死</b> <code>equals(item()?['field_3'],'ihueychen@techartgroup.com')</code>（除錯殘留，根本沒用迴圈值）。</li>
+<li>定案：<b>棄用 Select 去重</b>，改用 team_member(Excel) 名冊跑迴圈（結構穩定、不再有字串/物件型別漂移）。</li>
+</ul>
 </div>
 
-<h2>1. 換來源：列出表格中的列(Excel) → 取得項目(SharePoint)</h2>
+<h2>2. 改造後整體結構</h2>
 <div class="card">
+<pre><code>觸發 Recurrence（週一~五 09:45）                              ← 保留
+├ 今日前綴 (Compose)                                          ← 保留
+├ 取得清單項目 (SharePoint, AttendanceHistory, $filter startswith Title)  ← 保留
+├ 延遲列 (篩選陣列, 排除 _TaskOnSchedule 占位)                 ← 保留
+├ 列出表格中的列_名冊 (Excel Online Business, team_member 全表)  ← 新增
+└ apply_to_each_mail（改跑「名冊」每一列）
+   ├ 篩選_延遲任務數量 (篩選陣列, body('延遲列') where field_3 = 名冊Email)  ← 改 where
+   ├ Compose_任務數量 = length(...)                            ← 保留
+   └ 條件「要寄嗎」: 件數>0 且 名冊Email 非空                   ← 新增
+      └ True:
+         ├ 傳送電子郵件_(V2)  (To=domain.e；主旨/內文用名冊姓名)   ← 移進來+改
+         └ 延遲 (Wait 10 秒)                                   ← 移進來</code></pre>
+<p style="color:var(--muted);font-size:12.5px">已刪：<code>選取</code>、<code>UniqueEmails</code>。</p>
+</div>
+
+<h2>3. 逐步就地編輯（照順序，別跳）</h2>
+
+<div class="card">
+<h3><span class="tag t-add">A</span>新增 Excel「列出表格中的列_名冊」</h3>
 <ol>
-<li>刪掉 <code>列出表格中的列</code>（Excel）。</li>
-<li>加 <b>SharePoint → 取得項目</b> <code>取得清單項目</code>：站台 PLANNER_CK、清單 AttendanceHistory。</li>
-<li><b>篩選查詢</b>：清空 → 點 <b>fx(運算式)</b> → 貼下面<b>一整段</b> → 確定（變成紫色 chip，<b>欄位裡不要再打任何字</b>）：<br>
-<code>concat('startswith(Title,''', formatDateTime(addHours(utcNow(),8),'yyyyMMdd'), '_'')')</code><br>
-會算出 <code>startswith(Title,'20260622_')</code>（<code>''</code> 是跳脫單引號）。Top Count 5000。</li>
-<li>加 <b>篩選陣列</b> <code>延遲列</code>：來源＝<code>取得清單項目</code> 的 value；條件（進階）：<br>
-<code>@not(endsWith(item()?['Title'],'_TaskOnSchedule'))</code>　→ 去掉占位列，只留延遲列。</li>
+<li>在 <code>延遲列</code> 之後加一個 <b>Excel Online (Business) → 列出表格中的列</b>，改名 <code>列出表格中的列_名冊</code>。</li>
+<li><b>從 designer 加</b>（會自動建/選 Excel 連線參照）——<u>不要手編 JSON</u>，否則少了 connectionReference 存檔會失敗。可直接用原始版那個 Excel 連線。</li>
+<li>位置：檔案＝<b>TaskDB.xlsx</b>（原始版讀的同一檔）；<b>表格＝team_member</b>（從下拉選，不是 TaskDB 那個逾期表）。</li>
+<li><b>不要設 $filter</b>（要讀全體名冊）。</li>
+<li>展開「⋯ → 設定」把 <b>分頁(Pagination) 開啟</b>、門檻拉到 ≥ 名冊人數（預設常只拿 256 筆，名冊超過會漏寄）。</li>
 </ol>
-<p class="ok">之後所有「逐列資料」都改引用 <code>延遲列</code> 的輸出（<code>body('延遲列')</code>），不要再用 Excel 那個。</p>
+<p class="warn">team_member 表的 header 必須<b>精確</b>是 <code>姓名</code>、<code>Email</code>（已對過 CSV，無尾空白）。若 Excel 實際欄名有空白／<code>E-mail</code>／<code>Name</code> 之類，後面取值會是空——存檔前先用一次「測試→看該動作原始輸出」確認 key。</p>
 </div>
 
-<h2>2. 去重到人（選取 / UniqueEmails）</h2>
-<div class="card warn">
-<b>選取用「文字模式」</b>（單框），對應(Map)貼的運算式要用 <b>fx 插入成紫色 chip</b>（直接打字會被當字串、報「請輸入有效的 JSON」）。
-</div>
 <div class="card">
+<h3><span class="tag t-del">B</span>刪掉 選取、UniqueEmails</h3>
+<p>兩個都刪。刪 <code>UniqueEmails</code> 後 <code>apply_to_each_mail</code> 會少了 foreach 來源，下一步補上。</p>
+</div>
+
+<div class="card">
+<h3><span class="tag t-edit">C</span>改 apply_to_each_mail 的 foreach 來源</h3>
+<p>foreach 改成（fx token）：</p>
+<pre><code>@body('列出表格中的列_名冊')?['value']</code></pre>
+<p>現在迴圈值＝<b>名冊一個人（物件）</b>，欄走 Excel header：<code>items('apply_to_each_mail')?['姓名']</code>、<code>?['Email']</code>。</p>
+</div>
+
+<div class="card">
+<h3><span class="tag t-edit">D</span>改 篩選_延遲任務數量 的 where（就是你卡的那條）</h3>
+<p>來源 From 維持 <code>@body('延遲列')</code>；切<b>進階模式</b>，where 整段貼（fx token）：</p>
+<pre><code>@equals(toLower(trim(string(coalesce(item()?['field_3'],'')))), toLower(trim(string(coalesce(items('apply_to_each_mail')?['Email'],'')))))</code></pre>
+<p><code>Compose_任務數量</code> 不動：<code>@length(body('篩選_延遲任務數量'))</code>。</p>
+</div>
+
+<div class="card">
+<h3><span class="tag t-add">E</span>新增 條件「要寄嗎」，把 傳送/延遲 移進 True</h3>
+<ol>
+<li>在 <code>Compose_任務數量</code> 之後加一個 <b>條件 Condition</b>，改名 <code>要寄嗎</code>。
+<div class="warn"><b>條件卡沒有「進階模式」</b>（新版 designer 拿掉了，那是「篩選陣列」才有）。複雜布林運算式要塞進<b>左值</b>，再跟 <code>true</code> 比：
 <ul>
-<li><code>選取</code>(Select)：來源 From＝<code>body('延遲列')</code>；對應(Map, 文字模式)用 fx 插入：<code>toLower(item()?['field_3'])</code>（field_3＝Email）。輸出為字串陣列 <code>["a@x", …]</code>。</li>
-<li><code>UniqueEmails</code>(Compose)：<code>union(body('選取'), body('選取'))</code>。</li>
+<li><b>左值</b>：點左格 → fx/運算式 → 貼（<b>不含開頭 @</b>）：<br>
+<code>and(greater(length(body('篩選_延遲任務數量')),0), not(empty(trim(string(coalesce(items('apply_to_each_mail')?['Email'],''))))))</code></li>
+<li><b>運算子</b>：等於</li>
+<li><b>右值</b>：<b>務必用 fx</b> 打 <code>true</code>（boolean）。<u>不可直接在格子打 true</u> —— 會變字串 <code>'true'</code>，<code>equals(布林,'true')</code> 永遠 false、永遠不寄。</li>
 </ul>
-<p style="font-size:12.5px;color:var(--muted)">迴圈項是<b>字串</b>，後面引用 email 用 <code>items('apply_to_each_mail')</code>（<b>不要</b>加 <code>?['Email']</code>）。</p>
+件數&gt;0、且名冊這列 Email 非空才走 True。</div></li>
+<li>把 <code>傳送電子郵件_(V2)</code> 與 <code>延遲</code> <b>拖進 True 分支</b>。</li>
+<li class="warn"><b>runAfter 一定要重接</b>（分支內 action 只能接同分支 sibling）：True 內 <code>傳送電子郵件_(V2)</code> 是<b>第一個</b>（runAfter 空）、<code>延遲</code> 接在<b>傳送之後</b>。<code>條件 要寄嗎</code> 本身接在 <code>Compose_任務數量</code> 之後。False 分支留空。</li>
+</ol>
 </div>
 
-<h2>3. 逐人寄信（apply_to_each_mail 內）</h2>
 <div class="card">
-<ul>
-<li><code>篩選_延遲任務數量</code>(篩選陣列)：來源 <code>body('延遲列')</code>；切「進階模式」貼這段<b>防呆版</b>（不論 選取 是字串或物件模式都中；field_3＝Email）：<br>
-<code>@or(equals(toLower(trim(string(item()?['field_3']))), toLower(trim(string(items('apply_to_each_mail'))))), contains(toLower(replace(string(items('apply_to_each_mail')), ' ', '')), concat('"email":"', toLower(trim(string(item()?['field_3']))), '"')))</code></li>
-<li><b>前提</b>：先確認 <code>選取</code> 的<b>輸出</b>是真 email（<code>["ihueychen@…"]</code> 或 <code>[{"Email":"ihueychen@…"}]</code>），不可是字面文字或 <code>null</code>；若是，對應(Map)用 fx 重插 <code>toLower(item()?['field_3'])</code> 成紫色 chip。</li>
-<li><code>Compose_任務數量</code>：<code>length(body('篩選_延遲任務數量'))</code>。</li>
-<li><b>刪掉</b> <code>選取任務明細</code> 與 <code>聯結任務明細</code>（不在信裡逐筆列任務，避開另一個文字模式 Select；任務明細交由儀表板顯示）。</li>
-</ul>
-</div>
-
-<h2>4. 寄信動作（連結改儀表板）</h2>
-<div class="card">
-<b>傳送電子郵件 (V2)</b>（主旨／內文用 fx 插入運算式，非純打字）：
+<h3><span class="tag t-edit">F</span>改 傳送電子郵件_(V2)：主旨/內文用名冊姓名，To 不動</h3>
 <table>
-<tr><th>欄</th><th>填入</th></tr>
-<tr><td>收件者 To</td><td><code>domain.e@techartgroup.com</code></td></tr>
-<tr><td>主旨 Subject</td><td><code>工作延遲_@{first(body('篩選_延遲任務數量'))?['field_4']} | @{formatDateTime(addHours(utcNow(),8),'MM/dd')}</code>（field_4＝姓名）</td></tr>
-<tr><td>內文 Body</td><td><code>&lt;p&gt;@{first(body('篩選_延遲任務數量'))?['field_4']}，您今天有 @{outputs('Compose_任務數量')} 件延遲工作，請開啟出勤儀表板確認並回覆：&lt;br&gt;你的儀表板網址&lt;/p&gt;</code></td></tr>
+<tr><th>欄</th><th>填入（用 fx token）</th></tr>
+<tr><td>收件者 To</td><td><code>domain.e@techartgroup.com</code> <b>← 不要改</b></td></tr>
+<tr><td>主旨 Subject</td><td><code>工作延遲_@{items('apply_to_each_mail')?['姓名']} | @{formatDateTime(addHours(utcNow(),8),'MM/dd')}</code></td></tr>
+<tr><td>內文 Body</td><td>清掉舊的 <code>y\t</code> 雜訊、URL 放段落內：<br>
+<code>&lt;p&gt;@{items('apply_to_each_mail')?['姓名']}，您今天有 @{outputs('Compose_任務數量')} 件延遲工作，請開啟出勤儀表板確認並回覆：&lt;br&gt;<i>儀表板URL</i>&lt;/p&gt;</code></td></tr>
 </table>
-<p class="warn"><b>儀表板網址</b>：填你 App 的 Web 連結（Power Apps → 該 App → 詳細資料 → Web 連結）。App 已用 <code>User().Email</code> 自動篩當事人，<b>全員共用同一條連結即可</b>，不需逐任務預填。Planner2Line 會從正文抽這條 URL、縮短後發到該員 LINE。</p>
+<p><b>儀表板 URL</b>（沿用流程內已內嵌的，不用改）：</p>
+<pre><code>https://apps.powerapps.com/play/e/default-41b8ec6e-6a43-4dcc-87e3-8f73d38bf5df/a/b385ff38-e873-4595-8dde-cca6145d7e00?tenantId=41b8ec6e-6a43-4dcc-87e3-8f73d38bf5df&amp;hint=2a427e09-207d-4e34-984f-1779b0aa8f83&amp;source=sharebutton&amp;sourcetime=1782078372244</code></pre>
+<p class="ok">App 已用 <code>User().Email</code> 自篩當事人，全員共用<b>同一條</b>連結即可。</p>
 </div>
 
-<h2>5. 寄件者與時序（不變）</h2>
+<h2>4. 主旨／姓名為何用名冊（不是清單 field_4）</h2>
 <div class="card">
-<ul>
-<li><b>寄件者必須是白名單帳號</b>：傳送電子郵件的 Office 365 連線要用 <code>domain.e@techartgroup.com</code>（或 <code>ihueychen</code>），否則 Planner2Line 會略過。</li>
-<li>主旨格式 <code>工作延遲_姓名 | MM/dd</code> 不能變；<code>姓名</code> 要與 <code>contacts.json</code> 對得上（去空白比對）；<b>新人要先加進 contacts.json</b>。</li>
-<li>每封間隔等 10 秒的 <code>延遲</code>(Wait) 保留，給 LINE Desktop 發送節奏。</li>
-<li>時間用 <code>addHours(utcNow(),8)</code>＝台北（你原本的 <code>convertTimeZone(...,'Taipei Standard Time')</code> 也可，二擇一即可）。</li>
-</ul>
+Planner2Line 靠<b>主旨的姓名</b>對 <code>contacts.json</code> 找 LINE 對象。名冊(team_member)的姓名是<b>權威來源</b>；清單 <code>field_4</code> 是任務歷史列，可能舊名/錯字/不同步。用名冊姓名 → 與 contacts.json 對得上。<b>新人記得先加進 contacts.json。</b>
+</div>
+
+<h2>5. 實跑前檢查清單（Codex 點出的地雷）</h2>
+<div class="card">
+<table>
+<tr><th>檢查</th><th>說明</th></tr>
+<tr><td>Excel 分頁開了嗎</td><td>名冊 &gt; 256 列不開分頁會漏人。</td></tr>
+<tr><td>Excel header 精確</td><td><code>姓名</code>/<code>Email</code> 不能有空白/全形/<code>E-mail</code>；測試看原始輸出 key。</td></tr>
+<tr><td>To = domain.e</td><td>逐人靠主旨路由，To 不可改個人信箱。</td></tr>
+<tr><td>寄件連線白名單</td><td>傳送郵件 V2 的連線帳號要是 <code>domain.e</code> 或 <code>ihueychen</code>（否則 Planner2Line 略過），且不被 DLP／外部收件限制擋。</td></tr>
+<tr><td>主旨姓名別空</td><td>名冊那列 姓名 空 → 寄出 <code>工作延遲_ | MM/dd</code>，Planner2Line 對不到人。名冊維護好即可。</td></tr>
+<tr><td>SharePoint Title 索引</td><td><code>startswith(Title,…)</code> 委派；Title 有索引較穩。Top 5000 對單日量足夠。</td></tr>
+<tr><td>空清單日</td><td>延遲列空、名冊照跑、件數全 0 不寄 —— 正常。</td></tr>
+</table>
 </div>
 
 <h2>6. 測試</h2>
 <div class="card">
 <ol>
-<li>手動測試跑一次（先確認清單今天已有延遲列，可由 0930 寫入或手動建幾筆）。</li>
-<li>到 <code>domain.e</code> 信箱看：每位延遲者一封信、主旨 <code>工作延遲_姓名 | MM/dd</code>、內文含任務清單＋儀表板連結。</li>
-<li>占位列（無延遲者）<b>不會</b>收到信（已被 <code>延遲列</code> 濾掉）。</li>
-<li>Planner2Line 端：確認轉發到各人 LINE、連結可點開儀表板。</li>
+<li>先確認清單今天有延遲列（0930 寫入或手動建幾筆）。</li>
+<li>手動測試跑一次。</li>
+<li>到 <code>domain.e</code> 信箱看：<b>有延遲的人</b>每人一封、主旨 <code>工作延遲_姓名 | MM/dd</code>、內文含件數＋儀表板連結；沒延遲者不寄；占位列不寄。</li>
+<li>Planner2Line 端：確認轉發到各人 LINE、連結可開儀表板。</li>
 </ol>
+</div>
+
+<h2>附錄（可選）名冊缺漏告警 — <span style="color:var(--del)">待 PO 裁示</span></h2>
+<div class="card">
+<p><b>風險</b>：名冊版只寄「在 team_member 名冊裡」的人。若某人<b>在延遲清單、卻不在名冊</b>（臨時人員／離職未同步／0930 join 失敗），會<b>漏寄且無人察覺</b>。Codex 評估此 regression 中偏高。</p>
+<p><b>建議的輕量防線</b>（只偵測、發一封告警，<u>不</u>做逐人 fallback，避免把複雜度帶回來）：</p>
+<ol>
+<li>主迴圈後，初始化陣列變數 <code>缺漏清單</code> = <code>[]</code>。</li>
+<li><code>apply_to_each_2</code> 跑 <code>@body('延遲列')</code>：
+  <ul>
+  <li>篩選陣列 <code>在名冊嗎</code>：來源 <code>@body('列出表格中的列_名冊')?['value']</code>；where
+  <code>@equals(toLower(trim(string(coalesce(item()?['Email'],'')))), toLower(trim(string(coalesce(items('apply_to_each_2')?['field_3'],'')))))</code></li>
+  <li>條件 <code>@equals(length(body('在名冊嗎')),0)</code> → True：附加至 <code>缺漏清單</code>，值
+  <code>@concat(coalesce(items('apply_to_each_2')?['field_4'],''),' &lt;',coalesce(items('apply_to_each_2')?['field_3'],''),'&gt;')</code></li>
+  </ul>
+</li>
+<li>迴圈外條件 <code>@greater(length(variables('缺漏清單')),0)</code> → 寄一封告警到 domain.e：
+  <ul>
+  <li>主旨 <code>0945排程告警_名冊缺漏 | @{formatDateTime(addHours(utcNow(),8),'MM/dd')}</code><br>
+  <span class="warn" style="display:inline-block;padding:4px 8px"><b>主旨絕不能用 <code>工作延遲_</code> 開頭</b>——否則 Planner2Line 會把「名冊缺漏」當人去 contacts.json 找、發錯。</span></li>
+  <li>內文 <code>@join(variables('缺漏清單'),'&lt;br&gt;')</code></li>
+  </ul>
+</li>
+</ol>
+<p style="color:var(--muted);font-size:12.5px">全程只用 篩選陣列＋附加陣列變數＋join，<b>沒有 Select Map</b>，不會踩原本的型別坑。內層 Filter 來源是記憶體中的名冊輸出、不是重抓 Excel。同一缺漏者多筆任務會重複列（要去重可在附加前加 <code>not(contains(...))</code>）。</p>
+<p class="del"><b>PO 決定</b>：v1 先上核心名冊版、缺漏告警之後再開？還是 v1 就內建這段？（核心已解掉 Select 壞掉的主問題；告警是 regression 防線、非主流程必要。）</p>
 </div>
 
 </div>

@@ -18,6 +18,13 @@
 - **App 忠實呈現資料源、欄位不會自己錯開**：使用者回報「編號跟姓名對不上」，比對後是來源 team_member 的員工編號本身排錯（3 個林姓對調），非程式 bug。同一列的多欄不可能被程式錯開——先用 Email join 比對來源資料找出處，別預設是 UI 問題。
 - **沙盒產出的檔帶 `com.apple.provenance`（受保護、清不掉）**：macOS 會每次開檔重新隔離、跳 Gatekeeper。沙盒內（含關閉 sandbox 的 cp -X）都移不掉；只能由使用者在自己的 Terminal.app 重建檔案。匯入 SharePoint 不經 Gatekeeper、不受影響。
 
+- **Power Automate「條件 Condition」卡沒有「進階模式」**（新版 designer；「進階模式」只有「篩選陣列」有）：要塞複雜布林運算式 → 放**左值(fx)**、運算子選**等於**、右值**用 fx 打 `true`**（boolean）。右值直接在格子打字 `true` 會變字串 `'true'`，`equals(布林true,'true')` 永遠 false → 條件永遠不成立、永遠不觸發 True 分支。**`false` 同坑**：右值打字 `false`→字串 `'false'`，`equals(布林,'false')` 對誰都 false。右值一律 fx 插成 boolean。
+- **新版 Condition 兩個運算元都是自由格，最容易出兩種「運算式貼錯/被當字面」的錯**（0930 補占位實測，解壓 definition 才看得出，designer 介面看不出來）：① **左值被貼成別的運算式**——0623 的占位 Condition 左值竟是「是」分支建立項目的 Title `concat(...,'_TaskOnSchedule')`（字串），跟 `@false` 比永遠 false → 是分支永不跑、占位一張不寫、清單只剩延遲人（右值 `@false` 其實是對的，錯在左值）。左值必須是 `contains(延遲Emails,toLower(email))`。② **AppendToArrayVariable 的值少 `@`**＝字面字串：`延遲Emails` 裝的是文字「toLower(...)」非 email，contains 永遠不中，修好①後延遲者反而也被補占位（雙重列）。值要 fx 插成 `@toLower(...)`。兩者都印證「運算式必須 fx 插成 token」與「先解壓 definition.json 對 expression，別信 designer 表象」。
+- **多動作連動改有順序依賴，別把後置動作報錯當「該動作壞了」**：名冊版把 `apply_to_each` 的 foreach 從「字串陣列(Select 去重)」改成「跑名冊物件」。若先改內層 `篩選` 的 `items('apply_to_each')?['Email']`、卻還沒改 foreach，迴圈值仍是字串、對字串取 `?['key']` 必爆——表面像「篩選一直出問題」，真因在上游 foreach 還沒換。連動改先排順序：資料源 → 迴圈來源 → 內層運算式。
+- **採納外部 agent(Codex)建議要用自有系統知識守門**：Codex 不知 Planner2Line 架構，建議「寄信 To 改成個人 Email」；實際逐人路由靠**主旨姓名**對 `contacts.json`、To 必須是中繼信箱 `domain.e`。涉及專屬系統的建議，Tech Lead 須以掌握的架構**否決**，不照單全收（呼應「先讀現行碼再設計」）。
+- **接手既有 Power Automate 流程先解壓實際匯出 definition.json，別靠指南/記憶猜 action 名稱**：zip 內 `Microsoft.Flow/flows/<guid>/definition.json` 有真 action 名、真欄繫結、真 URL、真連線參照——一次坐實「`選取` 寫成 `item()?['Email']` 映 null（清單內部名是 field_3）」「`篩選` where 寫死測試 email」等病灶，且讓指南用真名寫、可直接照改。
+- **並行兩個 Claude CLI 用 git worktree＋分支隔離**：同 repo 兩 CLI 各自 `git worktree add` 到獨立目錄＋獨立分支，working tree／git index 完全隔離、互不可見、不互踩 `git add`；共用紀錄檔（TaskLog/lessons/INDEX）改「**各寫各的新檔**」避免 merge 衝突；各自完工 merge main（後者先 pull）。
+
 ## 2026-06-16
 - **儲存選型準則：唯讀小表走 Excel 直連，多人寫＋需權限走清單**：Power Apps 可直連 SharePoint/OneDrive 上的 Excel（須格式化 Table），但僅適合「唯讀＋小量（<2000 列）＋低頻」——如請假餘額、team_member，這種建清單反而多餘。反之，會被多人並發寫、需欄位／項目級權限、或資料可能累積的，必須用 SharePoint 清單：如出勤 AttendanceHistory（員工填回覆＋行政填狀態＋0930 自動寫入三方並寫、`實際出勤狀態` 要員工唯讀），Excel 會鎖檔／互相覆蓋、做不到欄位權限、又非委派受 2000 列上限。**按讀寫特性分流，不是全清單或全 Excel。**
 - **要列的清單若上游已同步全體，就從現有資料去重，別反射性再接一個來源**：行政頁簽要「列當天所有員工」，第一直覺想接 team_member，但 09:40 flow 已把全體同步進 AttendanceHistory，直接 `GroupBy` 當日資料去重即可；team_member 只留作判權限。少接一個資料源＝少一層委派/同步風險。
