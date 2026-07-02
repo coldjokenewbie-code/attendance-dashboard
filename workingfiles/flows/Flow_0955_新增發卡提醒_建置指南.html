@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>0955 再巡檢：修正判定＋新增發卡提醒 — 建置指南</title>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--warn:#b45309;--ok:#15803d;--del:#b91c1c;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Helvetica Neue",Arial,"Microsoft JhengHei",sans-serif;line-height:1.7;}
+  .wrap{max-width:980px;margin:0 auto;padding:34px 24px 90px;}
+  h1{font-size:23px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:22px;}
+  h2{font-size:18px;margin:30px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--accent);}
+  h3{font-size:15px;margin:16px 0 6px;color:#111827;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  code{background:#eef2ff;color:#3730a3;padding:1px 5px;border-radius:4px;font-size:12.5px;word-break:break-all;}
+  pre{background:#0f172a;color:#e2e8f0;padding:13px;border-radius:8px;overflow:auto;font-size:12.5px;line-height:1.5;}
+  pre code{background:none;color:inherit;padding:0;}
+  ol,ul{margin:6px 0;padding-left:22px;} li{margin:6px 0;}
+  table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13px;}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f5f9;}
+  .warn{border-left:4px solid var(--warn);background:#fffbeb;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .ok{border-left:4px solid var(--ok);background:#f0fdf4;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .fx{display:inline-block;font-size:11px;padding:0 6px;border-radius:4px;background:#fde68a;color:#92400e;font-weight:700;}
+  .tag{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;background:#dbeafe;color:#1e40af;font-weight:600;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>0955 再巡檢：修正判定＋新增發卡提醒 — 建置指南</h1>
+<div class="sub">2026-07-01 ｜ Claude@Mac ｜ 兩件事：<b>(A)</b> 修正再巡檢判定——<b>1／4／空白 都要先查 Planner 是否仍逾期</b>；<b>(B)</b> 在流程尾端對再巡檢後<b>仍延遲</b>（<code>field_7</code> 以 <code>3.</code> 開頭）者發 Planner 卡片（發卡設定<b>參考既有 1015</b>）。A 是 B 的前提——判定準了 <code>3.</code> 才準。</div>
+
+<div class="warn">
+<b>動手前</b>：先把 0955 流程<b>另存複製一份</b>備份。本指南<b>完全不動</b>現有的掃描、取清單、逐列更新 <code>field_7</code> 那些動作，只在 <code>Apply_to_each_列</code> 之後<b>接一段新動作</b>。
+</div>
+
+<h2>0. 這次要做的事</h2>
+<div class="card">
+在 0955 既有邏輯跑完（已把每列 <code>field_7</code> 更新成最終狀態）之後，<b>新增一段尾巴</b>：
+<ol>
+<li><b>重讀</b>一次今日清單列。</li>
+<li>篩出 <b><code>field_7</code> 以 <code>3.</code> 開頭</b>＝再巡檢後仍延遲者（自動排除 <code>2.</code> 加班、<code>1.</code>／<code>4.</code>、「已修改」、占位列）。</li>
+<li>同人去重後，逐人<b>建立一張 Planner 卡片</b>提醒回填。</li>
+</ol>
+<div class="warn" style="margin-top:6px">
+<b>為何要「重讀」而不是直接用前面迴圈的資料</b>：前面 <code>Apply_to_each_列</code> 是把狀態 <code>PatchItem</code> 寫回 SharePoint，<b>記憶體裡那份 <code>今日延遲列</code> 還是更新前的舊 <code>field_7</code></b>；且「未回覆」分支會把非逾期者也寫成 <code>3.</code>。要拿到「最終仍為 <code>3.</code>」的正確名單，最穩＝<b>迴圈跑完後重讀一次</b>清單再篩。
+</div>
+</div>
+
+<h2>A. 先修正再巡檢判定（改 2 個條件卡、刪 1 個分支）</h2>
+<div class="card">
+<div class="warn"><b>先做這個，發卡才準</b>：要讓「<b>1／4／空白</b>」三種都走同一個「查 Planner 是否仍逾期」的判斷。<b>不必新增任何 Compose</b>——你流程裡現成的 <code>本列未回覆</code>、<code>本列狀態異動</code> 拿來用即可。只動 <b>2 個條件卡</b>＋<b>刪 1 個分支</b>。</div>
+
+<h3>你流程現在長這樣（Apply_to_each_列 內）</h3>
+<pre><code>filter_本列仍逾期         ← 算這列任務還在不在「仍逾期」清單（現成）
+本列狀態異動 = empty(filter) ← 現成，目前沒用到，這次拿來用
+本列原勾選1或4            ← 現成
+本列未回覆               ← 現成
+條件_原1或4                                      ◀ 改①
+  ├ 是 → _條件_仍逾期                             ◀ 改②
+  │        ├ 是 → 更新項目_卡片仍延遲    （3.延遲，不動）
+  │        └ 否 → 更新項目_卡片已退出逾期 （已修改，不動）
+  └ 否 → 條件_未回覆                              ◀ 刪③（含底下 更新項目_未回覆）
+           ├ 是 → 更新項目_未回覆
+           └ 否 →（空）</code></pre>
+
+<h3>改① — 條件卡 <code>條件_原1或4</code>（讓它變「1或4或空白」）</h3>
+<table>
+<tr><th>哪一格</th><th>改成</th></tr>
+<tr><td>左值（切 <span class="fx">fx</span>）</td><td><code>or(outputs('本列原勾選1或4'),outputs('本列未回覆'))</code></td></tr>
+<tr><td>運算子</td><td>等於</td></tr>
+<tr><td>右值</td><td><code>true</code></td></tr>
+</table>
+<p style="color:var(--muted);font-size:12.5px">原本只看「1或4」，現在多納入「空白（未回覆）」。可順手改名 <code>條件_1或4或空白</code>（非必要）。</p>
+
+<h3>改② — 條件卡 <code>_條件_仍逾期</code>（在「是」分支內，修好查逾期）</h3>
+<table>
+<tr><th>哪一格</th><th>改成</th></tr>
+<tr><td>左值（切 <span class="fx">fx</span>）</td><td><code>outputs('本列狀態異動')</code></td></tr>
+<tr><td>運算子</td><td>等於</td></tr>
+<tr><td>右值</td><td><code>false</code></td></tr>
+</table>
+<p style="color:var(--muted);font-size:12.5px"><code>本列狀態異動</code>＝<code>empty(filter_本列仍逾期)</code>：<b><code>false</code>＝這列任務仍在逾期清單＝仍逾期</b>→ 走「是」→ 更新項目_卡片仍延遲。底下兩個「更新項目」<b>不用動</b>。</p>
+<div class="warn" style="margin-top:6px"><b>這步同時修掉現況 bug</b>：你現在這格是 <code>equals(body('filter_本列仍逾期'),true)</code>＝拿<b>陣列</b>比 <b>true</b>，恆為 false → 1／4 永遠被判「已修改」、從不判仍逾期。換成上面 <code>本列狀態異動 ＝ false</code> 才正確。</div>
+
+<h3>刪③ — 條件卡 <code>條件_未回覆</code>（整組刪掉）</h3>
+<p>把 <code>條件_原1或4</code> 的「<b>否</b>」分支裡的 <code>條件_未回覆</code>（連同底下 <code>更新項目_未回覆</code>）<b>整個刪除</b>。刪完「否」分支留空＝<code>2.</code>／<code>3.</code>／已處理的列不動，正確。（空白已由改①移到「是」分支統一處理。）</p>
+
+<h3>改完後的判定結果</h3>
+<table>
+<tr><th>field_7 現值</th><th>Planner 仍逾期？</th><th>結果</th></tr>
+<tr><td>1. ／ 4. ／ 空白</td><td>是</td><td><b>3. 延遲</b>（之後會發卡）</td></tr>
+<tr><td>1. ／ 4. ／ 空白</td><td>否</td><td>已修改／已更新（不發卡）</td></tr>
+<tr><td>2. 延遲已到公司加班</td><td>—</td><td>不動（不發卡）</td></tr>
+<tr><td>3. 已是延遲</td><td>—</td><td>不動（維持 3.，會發卡）</td></tr>
+<tr><td>原勾選…已修改</td><td>—</td><td>不動</td></tr>
+</table>
+
+<h3>（選配 ④）讓空白列的訊息好看</h3>
+<p><b>不是新增動作</b>——就是打開你<b>既有的那兩個「更新項目」</b>（改② 的「是」分支底下：<code>更新項目_卡片仍延遲</code>＝仍逾期那支、<code>更新項目_卡片已退出逾期</code>＝不逾期那支），找到裡面 <code>field_7</code> 那一格，把值切 <span class="fx">fx</span> 換成下表。位置沒變、不加任何卡片，只改這兩格的內容：</p>
+<table>
+<tr><th>動作</th><th>field_7 值</th></tr>
+<tr><td><code>更新項目_卡片仍延遲</code></td><td><code>if(outputs('本列原勾選1或4'),concat('3. 延遲（09:30沒到公司，請填寫假卡）（原勾選「',trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'」，卡片仍延遲）'),'3. 延遲（09:30沒到公司，請填寫假卡）')</code></td></tr>
+<tr><td><code>更新項目_卡片已退出逾期</code></td><td><code>if(outputs('本列原勾選1或4'),concat('原勾選「',trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'」，同事已修改狀態'),'未回覆，惟 Planner 已更新（非延遲）')</code></td></tr>
+</table>
+<p style="color:var(--muted);font-size:12.5px">不做也能運作，只是空白列會出現空的「原勾選「」」。兩種寫法都以 <code>3.</code>／非 <code>3.</code> 開頭，不影響發卡判斷。</p>
+</div>
+
+<h2>1. 加在哪（整體結構）</h2>
+<div class="card">
+<pre><code>觸發 Recurrence（週一～五 09:55）                ← 不動
+└ 列出群組 / 方案 / 工作 → 仍逾期TaskIds         ← 不動（Phase1）
+└ 取得清單項目（今日）→ 今日延遲列               ← 不動（Phase2）
+└ Apply_to_each_列（逐列更新 field_7 狀態）       ← 先依 §A 修正判定（1/4/空白都查逾期）
+─────────────── 以下為新增（runAfter = Apply_to_each_列 成功）───────────────
+└ ★ 取得清單項目_發卡（重讀今日列）
+└ ★ 仍延遲_篩選陣列（field_7 以 3. 開頭）
+└ ★ 選取_發卡Email（field_3）→ 去重_發卡（union）
+└ ★ Apply_to_Each_發卡（逐位 email）
+      ├ 篩選_本人延遲（field_3 ＝ 本迴圈 email）
+      ├ ◆ 建立工作（Planner 卡片：指派 本人＋2 管理者）   ← 設定參考 1015
+      └ （選配）任務明細 → 彙整信 → Wait 15 秒</code></pre>
+<p style="color:var(--muted);font-size:12.5px">★＝新增動作　◆＝參考 1015 設定的建卡動作　｜ Phase1~3 一律不動。</p>
+</div>
+
+<h2>2. 前置：連線</h2>
+<div class="card">
+SharePoint 連線 0955 已有（沿用）。<b>Planner「建立工作」</b>第一次拉時若要選連線，用既有 Planner 連線即可。群組／方案／貯體 GUID 直接抄既有 1015（同租戶可用，見 §6）。
+</div>
+
+<h2>3.〔新增〕重讀今日清單列</h2>
+<div class="card">
+加一個 <b>SharePoint → 取得項目（複數 Get items）</b>，命名 <code>取得清單項目_發卡</code>。設定與 Phase2 那個 <code>取得清單項目</code> 相同（同站台、同清單、同今日篩選），<b>runAfter 設成 <code>Apply_to_each_列</code> 成功</b>：
+<table>
+<tr><th>欄</th><th>值</th></tr>
+<tr><td>網站位址</td><td><code>https://techartgroup.sharepoint.com/sites/PLANNER_CK</code></td></tr>
+<tr><td>清單</td><td><code>AttendanceHistory</code>（內部 GUID <code>9bd1cdf3-4d38-49d3-ab8f-51c7448455bc</code>）</td></tr>
+<tr><td>篩選查詢（<span class="fx">fx</span>，同 0955 既有寫法）</td><td><code>concat('startswith(Title,''', formatDateTime(addHours(utcNow(),8),'yyyyMMdd'), '_'')')</code></td></tr>
+<tr><td>進階</td><td>分頁<b>開</b>、上限 <b>5000</b></td></tr>
+</table>
+<p style="color:var(--muted);font-size:12.5px">最快做法：把 Phase2 的 <code>取得清單項目</code> 動作「複製貼上」一份，改名 <code>取得清單項目_發卡</code>、把它接在 <code>Apply_to_each_列</code> 之後即可。</p>
+</div>
+
+<h2>4.〔新增〕篩仍延遲（field_7 以 3. 開頭）</h2>
+<div class="card">
+加 <b>篩選陣列（Filter array）</b>，命名 <code>仍延遲_篩選陣列</code>：
+<table>
+<tr><th>欄</th><th>值</th></tr>
+<tr><td>來源 From</td><td><code>@outputs('取得清單項目_發卡')?['body/value']</code></td></tr>
+<tr><td>條件（進階模式，<span class="fx">fx</span> 貼整段）</td><td><code>@startsWith(trim(coalesce(item()?['field_7'],'')),'3.')</code></td></tr>
+</table>
+<div class="ok">
+<b>這條同時涵蓋你的「篩選＋排除」</b>：<code>field_7</code>＝0955 寫的最終狀態，以 <code>3.</code> 開頭＝仍延遲；自動排除——
+<ul>
+<li><code>2.</code> 延遲已到公司加班 → 不發卡（＝你指定要忽略的）</li>
+<li><code>1.</code>／<code>4.</code> → 不發</li>
+<li>「原勾選…，同事已修改狀態」 → 已退出逾期，不發</li>
+<li>空白／占位列（<code>_TaskOnSchedule</code>） → 不發</li>
+</ul>
+</div>
+</div>
+
+<h2>5.〔新增〕去重 → 逐人</h2>
+<div class="card">
+<table>
+<tr><th>動作</th><th>設定</th></tr>
+<tr><td><b>選取_發卡Email</b>（Select）</td><td>From <code>@body('仍延遲_篩選陣列')</code>　／　對應 <span class="fx">fx</span> <code>@item()?['field_3']</code></td></tr>
+<tr><td><b>去重_發卡</b>（Compose）</td><td><code>@union(body('選取_發卡Email'),body('選取_發卡Email'))</code></td></tr>
+<tr><td><b>Apply_to_Each_發卡</b>（Foreach）</td><td>來源 <code>@outputs('去重_發卡')</code></td></tr>
+</table>
+<p style="color:var(--muted);font-size:12.5px"><code>field_3</code>＝Email。<code>union</code> 去重＝同一人多筆延遲只發<b>一張</b>卡。</p>
+</div>
+
+<h2>6.〔新增〕建立工作（Planner 卡片）— 設定參考 1015</h2>
+<div class="card">
+在 <code>Apply_to_Each_發卡</code> 內，先取本人的延遲列、再建卡：
+<h3>6-1 篩選_本人延遲（Filter array）</h3>
+<table>
+<tr><th>欄</th><th>值</th></tr>
+<tr><td>來源 From</td><td><code>@body('仍延遲_篩選陣列')</code></td></tr>
+<tr><td>條件（<span class="fx">fx</span>）</td><td><code>@equals(toLower(item()?['field_3']),toLower(items('Apply_to_Each_發卡')))</code></td></tr>
+</table>
+<h3>6-2 建立工作（Planner → CreateTask V3）</h3>
+<table>
+<tr><th>參數（PA 顯示）</th><th>值</th></tr>
+<tr><td>群組 Id（groupId）</td><td><code>279b64ef-946c-42c1-a4e1-a49b3e13aa0c</code></td></tr>
+<tr><td>方案 Id（planId）</td><td><code>K9FFvDmCNUihJo3c4JW4z8kAD4jy</code></td></tr>
+<tr><td>貯體 Id（bucketId）</td><td><code>pK3EQPexeE6igHrvkN-_eMkABgOj</code></td></tr>
+<tr><td>標題（title，<span class="fx">fx</span>）</td><td><code>concat(first(body('篩選_本人延遲'))?['field_4'], ' 本日', formatDateTime(addHours(utcNow(),8),'M/d'), '延遲未到，請回填line訊息表單')</code></td></tr>
+<tr><td>到期日（dueDateTime，<span class="fx">fx</span>）</td><td><code>addHours(utcNow(),8)</code></td></tr>
+<tr><td>指派（assignments，<span class="fx">fx</span>）</td><td><code>join(union(createArray(items('Apply_to_Each_發卡')),createArray('wenyuhuang@techartgroup.com','ihueychen@techartgroup.com')),';')</code></td></tr>
+</table>
+<p style="color:var(--muted);font-size:12.5px"><code>field_4</code>＝姓名。<b>指派吃 email 字串、<code>;</code> 串接</b>（連接器自解析成使用者、免轉 userId）＝該延遲同事＋<code>wenyuhuang</code>＋<code>ihueychen</code>，三個 GUID 與兩位固定收件人皆<b>沿用 1015</b>。若迴圈名非 <code>Apply_to_Each_發卡</code>，<code>items('…')</code> 改成實際迴圈名。</p>
+</div>
+
+<h2>7.〔選配〕同步寄彙整信（要才加）</h2>
+<div class="card">
+1015 除了發卡還寄一封彙整信到 <code>domain.e</code>。<b>你只要發卡的話這段可不做</b>；要的話在 <code>建立工作</code> 之後加：
+<table>
+<tr><th>動作</th><th>設定</th></tr>
+<tr><td><b>選取_任務明細</b>（Select）</td><td>From <code>@body('篩選_本人延遲')</code>　／　對應 <span class="fx">fx</span> <code>@concat('． ', item()?['field_5'], ' | ', item()?['field_6'])</code></td></tr>
+<tr><td><b>聯結_任務明細</b>（Join）</td><td>From <code>@body('選取_任務明細')</code>　／　聯結字元 <code>&lt;br/&gt;</code></td></tr>
+<tr><td><b>傳送電子郵件 (V2)</b> 收件者</td><td><code>domain.e@techartgroup.com</code></td></tr>
+<tr><td>主旨</td><td><code>提醒卡_未填line通知表單_@{first(body('篩選_本人延遲'))?['field_4']} | @{formatDateTime(addHours(utcNow(),8),'MM/dd')}</code></td></tr>
+<tr><td>本文</td><td><code>&lt;p&gt;@{first(body('篩選_本人延遲'))?['field_4']}今日@{formatDateTime(addHours(utcNow(),8),'MM/dd')} 尚未填寫line表單：&lt;/p&gt;&lt;p&gt;&lt;br&gt;@{body('聯結_任務明細')}&lt;/p&gt;</code></td></tr>
+<tr><td><b>延遲</b>（Wait）</td><td>15 秒（避免 Planner／郵件節流）</td></tr>
+</table>
+<p style="color:var(--muted);font-size:12.5px"><code>field_5</code>＝方案名稱、<code>field_6</code>＝任務名稱。</p>
+</div>
+
+<h2>8. 測試</h2>
+<div class="card">
+<ol>
+<li>備份複製後，<b>手動測試（Test → Manually）</b> 跑整支 0955。</li>
+<li>先確認清單今日列已被前段更新出 <code>field_7</code>＝<code>3. 延遲…</code>（沒有延遲者就自己手動把某測試列 <code>field_7</code> 設成 <code>3. 延遲（09:30沒到公司，請填寫假卡）</code> 模擬）。</li>
+<li>到指定 Planner（plan <code>K9FFvDmC…</code> / bucket <code>pK3EQPex…</code>）看新卡：標題＝<code>&lt;姓名&gt; 本日 M/d 延遲未到，請回填line訊息表單</code>、指派含本人＋wenyuhuang＋ihueychen、到期＝今天。</li>
+<li><b>反向確認</b>：<code>field_7</code> 為 <code>2.</code>（加班）／<code>1.</code>／<code>4.</code>／「已修改」／占位的人<b>都沒有</b>被發卡。</li>
+<li>同一人多筆延遲 → 只發<b>一張</b>卡。</li>
+</ol>
+</div>
+
+<h2>9. 注意彙整</h2>
+<div class="card warn">
+<ul>
+<li><b>務必「重讀」</b>：發卡名單來自 <code>取得清單項目_發卡</code>（迴圈後重讀），不要接前面 Phase2 的 <code>取得清單項目</code>（那是更新前的舊值）。</li>
+<li><b>欄位用內部名 <code>field_N</code></b>：<code>field_3</code>(Email)／<code>field_4</code>(姓名)／<code>field_5</code>(方案)／<code>field_6</code>(任務)／<code>field_7</code>(狀態)。用顯示名會回 <code>null</code>。</li>
+<li><b>排除「加班」靠 <code>startsWith('3.')</code></b>：已排除 <code>2.</code> 開頭。前提＝0955 不改寫 <code>2.</code> 列（確認過：2. 落在「不動」分支）。若你的選項文字實際非 <code>2.</code> 開頭，回報我調條件。</li>
+<li><b>重複發卡</b>：每天排程跑一次沒問題；<b>手動重跑會再建一張卡</b>（Planner 不自動去重）。</li>
+<li><b>（選配，未確認）排除已請假者</b>：若不想催已被 1000 米米信判定請假者，把 §4 條件改為<br><code>@and(startsWith(trim(coalesce(item()?['field_7'],'')),'3.'),not(startsWith(coalesce(item()?['field_8'],''),'請假')))</code>（<code>field_8</code>＝實際出勤狀態）。待你確認再加。</li>
+<li><b>$filter 巢狀單引號</b>：沿用 0955 既有 <code>concat</code> 寫法即可；若報錯改用先 Compose 再餵篩選查詢。</li>
+</ul>
+</div>
+
+</div>
+</body>
+</html>

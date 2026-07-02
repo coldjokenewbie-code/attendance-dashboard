@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>本日清單 → TaskDB 備份 建置指南</title>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--warn:#b45309;--ok:#15803d;--del:#b91c1c;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Helvetica Neue",Arial,"Microsoft JhengHei",sans-serif;line-height:1.7;}
+  .wrap{max-width:980px;margin:0 auto;padding:34px 24px 90px;}
+  h1{font-size:23px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:22px;}
+  h2{font-size:18px;margin:30px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--accent);}
+  h3{font-size:15px;margin:16px 0 6px;color:#111827;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  code{background:#eef2ff;color:#3730a3;padding:1px 5px;border-radius:4px;font-size:12.5px;word-break:break-all;}
+  pre{background:#0f172a;color:#e2e8f0;padding:13px;border-radius:8px;overflow:auto;font-size:12.5px;line-height:1.5;}
+  pre code{background:none;color:inherit;padding:0;}
+  ol,ul{margin:6px 0;padding-left:22px;} li{margin:6px 0;}
+  table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13px;}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f5f9;}
+  .warn{border-left:4px solid var(--warn);background:#fffbeb;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .ok{border-left:4px solid var(--ok);background:#f0fdf4;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .pick{background:#ecfeff;color:#155e75;padding:1px 6px;border-radius:4px;font-size:12.5px;font-weight:600;}
+  .fx{background:#f5f3ff;color:#6d28d9;padding:1px 6px;border-radius:4px;font-size:12px;font-weight:600;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>本日清單 → TaskDB 備份 建置指南</h1>
+<div class="sub">2026-06-26 ｜ Claude@Mac ｜ 手動觸發：把 SharePoint 清單 AttendanceHistory 的「今日」列，append 寫入 TaskDB.xlsx 的 TaskDB 表</div>
+
+<div class="warn">
+<b>三個決策（已拍板）</b>：① 寫法＝<b>append 累積、不清空</b>（TaskDB 持續長大）。② 觸發＝<b>手動按鈕</b>（即時雲端流程）。③ TaskDB 有但清單沒有的 3 欄（<code>Line 顯示名稱</code>、<code>到期日</code>、<code>狀態</code>）<b>一律留空</b>。
+</div>
+
+<div class="warn">
+<b>平台鐵則（沿用前案踩坑）</b>：① 所有運算式都用 <span class="fx">fx</span> 插入成紫色 chip，<b>不要在欄位直接打字</b>（否則被當字面字串、不計算）。② 此清單中文欄的<b>內部名是 field_N</b>，運算式一律用內部名：<code>field_2 日期／field_3 Email／field_4 姓名／field_5 方案名稱／field_6 任務名稱／field_7 表單回覆／field_8 實際出勤狀態</code>；唯一鍵欄維持 <code>Title</code>。③ 時區用 <code>addHours(utcNow(),8)</code>，不碰 <code>convertFromUtc</code>（此環境時區 ID 會報無效）。
+</div>
+
+<h2>整體結構</h2>
+<div class="card">
+<pre><code>觸發：手動觸發流程（Manually trigger a flow）
+└ ① 撰寫 Compose_今日篩選   = startswith(Title,'yyyyMMdd_')  字串（fx）
+└ ② 取得清單項目（SharePoint｜AttendanceHistory｜篩選查詢＝Compose_今日篩選）
+└ ③ 套用至每一個（Get items 的 value）
+     └ 將列新增至資料表（Excel｜TaskDB.xlsx｜表格 TaskDB；11 欄對應，3 欄留空）</code></pre>
+<p style="color:var(--muted);font-size:12.5px">「今日」只靠 <code>Title</code> 前綴判定（Title＝<code>yyyyMMdd_email_任務id</code>），不依賴 <code>日期</code>／<code>DateString</code>（DateString 樣本為空、不可靠）。</p>
+</div>
+
+<h2>欄位對應（清單 → TaskDB）</h2>
+<div class="card">
+<table>
+<tr><th>TaskDB 欄（Excel 表頭）</th><th>來源（清單）</th><th>Add row 填入的 fx 運算式</th></tr>
+<tr><td>ID (yyyyMMdd_Email)</td><td>Title（唯一鍵）</td><td><code>item()?['Title']</code></td></tr>
+<tr><td>檢核日期</td><td>日期</td><td><code>item()?['field_2']</code></td></tr>
+<tr><td>方案名稱</td><td>方案名稱</td><td><code>item()?['field_5']</code></td></tr>
+<tr><td>任務名稱</td><td>任務名稱</td><td><code>item()?['field_6']</code></td></tr>
+<tr><td>姓名</td><td>姓名</td><td><code>item()?['field_4']</code></td></tr>
+<tr><td>Email</td><td>Email</td><td><code>item()?['field_3']</code></td></tr>
+<tr><td>Line 顯示名稱</td><td>—（清單無）</td><td style="color:var(--muted)">留空</td></tr>
+<tr><td>到期日</td><td>—（清單無）</td><td style="color:var(--muted)">留空</td></tr>
+<tr><td>工作延遲_出勤回覆</td><td>表單回覆</td><td><code>item()?['field_7']</code></td></tr>
+<tr><td>狀態</td><td>—（清單無）</td><td style="color:var(--muted)">留空</td></tr>
+<tr><td>10點出勤狀況</td><td>實際出勤狀態</td><td><code>item()?['field_8']</code></td></tr>
+</table>
+<p style="color:var(--muted);font-size:12.5px">清單 <code>field_1 員工編號</code> 在 TaskDB 無對應欄，捨棄不寫（TaskDB 用 ID 不用員工編號）。</p>
+</div>
+
+<h2>逐步建置</h2>
+
+<h3>步驟 0：建立流程</h3>
+<div class="card">
+Power Automate → 建立 → <b>即時雲端流程</b> → 選 <b>手動觸發流程（Manually trigger a flow）</b> → 命名「清單轉TaskDB備份」。
+</div>
+
+<h3>步驟 1：Compose_今日篩選（產出 OData 篩選字串）</h3>
+<div class="card">
+新增動作 <code>Compose</code>（撰寫），命名 <b>Compose_今日篩選</b>，輸入用 <span class="fx">fx</span> 貼整段：
+<pre><code>concat('startswith(Title,''',formatDateTime(addHours(utcNow(),8),'yyyyMMdd'),'_'')')</code></pre>
+<p>產出像 <code>startswith(Title,'20260626_')</code> 這樣的<b>純字串</b>。</p>
+<div class="warn" style="margin-top:8px"><b>為何先 Compose 再引用</b>：$filter 欄直接打運算式會被當字面、巢狀單引號又會被截壞（前案踩過）。先 Compose 成完整字串、再把 Compose 的輸出整個丟進篩選查詢，最穩。expression 內嵌單引號用兩個 <code>''</code> 表示一個。</p>
+</div>
+
+<h3>步驟 2：取得清單項目</h3>
+<div class="card">
+新增 <b>SharePoint → 取得項目（Get items）</b>：
+<ul>
+<li><b>網站位址</b>：選 AttendanceHistory 所在站台。</li>
+<li><b>清單名稱</b>：AttendanceHistory。</li>
+<li><b>篩選查詢（Filter Query）</b>：點欄位 → 動態內容 → 插入 <b>Compose_今日篩選 的輸出</b>（整個 token，不要自己打字）。</li>
+<li>展開「進階選項」→ <b>Top Count</b> 設 <code>5000</code>，並把<b>分頁（Pagination）</b>開、上限 5000，避免漏列。</li>
+</ul>
+<div class="ok"><b>驗證</b>：先單獨測這步，看輸出 <code>value</code> 是否只含今日列、且筆數合理。空白＝今日前綴對不上（檢查 Compose 字串／是否真有今日資料）。</div>
+</div>
+
+<h3>步驟 3：套用至每一個 → 將列新增至資料表</h3>
+<div class="card">
+新增 <b>套用至每一個（Apply to each）</b>，來源選 <b>取得項目 的 value</b>。迴圈內新增 <b>Excel Online (Business) → 將列新增至資料表（Add a row into a table）</b>：
+<ul>
+<li><b>位置 / 文件庫 / 檔案</b>：選 TaskDB.xlsx 所在站台（<code>TEST_PLANNER_CK</code>）與文件庫、檔案。</li>
+<li><b>表格</b>：<code>TaskDB</code>。</li>
+<li>選完表格後會列出 11 個欄位，<b>逐欄用 <span class="fx">fx</span> 貼上方對應表的運算式</b>；<code>Line 顯示名稱</code>、<code>到期日</code>、<code>狀態</code> 三欄<b>空著不填</b>。</li>
+</ul>
+<div class="warn"><b>注意</b>：運算式裡的 <code>item()</code> 指「當前迴圈的清單項目」，務必在 Apply to each <b>內</b>插入；別用 <code>items('套用至每一個')?['field_x']</code> 的長式（同義，但 <code>item()</code> 較短不易錯）。</div>
+</div>
+
+<h2>重跑會重複 — 防呆（可選）</h2>
+<div class="warn">
+你選的是 <b>append 不清空</b>：<b>同一天手動跑兩次，TaskDB 會出現兩份今日資料</b>。三種處置擇一：
+<ol>
+<li><b>紀律法（最簡單）</b>：約定「每天只手動跑一次」，跑完即停。</li>
+<li><b>跑前手動清</b>：執行前先到 TaskDB.xlsx 手動刪掉今日（<code>ID</code> 以今日 <code>yyyyMMdd_</code> 開頭）的舊列，再跑。</li>
+<li><b>流程內去重（要我加再說）</b>：迴圈內 Add row 前先「列出資料表中的列」TaskDB、用 <code>ID</code> 比對當前 Title，已存在就跳過。會多一次 Excel 讀取／列、速度較慢，目前未建。</li>
+</ol>
+</div>
+
+<h2>備註</h2>
+<div class="card">
+<ul>
+<li><b>檢核日期格式</b>：清單 <code>日期</code> 是文字 <code>2026/3/2</code>（無補零），原樣寫入 TaskDB；若 TaskDB 該欄是日期格式可能存成文字，備份用途可接受，要嚴格日期型再議。</li>
+<li><b>WeekDB / MonthDB</b>：本流程只寫 TaskDB。若既有彙整鏈路靠 TaskDB 往上捲，append 模式下 TaskDB 已含多天資料，捲動邏輯需另確認（本案未動）。</li>
+<li><b>站台確認</b>：TaskDB.xlsx 實際在 <code>TEST_PLANNER_CK</code>（test 即正式在用）；以連接器實選為準。</li>
+</ul>
+</div>
+
+</div>
+</body>
+</html>
