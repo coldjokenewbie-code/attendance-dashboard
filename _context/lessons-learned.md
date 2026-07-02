@@ -9,6 +9,13 @@
 - **「參考某流程」先確認角色**：是「要改的主體」還是「只抄設定的範本」。使用者遞 1015 只為抄 Planner CreateTask 設定（GUID/指派寫法），非要重建該流程；能在既有流程尾端加動作就不另作新流程（使用者明確偏好）。
 - **交付文件禁行銷式標籤**：不給概念貼口號（「兩軸分清楚」）；名稱/欄位/時段直述。使用者 2026-07-01 糾正。
 
+## 2026-06-24 [Claude@Win]（Canvas gallery 逐列自動存 + 控件版本 + ai-team CLI on Windows）
+- **gallery 內 OnChange 自動存「無限迴圈＋通知洗版」根因＝控件 Items 沒載入→Selected 變空→無 guard→不斷寫空值**：前版用未驗證的 `Classic/ComboBox`，陣列 Items 沒正常繫結→只剩預設「待確認」、Selected 空，OnChange 又沒擋空值→寫空→資料刷新→重算 Default→再 fire，無限循環。修法兩段：(1) 換「Items 穩定顯示」控件——`Classic/DropDown@2.3.1`＋`Items.Value: =Value`；(2) OnChange 三重 guard：`!IsBlank(Self.Selected.Value) && <>「（待確認）」 && <> 現值` 才寫。寫回後現值＝選值→guard 再為假→斷迴圈。雙控件（下拉＋自由文字欄）寫同一欄時各加同款 guard 即不互相覆蓋（文字欄寫自訂值→下拉 Default 落清單外→選取變空→`!IsBlank` guard 擋住，不會用空值蓋掉）。
+- **gallery 逐列「目前值」用 `AddColumns(... As alias, Col, LookUp(...))` 在 Items 階段一次 join，別在每個控件 Default 內各自 LookUp**：每列重複 LookUp 不穩、易「全部顯示預設值」。Default 改讀 `ThisItem.<新欄>`。**巢狀 LookUp 內引用外層列必須用 `As` 命名**（`Sort(team_member,…) As tm` → `Email = tm.Email`）；寫 `ThisRecord.Email` 會指到內層 LookUp 的資料源而非外層列——Codex 建議就犯此錯，採納外部 agent 的程式碼要逐行守門。
+- **pa.yaml 控件版本只用「使用者自己匯出裡出現過」的**：擅自挑 `Classic/ComboBox@2.4.0`（沒驗證）疑似沒正常繫結釀 bug。匯出實證可貼：`Label@2.5.1 / GroupContainer@1.5.0 / Classic/Button@2.2.0 / Classic/DropDown@2.3.1 / Gallery@2.15.0 / Rectangle@2.3.0`。清單沒有的控件優先改用已驗證控件達同效；要用就標「版本推測、貼不上換 PA 提示版本」。舊格式（無 @version）若該畫面已實證可貼（ScrToday＋Classic/Radio）就**原格式只改 style**，別為統一而轉新版引入版本風險。
+- **Windows PowerShell 叫 codex/agy headless：長 prompt 含雙引號用 `$var` 直傳會被原生參數解析拆碎**（codex 報 `unexpected argument`、agy exit 255；PS 5.1 對含 `"` 字串的自動加引號會壞）。正解走 stdin：`Get-Content -Raw prompt.txt | codex exec -s read-only --skip-git-repo-check -`（`-` 讀 stdin、`-o out.txt` 收最終訊息）。agy 同理需 stdin/檔案餵入，直傳必壞。
+- **ai-team 以 PO 硬需求否決 agent 建議**：Codex 主張「OnChange 不該寫 SharePoint、改加儲存鈕 Patch」，但使用者明示「不要儲存鈕」→ Tech Lead 採其對的部分（AddColumns 預 join）、否決加鈕，改以 guard 解迴圈。UpdateIf vs Patch：本資料模型每人每日多工作列、狀態複寫全列＝原設計語意，保留 `UpdateIf`（Codex 的 Patch 假設每人每日單列，不符）。
+
 ## 2026-06-22（Power Apps / Power Automate 平台踩坑彙整）
 - **Power Automate 運算式必須用「fx 插入成 token」，不可在欄位直接打字**：直接打 `formatDateTime/concat/toLower/...` 會被當「字面字串」不計算（症狀：執行輸出出現整段運算式文字、或 Select 報「請輸入有效的 JSON」）。這是本次 0945 反覆卡關的真正主因。判斷：欄位裡是灰字＝字面(錯)、彩色 chip＝運算式(對)。**指南一律提供可整段貼的運算式，並註明「用 fx 插入」**。
 - **SharePoint 清單欄位「內部名」≠ 顯示名**：CSV 匯入/中文欄常變 `field_N`（Email→field_3、姓名→field_4…）；運算式用顯示名 `item()?['Email']` 會回 null。**從「取得項目」一次執行的原始輸出 JSON key 即可確認對照**，別猜。Title、Email(若 ASCII)有時保留原名，但本案連 Email 都成 field_3。
@@ -26,6 +33,15 @@
 - **Canvas 垂直 gallery 列高固定**：無法每列依內容動態高。內容多寡不一時，用內嵌 gallery＋捲軸，或固定夠高（無完美的 per-row 自動高）。
 - **App 忠實呈現資料源、欄位不會自己錯開**：使用者回報「編號跟姓名對不上」，比對後是來源 team_member 的員工編號本身排錯（3 個林姓對調），非程式 bug。同一列的多欄不可能被程式錯開——先用 Email join 比對來源資料找出處，別預設是 UI 問題。
 - **沙盒產出的檔帶 `com.apple.provenance`（受保護、清不掉）**：macOS 會每次開檔重新隔離、跳 Gatekeeper。沙盒內（含關閉 sandbox 的 cp -X）都移不掉；只能由使用者在自己的 Terminal.app 重建檔案。匯入 SharePoint 不經 Gatekeeper、不受影響。
+
+- **Power Automate「條件 Condition」卡沒有「進階模式」**（新版 designer；「進階模式」只有「篩選陣列」有）：要塞複雜布林運算式 → 放**左值(fx)**、運算子選**等於**、右值**用 fx 打 `true`**（boolean）。右值直接在格子打字 `true` 會變字串 `'true'`，`equals(布林true,'true')` 永遠 false → 條件永遠不成立、永遠不觸發 True 分支。**`false` 同坑**：右值打字 `false`→字串 `'false'`，`equals(布林,'false')` 對誰都 false。右值一律 fx 插成 boolean。
+- **新版 Condition 兩個運算元都是自由格，最容易出兩種「運算式貼錯/被當字面」的錯**（0930 補占位實測，解壓 definition 才看得出，designer 介面看不出來）：① **左值被貼成別的運算式**——0623 的占位 Condition 左值竟是「是」分支建立項目的 Title `concat(...,'_TaskOnSchedule')`（字串），跟 `@false` 比永遠 false → 是分支永不跑、占位一張不寫、清單只剩延遲人（右值 `@false` 其實是對的，錯在左值）。左值必須是 `contains(延遲Emails,toLower(email))`。② **AppendToArrayVariable 的值少 `@`**＝字面字串：`延遲Emails` 裝的是文字「toLower(...)」非 email，contains 永遠不中，修好①後延遲者反而也被補占位（雙重列）。值要 fx 插成 `@toLower(...)`。兩者都印證「運算式必須 fx 插成 token」與「先解壓 definition.json 對 expression，別信 designer 表象」。
+- **多動作連動改有順序依賴，別把後置動作報錯當「該動作壞了」**：名冊版把 `apply_to_each` 的 foreach 從「字串陣列(Select 去重)」改成「跑名冊物件」。若先改內層 `篩選` 的 `items('apply_to_each')?['Email']`、卻還沒改 foreach，迴圈值仍是字串、對字串取 `?['key']` 必爆——表面像「篩選一直出問題」，真因在上游 foreach 還沒換。連動改先排順序：資料源 → 迴圈來源 → 內層運算式。
+- **採納外部 agent(Codex)建議要用自有系統知識守門**：Codex 不知 Planner2Line 架構，建議「寄信 To 改成個人 Email」；實際逐人路由靠**主旨姓名**對 `contacts.json`、To 必須是中繼信箱 `domain.e`。涉及專屬系統的建議，Tech Lead 須以掌握的架構**否決**，不照單全收（呼應「先讀現行碼再設計」）。
+- **接手既有 Power Automate 流程先解壓實際匯出 definition.json，別靠指南/記憶猜 action 名稱**：zip 內 `Microsoft.Flow/flows/<guid>/definition.json` 有真 action 名、真欄繫結、真 URL、真連線參照——一次坐實「`選取` 寫成 `item()?['Email']` 映 null（清單內部名是 field_3）」「`篩選` where 寫死測試 email」等病灶，且讓指南用真名寫、可直接照改。
+- **並行兩個 Claude CLI 用 git worktree＋分支隔離**：同 repo 兩 CLI 各自 `git worktree add` 到獨立目錄＋獨立分支，working tree／git index 完全隔離、互不可見、不互踩 `git add`；共用紀錄檔（TaskLog/lessons/INDEX）改「**各寫各的新檔**」避免 merge 衝突；各自完工 merge main（後者先 pull）。
+- **SharePoint 清單排序：日期欄是文字且非零填補就排不對，改用 yyyyMMdd 鍵排序**：`日期` 單行文字、格式 `yyyy/M/d`（非零填補）時文字排序錯位（`2026/12/1` 排在 `2026/3/2` 前、`2026/6/9` 排在 `2026/6/24` 後）。快解：檢視改依 **Title 遞減**——Title＝`yyyyMMdd_…` 固定寬度零填補，**文字序＝時間序**，最新置頂；對回填列亦正確（優於依「建立時間」，回填列建立時間擠在匯入當下、不反映業務日期）。正解：另建真「日期及時間」欄供區間篩選/分組。**設計時識別/排序鍵就用零填補固定寬度字串。**
+- **git worktree 的「資料夾」是本機產物、不隨 remote 同步；跨機只能靠分支/commit**：`git push` 只帶分支與 commit，worktree 目錄結構不會過去。要在另一台複製「多資料夾並行佈局」＝先把各分支 `push -u origin <branch>`，新機 `git clone` 後對每支 `git worktree add <相對路徑> <branch>` 重建。換機鐵律：**離機前先 commit+push**，未提交的東西一律不過去。可把重建步驟寫進 `INDEX.md` 頂段（放 main 上，新機 clone 預設分支即讀到），讓新機 Claude 主動協助重建。
 
 ## 2026-06-16
 - **儲存選型準則：唯讀小表走 Excel 直連，多人寫＋需權限走清單**：Power Apps 可直連 SharePoint/OneDrive 上的 Excel（須格式化 Table），但僅適合「唯讀＋小量（<2000 列）＋低頻」——如請假餘額、team_member，這種建清單反而多餘。反之，會被多人並發寫、需欄位／項目級權限、或資料可能累積的，必須用 SharePoint 清單：如出勤 AttendanceHistory（員工填回覆＋行政填狀態＋0930 自動寫入三方並寫、`實際出勤狀態` 要員工唯讀），Excel 會鎖檔／互相覆蓋、做不到欄位權限、又非委派受 2000 列上限。**按讀寫特性分流，不是全清單或全 Excel。**
