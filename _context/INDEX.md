@@ -1,5 +1,5 @@
 # 出勤專案 — 現況總覽 (INDEX)
-> 進場先讀。最後更新：2026-06-24
+> 進場先讀。最後更新：2026-07-02
 
 ## ✅ 跨機接續：Windows 端 worktree 已重建（2026-06-24 [Claude@Win] 完成）
 > 三資料夾並列佈局已在 DESKTOP-7SF21LR 重建完成，與 Mac 一致：
@@ -31,7 +31,7 @@ MS365 Power Apps 員工出勤儀表板；先重作模組一 Popup MVP，讓員�
   - `workingfiles/canvas/匯入指南.html`、`變更_回覆改單選.html`
   - 結案紀錄：`_context/archive/ClosedTaskLog_2026-06-13_module1-canvas-yaml.md`
 - **模組一介面更新（2026-06-24 [Claude@Win]）**：行政頁重作成表格版＋自動存（`workingfiles/canvas/ScrAdmin_table.pa.yaml`）；ScrAdmin／ScrToday 統一簡約淺色風格。**待 PO 實機驗收**。
-- **最新工作紀錄**：`_context/TaskLog_2026-06-24_儀表板表格化與淺色改版.md`（表格化＋自動存 bug 鏈＋雙頁淺色＋ai-team 審查）。前一份：`_context/TaskLog_2026-06-16_架構落實與晨間流程.md`。
+- **最新工作紀錄**：`_context/TaskLog_2026-06-16_架構落實與晨間流程.md`（06-30~07-02 追記：0955 修判定＋發卡、1005/1030 米米信提醒指南、1000 視窗修單日、field_8 粒度待決策）。另一份：`_context/TaskLog_2026-06-24_儀表板表格化與淺色改版.md`（表格化＋自動存 bug 鏈＋雙頁淺色，待 PO 實機驗收）。
 - 欄位已從 `_context/AttendanceHistory.csv` 確認（九欄顯示名稱）。
 
 ## 待辦 / 下一步
@@ -42,6 +42,22 @@ MS365 Power Apps 員工出勤儀表板；先重作模組一 Popup MVP，讓員�
 - 請 Antigravity 補上它的 ai-team CLI 協作版本：權限需求、寫檔限制、編碼風險、signal 寫入慣例。
 - Claude / Antigravity 版本補齊後，推回 WTF repo，系統化成共用流程。
 - 整理完成後分享給同事，讓 ai-team CLI 協作可被團隊複用。
+
+## AttendanceHistory 清單欄位對照（內部名 field_N ↔ 顯示名）
+> 由「取得項目」原始輸出證實。Power Automate 運算式一律用內部名（顯示名回 null）。
+
+| 內部名 | 顯示名 |
+|---|---|
+| Title | ID（yyyyMMdd_Email，唯一鍵） |
+| field_1 | 員工編號 |
+| field_2 | 日期 |
+| field_3 | Email |
+| field_4 | 姓名 |
+| field_5 | 方案名稱 |
+| field_6 | 任務名稱 |
+| field_7 | 表單回覆（延遲回覆；0955 再巡檢寫回） |
+| field_8 | 實際出勤狀態（米米信；1000/1010 寫入） |
+| field_9 | DateString（樣本為空，不可靠；「今日」用 Title 前綴 yyyyMMdd_ 篩） |
 
 ## 備註
 - `_context/AI_TEAM_DISCUSSION_2026-06-08_dashboard-rebuild.md` 是原始 ai-team 討論檔，包含 Codex、Antigravity、Claude 意見。
