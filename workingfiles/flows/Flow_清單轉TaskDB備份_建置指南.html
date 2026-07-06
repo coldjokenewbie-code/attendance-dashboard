@@ -103,8 +103,22 @@ Power Automate → 建立 → <b>即時雲端流程</b> → 選 <b>手動觸發�
 <ul>
 <li><b>位置 / 文件庫 / 檔案</b>：選 TaskDB.xlsx 所在站台（<code>TEST_PLANNER_CK</code>）與文件庫、檔案。</li>
 <li><b>表格</b>：<code>TaskDB</code>。</li>
-<li>選完表格後會列出 11 個欄位，<b>逐欄用 <span class="fx">fx</span> 貼上方對應表的運算式</b>；<code>Line 顯示名稱</code>、<code>到期日</code>、<code>狀態</code> 三欄<b>空著不填</b>。</li>
+<li>選完表格後會列出 11 個欄位框。逐一點進每個框 → 點框右上角 <span class="fx">fx</span> 圖示切換成運算式模式 → 依下表貼入：</li>
 </ul>
+<table>
+<tr><th>欄位框</th><th>點 fx 後貼入</th></tr>
+<tr><td>ID (yyyyMMdd_Email)</td><td><code>item()?['Title']</code></td></tr>
+<tr><td>檢核日期</td><td><code>item()?['field_2']</code></td></tr>
+<tr><td>方案名稱</td><td><code>item()?['field_5']</code></td></tr>
+<tr><td>任務名稱</td><td><code>item()?['field_6']</code></td></tr>
+<tr><td>姓名</td><td><code>item()?['field_4']</code></td></tr>
+<tr><td>Email</td><td><code>item()?['field_3']</code></td></tr>
+<tr><td>Line 顯示名稱</td><td style="color:var(--muted)">不點這個框，保持空白</td></tr>
+<tr><td>到期日</td><td style="color:var(--muted)">不點這個框，保持空白</td></tr>
+<tr><td>工作延遲_出勤回覆</td><td><code>item()?['field_7']</code></td></tr>
+<tr><td>狀態</td><td style="color:var(--muted)">不點這個框，保持空白</td></tr>
+<tr><td>10點出勤狀況</td><td><code>item()?['field_8']</code></td></tr>
+</table>
 <div class="warn"><b>注意</b>：運算式裡的 <code>item()</code> 指「當前迴圈的清單項目」，務必在 Apply to each <b>內</b>插入；別用 <code>items('套用至每一個')?['field_x']</code> 的長式（同義，但 <code>item()</code> 較短不易錯）。</div>
 </div>
 
