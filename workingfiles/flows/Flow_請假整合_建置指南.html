@@ -1,0 +1,205 @@
+<meta charset="utf-8">
+<title>請假整合 — 全流程建置指南</title>
+<style>
+  :root{--fg:#1f2937;--muted:#6b7280;--line:#e5e7eb;--bg:#fff;--card:#f8fafc;--blue:#2563eb;--red:#b91c1c;--amber:#b45309;--green:#15803d}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI","Microsoft JhengHei",system-ui,sans-serif;color:var(--fg);background:var(--bg);line-height:1.6;font-size:15px}
+  .wrap{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font-size:24px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:20px}
+  h2{font-size:19px;margin:32px 0 8px;padding-top:14px;border-top:2px solid var(--line)}
+  h3{font-size:16px;margin:18px 0 6px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:10px 0}
+  code{background:#eef2f7;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-family:Consolas,monospace;font-size:12.5px;word-break:break-all}
+  pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:12px 14px;overflow-x:auto;font-size:12.5px;line-height:1.5}
+  pre code{background:none;border:none;color:inherit;padding:0}
+  table{border-collapse:collapse;width:100%;margin:10px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:#f1f5f9}
+  .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:20px;color:#fff;vertical-align:middle}
+  .t-new{background:var(--green)} .t-edit{background:var(--blue)} .t-todo{background:var(--amber)}
+  .muted{color:var(--muted);font-size:12.5px}
+  .warn{border-left:4px solid var(--amber);background:#fffbeb}
+  ol,ul{padding-left:22px}
+  b{font-weight:600}
+</style>
+<div class="wrap">
+
+<h1>請假整合 — 全流程建置指南</h1>
+<div class="sub">2026-07-06 ｜ Claude@Win ｜ 需求源：<code>workingfiles/0706.txt</code>（PO 已確認 A1/2/3、B）。目的：當天請假者自動標記、且各延遲通知/提醒一律排除，不再打擾已請假的人。</div>
+
+<div class="card">
+<b>一句話</b>：0945 加行事曆判定「當天請假」→ 對其延遲列寫 <code>表單回覆 field_7 = 4. 延遲（09:30沒到公司，當天已請假）</code> 並<b>不寄延遲信</b>；下游 0955 發卡、1005/1030 提醒一律排除請假者。<code>實際出勤狀態 field_8=「請假」</code>維持由 1000 米米信流程寫，兩欄不衝突。
+</div>
+
+<h2>0. 資料欄位與判定約定</h2>
+<div class="card">
+<ul>
+<li><code>field_7</code>＝表單回覆（員工填 / 0945 / 0955 寫）；<code>field_8</code>＝實際出勤狀態（1000 米米信寫，請假寫「請假」）。</li>
+<li><b>員工回覆選項（已更新為 5 項）</b>：<code>1.</code>已完成／<code>2.</code>延遲(已到補進度)／<code>3.</code>延遲(沒到·填假卡)／<code>4.</code>延遲(沒到·當天已請假)／<code>5.</code>其他(5分內改卡)。</li>
+<li><b>「仍延遲」判定</b>＝最終 <code>field_7</code> 以 <code>3.</code> 開頭（0955 據此發卡）。請假者 <code>field_7=4.</code>→非 <code>3.</code>→天然不發卡。</li>
+<li><b>行事曆判請假</b>沿用 1000 米米信現行技術（主旨含姓名＋當天日期＋10:00/全天）。</li>
+</ul>
+<div class="warn card" style="margin-top:10px">
+<b>模式與右值填法（全指南通則，務必照做）</b>
+<ul>
+<li><b>篩選陣列（Filter array）</b>有兩種模式：<b>基本模式</b>＝左值/運算子/右值三格；<b>進階模式</b>＝單一 <code>@布林運算式</code> 一格。本指南<b>每處都標明用哪個</b>。（右上「⋯ → 編輯進階模式」可切換）</li>
+<li><b>條件（Condition）</b>新版<b>只有基本模式</b>（左/運算子/右三格），<b>沒有進階模式</b>——複雜布林要塞左值 fx。</li>
+<li><b>右值鐵律</b>：<b>布林（true/false）與數字</b>比較，右值<b>一律 fx 插入 token</b>（直接打字會變字串 → <code>equals(布林/數字,'字串')</code> 永遠 false）；<b>純字串字面值</b>（如 <code>Y</code>）可直接在格子打字。</li>
+<li>凡是「fx」＝在該格點 <span style="font-style:italic">fx</span> 圖示插入成彩色 token，不是直接打字（灰字＝字面、彩 chip＝運算式）。</li>
+</ul>
+</div>
+</div>
+
+<h2>1. 員工回覆選項 4→5 <span class="tag t-edit">已改</span></h2>
+<div class="card">
+<p>已更新 <code>ScrToday_paste.pa.yaml</code> 的 <code>radReply.Items</code>（新增第 4「請假」、原「其他」順移為 5）：</p>
+<pre><code>["1. 已完成（請自行勾掉卡片）",
+ "2. 延遲（09:30已到公司在補進度）",
+ "3. 延遲（09:30沒到公司，請填寫假卡）",
+ "4. 延遲（09:30沒到公司，當天已請假）",
+ "5. 如為其他狀況，請於5分鐘內更新卡片"]</code></pre>
+<p class="muted">彈窗 radio 高度是 <code>Parent.Height</code> 算的，自動容納第 5 項，無需改高度。全選貼上 ScrToday 即生效。</p>
+</div>
+
+<h2>2. 0945 延遲通知信：加請假判定＋寫 field_7=4＋排除寄信 <span class="tag t-new">新增</span></h2>
+<div class="card">
+<p>檔：<code>Flow_0945_延遲通知信_改讀清單_建置指南.html</code> 對應的線上流程。目前逐「名冊人」迴圈 <code>apply_to_each_mail</code>（來源 <code>@body('列出表格中的列_名冊')?['value']</code>，取值 <code>?['姓名']</code>/<code>?['Email']</code>）。</p>
+
+<p><b>動作位置總覽</b>（<span style="color:var(--green)">綠＝新增</span>、<span style="color:var(--blue)">藍＝改</span>）：</p>
+<pre><code>（迴圈外）
+  … 列出表格中的列_名冊 (Excel)
+  … 延遲列（原有取清單延遲列的動作）
+<span style="color:#4ade80">＋ 取得行事曆_請假 (V3)              ← §2-1（放 apply_to_each_mail 之前）</span>
+
+apply_to_each_mail   ← foreach 名冊
+  ├ 篩選_延遲任務數量               （原有）
+  ├ Compose_任務數量                （原有）
+<span style="color:#4ade80">  ├＋ FilterEvents_本人請假          ← §2-2①（接在 Compose_任務數量 後）</span>
+<span style="color:#4ade80">  ├＋ Compose 本人請假              ← §2-2②</span>
+  ├ 條件_要寄嗎  <span style="color:#60a5fa">（§2-3 改左值加 not(outputs('本人請假')))</span>
+  │    ├ 是 → 傳送電子郵件_(V2)…    （原有）
+  │    └ 否 → （空）
+<span style="color:#4ade80">  └＋ 條件_請假需標記               ← §2-4（與「要寄嗎」同層、排在它後面）</span>
+<span style="color:#4ade80">       ├ 是 → apply_to_each_請假列  ← foreach 篩選_延遲任務數量</span>
+<span style="color:#4ade80">       │        └ 更新項目_標記請假（field_7 = 4. …當天已請假）</span>
+<span style="color:#4ade80">       └ 否 → （空）</span></code></pre>
+<p class="muted">重點：§2-4 是 <code>apply_to_each_mail</code> <b>迴圈內</b>、與 <code>條件_要寄嗎</code> <b>同一層</b>的另一個「條件」action，runAfter＝<code>條件_要寄嗎</code>（或 <code>Compose 本人請假</code>）成功之後。它跑的是「本人的延遲列」逐列更新，跟寄不寄信各自獨立。</p>
+
+<h3>2-1　迴圈外：取當天行事曆一次 <span class="tag t-new">新增</span></h3>
+<p>在 <code>apply_to_each_mail</code> <b>之前</b>加「取得行事曆檢視的事件 (V3)」，命名 <code>取得行事曆_請假</code>，行事曆選 <b>domain.e 信箱</b>（同 1000）。時間範圍（fx 插入）：</p>
+<table>
+<tr><th>開始時間</th><td><code>concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T00:00:00+08:00')</code></td></tr>
+<tr><th>結束時間</th><td><code>concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T23:59:59+08:00')</code></td></tr>
+</table>
+<p class="muted">只取今天單日（台北 00:00–23:59），不加寬，避免全天事件 UTC 邊界誤撈昨天的假（同 1000 的理由）。</p>
+
+<h3>2-2　迴圈內：判本人是否當天請假 <span class="tag t-new">新增</span></h3>
+<p>在 <code>Compose_任務數量</code> 之後加：</p>
+<p><b>① 篩選陣列 <code>FilterEvents_本人請假</code>（<u>進階模式</u>）</b>：加「篩選陣列」後，點右上 <b>⋯ → 編輯進階模式</b>，where 變成單一 <code>@布林</code> 一格。</p>
+<table>
+<tr><th>來源 From</th><td><code>@body('取得行事曆_請假')?['value']</code></td></tr>
+<tr><th>where（進階模式一格，整段貼）</th><td><code>@and(contains(split(item()?['subject'],'代理')[0], items('apply_to_each_mail')?['姓名']), contains(item()?['subject'], formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd')), or(contains(replace(item()?['subject'],'：',':'),'10:00'), contains(item()?['subject'],'全天')))</code></td></tr>
+</table>
+<p class="muted">與 1000 的 <code>FilterEvents</code> 同義（1000 用基本模式 <code>if(...)='Y'</code>，此處改進階 <code>@and(...)</code> 較簡潔、兩者等效）；姓名用本流程名冊 <code>items('apply_to_each_mail')?['姓名']</code>（1000 用 <code>field_4</code>）。半/全形冒號先 <code>replace('：',':')</code> 再比。</p>
+<p><b>② Compose <code>本人請假</code></b>（輸入框切 <span class="fx" style="font-style:italic">fx</span> 貼）：<code>@greater(length(body('FilterEvents_本人請假')),0)</code></p>
+
+<h3>2-3　排除寄信：改「要寄嗎」條件 <span class="tag t-edit">改</span></h3>
+<p>把既有「要寄嗎」條件左值（原 <code>and(greater(length(body('篩選_延遲任務數量')),0), not(empty(...Email...)))</code>）加一項 <code>not(outputs('本人請假'))</code>：</p>
+<pre><code>and(
+  greater(length(body('篩選_延遲任務數量')),0),
+  not(empty(trim(string(coalesce(items('apply_to_each_mail')?['Email'],''))))),
+  not(outputs('本人請假'))
+)</code></pre>
+<p class="muted">運算子＝<b>等於</b>、右值＝<b>fx 插入 <code>true</code></b>（不可直接打字，否則變字串永遠 false）。請假者→左值 false→不進「是」分支→不寄信。</p>
+
+<h3>2-4　對請假者的延遲列寫 field_7=4 <span class="tag t-new">新增</span></h3>
+<p><b>位置</b>：在 <code>apply_to_each_mail</code> 迴圈內，<b>緊接在 <code>條件_要寄嗎</code> 這個條件的下面</b>（同一層、runAfter＝<code>條件_要寄嗎</code> 成功）。在此新增一個「條件」<code>條件_請假需標記</code>（基本模式，左/運算子/右三格），左值切 <span class="fx" style="font-style:italic">fx</span> 貼：</p>
+<pre><code>and(outputs('本人請假'), greater(length(body('篩選_延遲任務數量')),0))</code></pre>
+<p>運算子＝<b>等於</b>、右值＝fx <code>true</code>。<b>「是」分支</b>內加巢狀迴圈 <code>apply_to_each_請假列</code>（來源 <code>@body('篩選_延遲任務數量')</code>）→ 內放「更新項目」<code>更新項目_標記請假</code>（站台/清單同流程）：</p>
+<table>
+<tr><th>識別碼 ID</th><td><code>@items('apply_to_each_請假列')?['ID']</code></td></tr>
+<tr><th>標題 Title</th><td><code>@items('apply_to_each_請假列')?['Title']</code></td></tr>
+<tr><th>表單回覆 field_7</th><td><code>4. 延遲（09:30沒到公司，當天已請假）</code>（直接字面字串即可，非運算式）</td></tr>
+</table>
+<p class="warn card"><b>順序注意</b>：`篩選_延遲任務數量` 的來源是「延遲列」（清單物件，含 ID/Title），故可逐列更新。此段與 §2-3「不寄信」互不衝突：請假者兩件事都做——標 field_7=4、且不寄信。</p>
+</div>
+
+<h2>3. 0955 再巡檢/發卡：收斂改 1或5＋排除請假 <span class="tag t-edit">改</span></h2>
+<div class="card">
+<p>檔：<code>Flow_0955_新增發卡提醒_建置指南.html</code> 對應流程。</p>
+
+<h3>3-1　收斂範圍 1或4 → 1或5 <span class="tag t-edit">改</span></h3>
+<p>在 <code>Apply_to_each_列</code> 迴圈內找 <b>Compose 動作 <code>本列原勾選1或4</code></b>。它現在的內容是（已從你 0630 匯出確認一字不差）：</p>
+<pre><code>@or(startsWith(trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'1.'),startsWith(trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'4.'))</code></pre>
+<p><b>唯一要做的：把結尾那個 <code>'4.'</code> 改成 <code>'5.'</code></b>。改完整段為：</p>
+<pre><code>@or(startsWith(trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'1.'),startsWith(trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'5.'))</code></pre>
+<p class="muted">理由：新選項 4＝請假（比照 2/3 保留不動），5＝其他（要重掃收斂）。改完收斂只作用在「已完成(1)／其他(5)」。動作可不必更名，內容改掉即生效。</p>
+
+<p>再找同迴圈的 <b>Compose <code>本列未回覆</code></b>，現在是：</p>
+<pre><code>@and(not(startsWith(…,'1.')),not(startsWith(…,'2.')),not(startsWith(…,'3.')),not(startsWith(…,'4.')),not(startsWith(…,'原勾選')))</code></pre>
+<p>在中間<b>插一條 <code>not(startsWith(…,'5.'))</code></b>（否則選「5.其他」會被誤當未回覆）。完整貼上版：</p>
+<pre><code>@and(not(startsWith(trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'1.')),not(startsWith(trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'2.')),not(startsWith(trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'3.')),not(startsWith(trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'4.')),not(startsWith(trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'5.')),not(startsWith(trim(coalesce(items('Apply_to_each_列')?['field_7'],'')),'原勾選')))</code></pre>
+<p class="muted">改寫用的 <code>更新項目_卡片仍延遲</code> <b>完全不用動</b>——它是 <code>@concat('3. 延遲（09:30沒到公司，請填寫假卡）（原勾選「', trim(coalesce(items('Apply_to_each_列')?['field_7'],'')), '」，卡片仍延遲）')</code>，動態讀 field_7，選項改號不受影響。你這版沒有「已退出逾期」的更新動作（該分支目前為空），也不用管。</p>
+</div>
+
+<div class="card">
+<h3>3-2　發卡排除請假者 <span class="tag t-edit">改</span></h3>
+<p>請假者 <code>field_7=4.</code>→非 <code>3.</code>→本就不在「仍延遲」→天然不發卡。為保險（防某人 field_8=請假 但 field_7 仍 3.），把 <code>仍延遲_篩選陣列</code>（<u>進階模式</u>，原本就是 <code>@startsWith(...,'3.')</code>）的 where 整段換成：</p>
+<pre><code>@and(
+  startsWith(trim(coalesce(item()?['field_7'],'')),'3.'),
+  not(startsWith(coalesce(item()?['field_8'],''),'請假'))
+)</code></pre>
+</div>
+
+<h2>4. 1005/1030 米米信未回報提醒：排除請假 <span class="tag t-edit">改</span></h2>
+<div class="card">
+<p>檔：<code>Flow_1005_1030_米米信未回報提醒_建置指南.html</code>。現況已靠 <code>field_8</code> 非空自動排除請假（1000 寫「請假」進 field_8→算已回報）。<b>加固</b>：把 <code>已回報列</code> 篩選陣列（<u>進階模式</u>，原 <code>@not(empty(item()?['field_8']))</code>）的 where 改成（涵蓋 0945 剛標的 <code>field_7=4.</code>，防 1000 尚未跑）：</p>
+<pre><code>@or(
+  not(empty(trim(coalesce(item()?['field_8'],'')))),
+  startsWith(coalesce(item()?['field_7'],''),'4.')
+)</code></pre>
+<p class="muted">field_7 以 <code>4.</code> 開頭（＝當天已請假）或 field_8 已有值＝視為已回報 → 不列入提醒名單。</p>
+</div>
+
+<h2>5. 1000 工作延遲彙整→行政 email：排除請假 <span class="tag t-edit">改</span></h2>
+<div class="card">
+<p>流程 <code>1000工作延遲彙整_通知行政email</code>（週一~五 10:00）：讀 <b>Excel TaskDB.xlsx</b>，逐「有延遲的人」寄彙整信給行政 <code>domain.e</code>。此流程以 <b>Excel 欄「姓名/Email」</b>為鍵，<b>無 field_7/field_8</b>，故排除請假要靠行事曆判定＋條件擋信。</p>
+<p class="muted">現況結構：<code>列出表格中的列</code>(Excel GetItems) → <code>未回覆_篩選陣列</code>(where <code>@not(empty(item()?['姓名']))</code>) → <code>選取</code>(Email) → <code>UniMail_Compose</code>(<code>@union</code>去重) → <code>Apply_to_Each_Mail</code>{ <code>篩選_延遲任務</code>(該人) → <code>選取_任務明細</code> → <code>聯結_任務明細</code> → <code>傳送電子郵件_(V2)</code>(To domain.e) → <code>延遲</code>(Wait 15s) }。</p>
+
+<h3>5-1　迴圈外：取當天行事曆一次 <span class="tag t-new">新增</span></h3>
+<p>在 <code>Apply_to_Each_Mail</code> <b>之前</b>（例如 <code>UniMail_Compose</code> 之後）加「取得行事曆檢視的事件 (V3)」<code>取得行事曆_請假</code>，行事曆選 <b>domain.e</b>，時間範圍（fx 插入，今天台北 00:00–23:59）：</p>
+<table>
+<tr><th>開始時間</th><td><code>concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T00:00:00+08:00')</code></td></tr>
+<tr><th>結束時間</th><td><code>concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T23:59:59+08:00')</code></td></tr>
+</table>
+
+<h3>5-2　迴圈內：判本人請假 <span class="tag t-new">新增</span></h3>
+<p>在 <code>篩選_延遲任務</code> 之後加篩選陣列 <code>FilterEvents_本人請假</code>，From <code>@body('取得行事曆_請假')?['value']</code>，進階模式 where：</p>
+<pre><code>@and(
+  contains(split(item()?['subject'],'代理')[0], first(body('篩選_延遲任務'))?['姓名']),
+  contains(item()?['subject'], formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd')),
+  or(contains(replace(item()?['subject'],'：',':'),'10:00'), contains(item()?['subject'],'全天'))
+)</code></pre>
+<p class="muted">此流程無 field_4，姓名改取該人第一筆延遲列 <code>first(body('篩選_延遲任務'))?['姓名']</code>（Excel 欄名「姓名」）。</p>
+
+<h3>5-3　條件擋住請假者寄信 <span class="tag t-edit">改</span></h3>
+<p>加條件 <code>條件_未請假才寄</code>（<u>基本模式</u>，條件無進階模式）：左值切 <span class="fx" style="font-style:italic">fx</span> <code>@empty(body('FilterEvents_本人請假'))</code>、運算子 <b>等於</b>、右值切 <span class="fx" style="font-style:italic">fx</span> 插入 <code>true</code>（布林一律 fx，直接打字變字串永遠 false）。把既有 <code>選取_任務明細 / 聯結_任務明細 / 傳送電子郵件_(V2)</code> 三個 action <b>移進「是」（＝未請假）分支</b>；「否」分支留空。<code>延遲</code>(Wait) 留在迴圈末不動。</p>
+<p class="muted">效果：請假者 → FilterEvents&gt;0 → 條件否 → 不寄彙整信給行政。（邊角：若當天延遲者全部請假，行政不會收到人別信，也不會觸發「無人延遲」信——那支是看 <code>選取</code> 筆數；可接受。）</p>
+</div>
+
+<h2>6. 套用順序與驗收</h2>
+<div class="card">
+<ol>
+<li>ScrToday 貼上（5 選項）→ 手機測回覆彈窗第 4「請假」可選、送出寫入 field_7=<code>4. …當天已請假</code>。</li>
+<li>0945：加 §2 各 action → 測「當天有請假事件的人」→ (a) 其延遲列 field_7 被寫 <code>4. …</code>、(b) 不在收信對象（收件者仍固定 domain.e，但該人不觸發寄信邏輯）。</li>
+<li>0955：改 §3 →「原勾選 5(其他)仍逾期」才收斂發卡；「原勾選 4(請假)」保留不動、不發卡。</li>
+<li>1000工作延遲彙整→行政 email：加 §5 → 請假者不寄行政彙整信給行政。</li>
+<li>1005/1030：改 §4 → field_7=4. 或 field_8 有值者不被提醒。</li>
+</ol>
+<p class="warn card"><b>回歸重點</b>：確認請假者<b>不會被打擾</b>——0945 延遲信、0955 發新卡、1005/1030 米米信提醒皆跳過，行政也不會收到其 1000 延遲彙整信；且行政頁看得到其 field_7=<code>4. …當天已請假</code>（清單仍保留該列）。</p>
+</div>
+
+<p class="muted" style="margin-top:30px">— 建置指南由 Claude@Win 依 PO 確認之 0706.txt 產出；線上流程需由使用者於 Power Automate Portal 就地套用。行事曆技術點對照 <code>Flow_1000_米米信主旨寫入清單_建置指南.html</code>。</p>
+
+</div>

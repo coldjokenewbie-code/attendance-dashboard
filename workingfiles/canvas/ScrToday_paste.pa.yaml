@@ -2,7 +2,8 @@
 #   Screen.OnVisible = UpdateContext({locShowPopup: false}); Set(gToday, Text(Today(), "yyyy/mm/dd"))
 #   （gToday 為全域變數，避免 Filter 內直接用 Text(Today()...) 造成不可委派；日期格式為零填補 yyyy/mm/dd，須與清單「日期」欄格式一致）
 # 用法：畫布全選現有控件 → 刪除 → 貼上本檔（Cmd/Ctrl+V）→ 回 Studio 手動加上方 OnVisible
-# 基準：2026-07-06 從 Studio 匯出的最新內容（含使用者已手動調整的配色，非本次改動）＋套用委派修復與日期零填補＋修正 galToday.Items 的 !IsBlank 委派警告（改 任務名稱 <> Blank()）
+# 基準：2026-07-06 從 Studio 匯出的最新內容；本次改動＝拆分個人/行政：移除「行政查核」鈕(btnAdmin, Navigate(ScrAdmin))，
+#   頭部標題與使用者資訊改全寬（原標題 Width 0.62 為讓位按鈕，在窄手機換行與姓名重疊），姓名/email 分兩行。行政查核改獨立 app/服務。
 
 - conHeader:
     Control: GroupContainer@1.5.0
@@ -20,34 +21,29 @@
             Height: =32
             Size: =18
             Text: ="今日出勤查核　" & Text(Today(), "yyyy/mm/dd")
-            Width: =Parent.Width * 0.62
+            Width: =Parent.Width - 32
             X: =16
             Y: =14
       - lblUser:
           Control: Label@2.5.1
           Properties:
-            Color: =RGBA(107, 114, 128, 1)
-            Height: =24
-            Size: =12
-            Text: =User().FullName & "　" & User().Email
-            Width: =Parent.Width * 0.62
+            Color: =RGBA(75, 85, 99, 1)
+            Height: =22
+            Size: =13
+            Text: =User().FullName
+            Width: =Parent.Width - 32
             X: =16
-            Y: =50
-      - btnAdmin:
-          Control: Classic/Button@2.2.0
+            Y: =48
+      - lblUserEmail:
+          Control: Label@2.5.1
           Properties:
-            BorderColor: =RGBA(229, 231, 235, 1)
-            BorderThickness: =1
-            Color: =RGBA(37, 99, 235, 1)
-            Fill: =RGBA(255, 255, 255, 1)
-            HoverFill: =RGBA(248, 250, 252, 1)
-            OnSelect: =Navigate(ScrAdmin)
-            Size: =14
-            Text: ="行政查核"
-            Visible: =!IsBlank(LookUp(team_member, Email = User().Email, 出勤存取權限))
-            Width: =Parent.Width * 0.28
-            X: =Parent.Width - Parent.Width * 0.28 - 14
-            Y: =32
+            Color: =RGBA(156, 163, 175, 1)
+            Height: =20
+            Size: =11
+            Text: =User().Email
+            Width: =Parent.Width - 32
+            X: =16
+            Y: =70
       - recHeaderLine_1:
           Control: Rectangle@2.3.0
           Properties:
@@ -216,7 +212,7 @@
                   Color: =RGBA(31, 41, 55, 1)
                   Default: =locSelected.表單回覆
                   Height: =Parent.Height - 132 - 72
-                  Items: =["1. 已完成（請自行勾掉卡片）", "2. 延遲（09:30已到公司在補進度）", "3. 延遲（09:30沒到公司，請填寫假卡）", "4. 如為其他狀況，請於5分鐘內更新卡片"]
+                  Items: =["1. 已完成（請自行勾掉卡片）", "2. 延遲（09:30已到公司在補進度）", "3. 延遲（09:30沒到公司，請填寫假卡）", "4. 延遲（09:30沒到公司，當天已請假）", "5. 如為其他狀況，請於5分鐘內更新卡片"]
                   Items.Value: =Value
                   Size: =15
                   Width: =Parent.Width - 40
