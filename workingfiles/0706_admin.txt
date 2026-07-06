@@ -1,9 +1,3 @@
-# 手動畫面屬性（Studio 內手動設定，此檔案無法貼出這段）：
-#   Screen.OnVisible = Set(gToday, Text(Today(), "yyyy/mm/dd"))
-#   （gToday 為全域變數；ScrToday 已設同一變數，App 內共用；避免 Filter/LookUp/UpdateIf 內直接用 Text(Today()...) 造成不可委派；日期格式為零填補 yyyy/mm/dd，須與清單「日期」欄格式一致）
-# 用法：畫布全選現有控件 → 刪除 → 貼上本檔（Cmd/Ctrl+V）→ 回 Studio 手動加上方 OnVisible
-# 基準：2026-07-06 從 Studio 匯出的最新內容（含使用者已手動調整的配色，非本次改動）＋套用委派修復與日期零填補＋修正 lblReply.Text 的 !IsBlank 委派警告（改 任務名稱 <> Blank()）
-
 - conHeaderA:
     Control: GroupContainer@1.5.0
     Variant: ManualLayout
@@ -19,7 +13,7 @@
             FontWeight: =FontWeight.Semibold
             Height: =32
             Size: =18
-            Text: ="行政出勤查核　" & Text(Today(), "yyyy/mm/dd")
+            Text: ="行政出勤查核　" & Text(Today(), "yyyy/m/d")
             Width: =Parent.Width * 0.6
             X: =16
             Y: =12
@@ -124,7 +118,7 @@
         =AddColumns(
             Sort(team_member, 員工編號) As tm,
             CurStatus,
-            LookUp(AttendanceHistory, Email = tm.Email && 日期 = gToday).實際出勤狀態
+            LookUp(AttendanceHistory, Email = tm.Email && 日期 = Text(Today(), "yyyy/m/d")).實際出勤狀態
         )
       TemplatePadding: =0
       TemplateSize: =108
@@ -173,7 +167,7 @@
             Size: =12
             Text: |-
               =With(
-                  {d: Filter(AttendanceHistory, Email = ThisItem.Email && 日期 = gToday && 任務名稱 <> Blank())},
+                  {d: Filter(AttendanceHistory, Email = ThisItem.Email && 日期 = Text(Today(), "yyyy/m/d") && !IsBlank(任務名稱))},
                   If(
                       CountRows(d) = 0,
                       "（今日無延遲工作）",
@@ -211,7 +205,7 @@
                       && Self.Selected.Value <> Coalesce(ThisItem.CurStatus, ""),
                   UpdateIf(
                       AttendanceHistory,
-                      Email = ThisItem.Email && 日期 = gToday,
+                      Email = ThisItem.Email && 日期 = Text(Today(), "yyyy/m/d"),
                       {實際出勤狀態: Self.Selected.Value}
                   );
                   If(
@@ -243,7 +237,7 @@
                       && Self.Text <> Coalesce(ThisItem.CurStatus, ""),
                   UpdateIf(
                       AttendanceHistory,
-                      Email = ThisItem.Email && 日期 = gToday,
+                      Email = ThisItem.Email && 日期 = Text(Today(), "yyyy/m/d"),
                       {實際出勤狀態: Self.Text}
                   );
                   If(

@@ -147,7 +147,7 @@ Planner 掃描那一整段<b>完全不動</b>。本流程<b>不發郵件、不�
 <tr><th>欄（PA 顯示）</th><th>填入運算式</th></tr>
 <tr><td><b>Title</b></td><td><code>concat(formatDateTime(addHours(utcNow(),8),'yyyyMMdd'),'_',outputs('取得使用者設定檔_(V2)')?['body/mail'],'_',items('for_each_task')?['id'])</code></td></tr>
 <tr><td>員工編號</td><td><code>if(empty(body('依Email篩員工編號')),'',first(body('依Email篩員工編號'))?['員工編號'])</code></td></tr>
-<tr><td>日期</td><td><code>formatDateTime(addHours(utcNow(),8),'yyyy/M/d')</code></td></tr>
+<tr><td>日期</td><td><code>formatDateTime(addHours(utcNow(),8),'yyyy/MM/dd')</code></td></tr>
 <tr><td>Email</td><td><code>outputs('取得使用者設定檔_(V2)')?['body/mail']</code></td></tr>
 <tr><td>姓名</td><td><code>outputs('取得使用者設定檔_(V2)')?['body/displayName']</code></td></tr>
 <tr><td>方案名稱</td><td><code>items('for_each_plan_list_tasks')?['title']</code></td></tr>
@@ -187,7 +187,7 @@ Planner 掃描那一整段<b>完全不動</b>。本流程<b>不發郵件、不�
 <tr><td>姓名</td><td>動態內容</td><td>點 team_member 的「姓名」</td></tr>
 <tr><td>Email</td><td>動態內容</td><td>點 team_member 的「Email」</td></tr>
 <tr><td>員工編號</td><td>動態內容</td><td>點 team_member 的「員工編號」</td></tr>
-<tr><td>日期</td><td>fx 貼整段</td><td><code>formatDateTime(addHours(utcNow(),8),'yyyy/M/d')</code></td></tr>
+<tr><td>日期</td><td>fx 貼整段</td><td><code>formatDateTime(addHours(utcNow(),8),'yyyy/MM/dd')</code></td></tr>
 <tr><td>方案名稱 / 任務名稱 / 表單回覆 / 實際出勤狀態 / DateString</td><td>—</td><td>留空（不勾、不填）</td></tr>
 </table>
 <p style="font-size:12.5px;color:var(--muted)"><code>items('Apply_to_each')?['Email']</code>＝目前迴圈這位同事的 Email。<code>Apply_to_each</code> 是你那個迴圈的名字（空白改底線）；若報「找不到 Apply_to_each」，換成迴圈標題列顯示的名字（如 <code>Apply_to_each_2</code>）。</p>
@@ -220,9 +220,15 @@ Planner 掃描那一整段<b>完全不動</b>。本流程<b>不發郵件、不�
 
 <h2 id="sort-fix">8. 排序：最新資料置頂</h2>
 <div class="card">
-<p><code>日期</code> 欄為單行文字、格式 <code>yyyy/M/d</code> 非零填補，文字排序錯位（<code>2026/12/1</code> 排在 <code>2026/3/2</code> 前、<code>2026/6/9</code> 排在 <code>2026/6/24</code> 後）。下列二擇一。</p>
 
-<h3 id="sort-quick">8-1 快解（零改動）：檢視改依 Title 遞減</h3>
+<h3 id="sort-adopted">8-0 已採用：日期欄零填補 <code>yyyy/MM/dd</code></h3>
+<p><code>日期</code> 欄（單行文字）寫入格式固定為 <code>yyyy/MM/dd</code>（月/日都補成兩位數，例如 <code>2026/07/05</code>）。這是 §4-2、§5 兩個「建立項目」動作裡 <code>日期</code> 欄目前唯一要填的運算式：</p>
+<pre><code>formatDateTime(addHours(utcNow(),8),'yyyy/MM/dd')</code></pre>
+<div class="warn"><b>Power Automate 一律用大寫 <code>MM</code></b>（小寫 <code>mm</code> 在 .NET 格式代表「分鐘」，不是月份，兩者效果天差地遠）。</div>
+<p>Power Apps 端同步規則（App 檔案，非本流程範圍）：<code>ScrToday_paste.pa.yaml</code>／<code>ScrAdmin_table.pa.yaml</code> 的全域變數 <code>gToday</code> 固定用 <code>Text(Today(),"yyyy/mm/dd")</code>（Power Fx 這裡 <code>mm</code> 才代表月份，跟 Automate 大小寫規則相反）。App 用 <code>日期 = gToday</code> 逐字比對今日列，兩邊格式字串必須完全一致，否則比對永遠不成立、今日資料抓不到。</p>
+<p>零填補後文字排序本身即等於時間排序，清單檢視排序可直接設定<b>依「日期」欄遞減</b>，不需要下面 8-1 的 Title 迂迴排序法。</p>
+
+<h3 id="sort-quick">8-1（替代法，不需要時可略過）：檢視改依 Title 遞減</h3>
 <p>Title（別名「ID (yyyyMMdd_Email)」、值為 <code>20260624_email_…</code>）開頭 <code>yyyyMMdd</code> 為固定寬度零填補，文字排序即等於時間排序。</p>
 <ol>
 <li>暫時：點該欄標題 → <b>Z 到 A</b>（最新置頂）。</li>

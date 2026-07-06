@@ -31,7 +31,7 @@ MS365 Power Apps 員工出勤儀表板；先重作模組一 Popup MVP，讓員�
   - `workingfiles/canvas/匯入指南.html`、`變更_回覆改單選.html`
   - 結案紀錄：`_context/archive/ClosedTaskLog_2026-06-13_module1-canvas-yaml.md`
 - **模組一介面更新（2026-06-24 [Claude@Win]）**：行政頁重作成表格版＋自動存（`workingfiles/canvas/ScrAdmin_table.pa.yaml`）；ScrAdmin／ScrToday 統一簡約淺色風格。**待 PO 實機驗收**。
-- **最新工作紀錄**：`_context/TaskLog_2026-06-16_架構落實與晨間流程.md`（06-30~07-02 追記：0955 修判定＋發卡、1005/1030 米米信提醒指南、1000 視窗修單日、field_8 粒度待決策）。另一份：`_context/TaskLog_2026-06-24_儀表板表格化與淺色改版.md`（表格化＋自動存 bug 鏈＋雙頁淺色，待 PO 實機驗收）。
+- **最新工作紀錄**：`_context/TaskLog_2026-06-16_架構落實與晨間流程.md`（06-30~07-02 追記：0955 修判定＋發卡、1005/1030 米米信提醒指南、1000 視窗修單日、field_8 粒度待決策；07-03：ScrToday/ScrAdmin 委派警告 bug 修復，5 處公式改用 gToday 變數；**07-05 新增：日期欄格式改零填補 yyyy/MM/dd（0930 流程＋App gToday 同步）＋既有列回填指南**，以上皆**待使用者 Studio／Portal 套用**）。另一份：`_context/TaskLog_2026-06-24_儀表板表格化與淺色改版.md`（表格化＋自動存 bug 鏈＋雙頁淺色，待 PO 實機驗收）。
 - 欄位已從 `_context/AttendanceHistory.csv` 確認（九欄顯示名稱）。
 
 ## 待辦 / 下一步

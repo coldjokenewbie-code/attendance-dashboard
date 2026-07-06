@@ -121,8 +121,8 @@ Power Automate → 建立 → <b>即時雲端流程</b> → 選 <b>手動觸發�
 <h2>備註</h2>
 <div class="card">
 <ul>
-<li><b>檢核日期格式</b>：清單 <code>日期</code> 是文字 <code>2026/3/2</code>（無補零），原樣寫入 TaskDB；若 TaskDB 該欄是日期格式可能存成文字，備份用途可接受，要嚴格日期型再議。</li>
-<li><b>WeekDB / MonthDB</b>：本流程只寫 TaskDB。若既有彙整鏈路靠 TaskDB 往上捲，append 模式下 TaskDB 已含多天資料，捲動邏輯需另確認（本案未動）。</li>
+<li><b>檢核日期格式</b>：清單 <code>日期</code> 欄現為文字、零填補格式 <code>yyyy/MM/dd</code>（例如 <code>2026/07/03</code>），原樣寫入 TaskDB。</li>
+<li><b>WeekDB</b>：本流程只寫 TaskDB（今日）。「上週」資料另有獨立流程寫 WeekDB，見 <code>Flow_清單轉WeekDB複製_建置指南.html</code>；兩支流程互不影響，各自 append。<b>MonthDB</b> 目前無對應流程，暫不處理。</li>
 <li><b>站台確認</b>：TaskDB.xlsx 實際在 <code>TEST_PLANNER_CK</code>（test 即正式在用）；以連接器實選為準。</li>
 </ul>
 </div>

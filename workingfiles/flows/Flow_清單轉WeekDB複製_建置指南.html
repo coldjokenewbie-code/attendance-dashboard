@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上週清單 → WeekDB 複製 建置指南</title>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--warn:#b45309;--ok:#15803d;--del:#b91c1c;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Helvetica Neue",Arial,"Microsoft JhengHei",sans-serif;line-height:1.7;}
+  .wrap{max-width:980px;margin:0 auto;padding:34px 24px 90px;}
+  h1{font-size:23px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:22px;}
+  h2{font-size:18px;margin:30px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--accent);}
+  h3{font-size:15px;margin:16px 0 6px;color:#111827;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  code{background:#eef2ff;color:#3730a3;padding:1px 5px;border-radius:4px;font-size:12.5px;word-break:break-all;}
+  pre{background:#0f172a;color:#e2e8f0;padding:13px;border-radius:8px;overflow:auto;font-size:12.5px;line-height:1.5;}
+  pre code{background:none;color:inherit;padding:0;}
+  ol,ul{margin:6px 0;padding-left:22px;} li{margin:6px 0;}
+  table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13px;}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f5f9;}
+  .warn{border-left:4px solid var(--warn);background:#fffbeb;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .ok{border-left:4px solid var(--ok);background:#f0fdf4;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .fx{background:#f5f3ff;color:#6d28d9;padding:1px 6px;border-radius:4px;font-size:12px;font-weight:600;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>上週清單 → WeekDB 複製 建置指南</h1>
+<div class="sub">2026-07-06 ｜ Claude@Mac ｜ 手動觸發：把 SharePoint 清單 AttendanceHistory「上週（一~五）」的列，append 寫入 TaskDB.xlsx 的 WeekDB 表</div>
+
+<div class="warn">
+<b>三個決策（已拍板）</b>：① 只<b>複製</b>，<b>不刪除</b>清單裡的資料（清單資料的清除策略另外再談，不在本流程範圍）。② 寫法＝<b>append 累積、不清空</b>（WeekDB 持續長大）。③ 觸發＝<b>手動按鈕</b>（即時雲端流程），跟「清單→TaskDB 備份」是兩支獨立流程，互不影響，各自 append 各自的表。
+</div>
+
+<div class="warn">
+<b>「上週」怎麼算</b>：不論哪一天按執行，一律抓「距今最近一次已結束的週一~週五」。例如週一按 → 抓上上週一到上週五前一週的週一~五（即剛結束的那個工作週）；週五按 → 抓的是本週開始前那一週的週一~五。<b>不含週六日</b>（本專案工作週固定週一~五）。
+</div>
+
+<div class="warn">
+<b>平台鐵則（沿用前案踩坑）</b>：① 所有運算式都用 <span class="fx">fx</span> 插入成紫色 chip，<b>不要在欄位直接打字</b>（否則被當字面字串、不計算）。② 清單中文欄的<b>內部名是 field_N</b>，運算式一律用內部名：<code>field_2 日期／field_3 Email／field_4 姓名／field_5 方案名稱／field_6 任務名稱／field_7 表單回覆／field_8 實際出勤狀態</code>；唯一鍵欄維持 <code>Title</code>。③ 時區用 <code>addHours(utcNow(),8)</code>，不碰 <code>convertFromUtc</code>（此環境時區 ID 會報無效）。④ <b>日期範圍篩選一律靠 Title 前綴</b>（<code>yyyyMMdd_</code>），不要對 <code>field_2</code> 下 <code>$filter</code>（中文/改名欄的 OData 篩選在此環境不穩，前案已踩過）。
+</div>
+
+<h2>整體結構</h2>
+<div class="card">
+<pre><code>觸發：手動觸發流程（Manually trigger a flow）
+└ ① Compose_今日台北     = addHours(utcNow(),8)
+└ ② Compose_距本週一天數 = 今日是星期幾換算成「離本週一幾天」（0~6）
+└ ③ Compose_上週一       = 今日往前推「距本週一天數 + 7」天
+└ ④ Compose_上週篩選     = 5 個 startswith(Title,'yyyyMMdd_') 用 or 串接（上週一到上週五各一個）
+└ ⑤ 取得清單項目（SharePoint｜AttendanceHistory｜篩選查詢＝Compose_上週篩選）
+└ ⑥ 套用至每一個（Get items 的 value）
+     └ 將列新增至資料表（Excel｜TaskDB.xlsx｜表格 WeekDB；11 欄對應，3 欄留空）</code></pre>
+</div>
+
+<h2>欄位對應（清單 → WeekDB）</h2>
+<div class="card">
+<table>
+<tr><th>WeekDB 欄（Excel 表頭）</th><th>來源（清單）</th><th>Add row 填入的 fx 運算式</th></tr>
+<tr><td>ID (yyyyMMdd_Email)</td><td>Title（唯一鍵）</td><td><code>item()?['Title']</code></td></tr>
+<tr><td>檢核日期</td><td>日期</td><td><code>item()?['field_2']</code></td></tr>
+<tr><td>方案名稱</td><td>方案名稱</td><td><code>item()?['field_5']</code></td></tr>
+<tr><td>任務名稱</td><td>任務名稱</td><td><code>item()?['field_6']</code></td></tr>
+<tr><td>姓名</td><td>姓名</td><td><code>item()?['field_4']</code></td></tr>
+<tr><td>Email</td><td>Email</td><td><code>item()?['field_3']</code></td></tr>
+<tr><td>Line 顯示名稱</td><td>—（清單無）</td><td style="color:var(--muted)">留空</td></tr>
+<tr><td>到期日</td><td>—（清單無）</td><td style="color:var(--muted)">留空</td></tr>
+<tr><td>工作延遲_出勤回覆</td><td>表單回覆</td><td><code>item()?['field_7']</code></td></tr>
+<tr><td>狀態</td><td>—（清單無）</td><td style="color:var(--muted)">留空</td></tr>
+<tr><td>10點出勤狀況</td><td>實際出勤狀態</td><td><code>item()?['field_8']</code></td></tr>
+</table>
+<p style="color:var(--muted);font-size:12.5px">與「清單→TaskDB」欄位對應完全相同，差異只在來源日期範圍（上週 vs 今日）與寫入表格（WeekDB vs TaskDB）。清單 <code>field_1 員工編號</code> 無對應欄，捨棄不寫。</p>
+</div>
+
+<h2>逐步建置</h2>
+
+<h3>步驟 0：建立流程</h3>
+<div class="card">
+Power Automate → 建立 → <b>即時雲端流程</b> → 選 <b>手動觸發流程（Manually trigger a flow）</b> → 命名「清單轉WeekDB複製」。
+</div>
+
+<h3>步驟 1：Compose_今日台北</h3>
+<div class="card">
+新增動作 <code>Compose</code>，命名 <b>Compose_今日台北</b>，輸入用 <span class="fx">fx</span> 貼：
+<pre><code>addHours(utcNow(),8)</code></pre>
+</div>
+
+<h3>步驟 2：Compose_距本週一天數</h3>
+<div class="card">
+新增 <code>Compose</code>，命名 <b>Compose_距本週一天數</b>，輸入 <span class="fx">fx</span>：
+<pre><code>mod(add(dayOfWeek(outputs('Compose_今日台北')),6),7)</code></pre>
+<p style="color:var(--muted);font-size:12.5px"><code>dayOfWeek()</code> 週日=0、週一=1…週六=6。此運算式換算成「今天距離本週一有幾天」：今天是週一則結果 0，週日則結果 6，以此類推。</p>
+</div>
+
+<h3>步驟 3：Compose_上週一</h3>
+<div class="card">
+新增 <code>Compose</code>，命名 <b>Compose_上週一</b>，輸入 <span class="fx">fx</span>：
+<pre><code>addDays(outputs('Compose_今日台北'), sub(-7, outputs('Compose_距本週一天數')))</code></pre>
+<p style="color:var(--muted);font-size:12.5px">今天往前推「距本週一天數＋7」天＝上週一。例：今天是本週一（距本週一天數=0）→ 往前推 7 天＝上週一；今天是本週五（距本週一天數=4）→ 往前推 11 天＝上上週一（即上一個已結束工作週的週一）。</p>
+</div>
+
+<h3>步驟 4：Compose_上週篩選（產出 OData 篩選字串）</h3>
+<div class="card">
+新增 <code>Compose</code>，命名 <b>Compose_上週篩選</b>，輸入 <span class="fx">fx</span> 貼整段：
+<pre><code>concat(
+'startswith(Title,''',formatDateTime(outputs('Compose_上週一'),'yyyyMMdd'),'_'') or ',
+'startswith(Title,''',formatDateTime(addDays(outputs('Compose_上週一'),1),'yyyyMMdd'),'_'') or ',
+'startswith(Title,''',formatDateTime(addDays(outputs('Compose_上週一'),2),'yyyyMMdd'),'_'') or ',
+'startswith(Title,''',formatDateTime(addDays(outputs('Compose_上週一'),3),'yyyyMMdd'),'_'') or ',
+'startswith(Title,''',formatDateTime(addDays(outputs('Compose_上週一'),4),'yyyyMMdd'),'_'')'
+)</code></pre>
+<p>產出像 <code>startswith(Title,'20260629_') or startswith(Title,'20260630_') or startswith(Title,'20260701_') or startswith(Title,'20260702_') or startswith(Title,'20260703_')</code> 這樣的<b>純字串</b>，涵蓋上週一到週五 5 天。</p>
+<div class="warn" style="margin-top:8px">expression 內嵌單引號用兩個 <code>''</code> 表示一個；整段務必用 <span class="fx">fx</span> 貼、不要手打（否則被當字面字串）。</div>
+</div>
+
+<h3>步驟 5：取得清單項目</h3>
+<div class="card">
+新增 <b>SharePoint → 取得項目（Get items）</b>：
+<ul>
+<li><b>網站位址</b>：選 AttendanceHistory 所在站台。</li>
+<li><b>清單名稱</b>：AttendanceHistory。</li>
+<li><b>篩選查詢（Filter Query）</b>：點欄位 → 動態內容 → 插入 <b>Compose_上週篩選 的輸出</b>（整個 token，不要自己打字）。</li>
+<li>展開「進階選項」→ <b>Top Count</b> 設 <code>5000</code>，並把<b>分頁（Pagination）</b>開、上限 5000。</li>
+</ul>
+<div class="ok"><b>驗證</b>：先單獨測這步，看輸出 <code>value</code> 是否恰為上週一到五 5 天的列、筆數合理（一週工作天數 × 團隊人數上下）。</div>
+</div>
+
+<h3>步驟 6：套用至每一個 → 將列新增至資料表</h3>
+<div class="card">
+新增 <b>套用至每一個（Apply to each）</b>，來源選 <b>取得項目 的 value</b>。迴圈內新增 <b>Excel Online (Business) → 將列新增至資料表（Add a row into a table）</b>：
+<ul>
+<li><b>位置 / 文件庫 / 檔案</b>：選 TaskDB.xlsx 所在站台與文件庫、檔案（與「清單→TaskDB」流程同一個檔案）。</li>
+<li><b>表格</b>：<code>WeekDB</code>（不是 TaskDB）。</li>
+<li>選完表格後逐欄用 <span class="fx">fx</span> 貼上方對應表的運算式；<code>Line 顯示名稱</code>、<code>到期日</code>、<code>狀態</code> 三欄空著不填。</li>
+</ul>
+<div class="warn"><b>注意</b>：運算式裡的 <code>item()</code> 指「當前迴圈的清單項目」，務必在 Apply to each <b>內</b>插入。</div>
+</div>
+
+<h2>重跑會重複 — 防呆（可選）</h2>
+<div class="warn">
+與「清單→TaskDB」流程同款取捨：<b>append 不清空</b>，同一週手動跑兩次，WeekDB 會出現兩份該週資料。三種處置擇一：
+<ol>
+<li><b>紀律法（最簡單）</b>：約定「每週只手動跑一次」，跑完即停。</li>
+<li><b>跑前手動清</b>：執行前先到 WeekDB 手動刪掉該週（<code>ID</code> 以該週 5 個 <code>yyyyMMdd_</code> 開頭）的舊列，再跑。</li>
+<li><b>流程內去重（要我加再說）</b>：迴圈內 Add row 前先「列出資料表中的列」WeekDB、用 <code>ID</code> 比對當前 Title，已存在就跳過，目前未建。</li>
+</ol>
+</div>
+
+<h2>備註</h2>
+<div class="card">
+<ul>
+<li><b>本流程不刪除清單資料</b>：純複製到 WeekDB，AttendanceHistory 清單裡的原始列維持不動。清單資料要不要清、留多久，是另一個待決策的獨立主題。</li>
+<li><b>檢核日期格式</b>：清單 <code>日期</code> 欄為文字、零填補格式 <code>yyyy/MM/dd</code>（例如 <code>2026/06/29</code>），原樣寫入 WeekDB。</li>
+<li><b>跟「清單→TaskDB」流程的關係</b>：兩支各自獨立、各自 append，互不衝突，可以同一天分別手動跑（一支抓今日進 TaskDB、一支抓上週進 WeekDB）。</li>
+<li><b>站台確認</b>：TaskDB.xlsx 實際站台以連接器實選為準（與「清單→TaskDB」流程相同檔案來源）。</li>
+</ul>
+</div>
+
+</div>
+</body>
+</html>
