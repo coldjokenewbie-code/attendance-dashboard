@@ -1,0 +1,18 @@
+- apply_to_each_mail [Foreach]
+  - 篩選_延遲任務數量 [Query]
+  - Compose_任務數量 [Compose]
+  - 要寄嗎 [If]
+    - 傳送電子郵件_(V2) [OpenApiConnection]
+    - 延遲 [Wait]
+    else:
+  - FilterEvents_本人請假 [Query]
+  - 本人請假 [Compose]
+  - 條件_請假需標記 [If]
+    - apply_to_each_請假列 [Foreach]
+      - 更新項目_標記請假 [OpenApiConnection]
+    else:
+- 今日前綴 [Compose]
+- 取得清單項目 [OpenApiConnection]
+- 延遲列 [Query]
+- 列出表格中的列_名冊 [OpenApiConnection]
+- 取得行事曆_請假 [OpenApiConnection]

@@ -22,7 +22,47 @@
   .warn{border-left:4px solid var(--amber);background:#fffbeb}
   ol,ul{padding-left:22px}
   b{font-weight:600}
+  /* 浮動修改待辦 */
+  #todo{position:fixed;top:16px;right:16px;width:272px;z-index:9999;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.16);font-size:13px;overflow:hidden;}
+  #todo .hd{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#0f172a;color:#fff;cursor:pointer;user-select:none;}
+  #todo .hd b{font-size:13px;}
+  #todo .hd .pg{margin-left:auto;font-size:12px;background:#1e293b;padding:2px 9px;border-radius:99px;}
+  #todo .hd .pg.alldone{background:#15803d;}
+  #todo .hd .cv{font-size:11px;opacity:.85;width:14px;text-align:center;}
+  #todo .bd{padding:6px;max-height:62vh;overflow:auto;}
+  #todo.collapsed .bd,#todo.collapsed .ft{display:none;}
+  #todo .it{display:flex;gap:8px;align-items:flex-start;padding:8px;border-radius:8px;}
+  #todo .it:hover{background:#f1f5f9;}
+  #todo .it input{margin-top:2px;width:16px;height:16px;flex:none;cursor:pointer;}
+  #todo .it .tx{cursor:pointer;line-height:1.45;}
+  #todo .it .tx .n{font-weight:700;color:var(--blue);}
+  #todo .it .tx small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px;}
+  #todo .it.done .tx,#todo .it.done .tx .n{text-decoration:line-through;color:var(--muted);}
+  #todo .ft{display:flex;justify-content:flex-end;padding:4px 10px 10px;}
+  #todo .ft button{font-size:11.5px;color:var(--muted);background:none;border:1px solid var(--line);border-radius:6px;padding:3px 9px;cursor:pointer;}
+  #todo .ft button:hover{background:#f1f5f9;}
+  @keyframes flashbg{0%{background:#fde68a;}100%{background:transparent;}}
+  .flash{animation:flashbg 1.7s ease-out;border-radius:6px;}
+  @media(max-width:780px){
+    #todo{top:auto;bottom:0;left:0;right:0;width:auto;border-radius:12px 12px 0 0;}
+    #todo .bd{max-height:44vh;}
+    .wrap{padding-bottom:240px;}
+  }
 </style>
+<div id="todo">
+  <div class="hd" onclick="todoToggle()"><b>🛠 修改待辦</b><span class="pg" id="todoPg">0/2</span><span class="cv" id="todoCv">▼</span></div>
+  <div class="bd">
+    <div class="it" data-k="fixcalview">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('fix-0945-calview')"><span class="n">① 取得行事曆_請假 時間參數尾碼 +08:00→Z</span><small>全天事件用 UTC 午夜當邊界，舊尾碼撈到昨天單日假 → §2-1</small></span>
+    </div>
+    <div class="it" data-k="fix0945">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('fix-0945-filterevents')"><span class="n">② FilterEvents_本人請假 加第三個 or 分支</span><small>原判斷漏跨日年假，請假者仍被誤寄延遲信 → §2-2</small></span>
+    </div>
+  </div>
+  <div class="ft"><button onclick="todoReset()">重設打勾</button></div>
+</div>
 <div class="wrap">
 
 <h1>請假整合 — 全流程建置指南</h1>
@@ -86,23 +126,38 @@ apply_to_each_mail   ← foreach 名冊
 <span style="color:#4ade80">       └ 否 → （空）</span></code></pre>
 <p class="muted">重點：§2-4 是 <code>apply_to_each_mail</code> <b>迴圈內</b>、與 <code>條件_要寄嗎</code> <b>同一層</b>的另一個「條件」action，runAfter＝<code>條件_要寄嗎</code>（或 <code>Compose 本人請假</code>）成功之後。它跑的是「本人的延遲列」逐列更新，跟寄不寄信各自獨立。</p>
 
-<h3>2-1　迴圈外：取當天行事曆一次 <span class="tag t-new">新增</span></h3>
-<p>在 <code>apply_to_each_mail</code> <b>之前</b>加「取得行事曆檢視的事件 (V3)」，命名 <code>取得行事曆_請假</code>，行事曆選 <b>domain.e 信箱</b>（同 1000）。時間範圍（fx 插入）：</p>
+<h3 id="fix-0945-calview">2-1　迴圈外：取當天行事曆一次 <span class="tag t-new">新增</span>　<span style="font-weight:400;font-size:12px;color:var(--amber)">（2026-07-07 已修正時間參數尾碼）</span></h3>
+<p>在 <code>apply_to_each_mail</code> <b>之前</b>加「取得行事曆檢視的事件 (V3)」，命名 <code>取得行事曆_請假</code>，行事曆選 <b>domain.e 信箱</b>（同 1000）：</p>
 <table>
-<tr><th>開始時間</th><td><code>concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T00:00:00+08:00')</code></td></tr>
-<tr><th>結束時間</th><td><code>concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T23:59:59+08:00')</code></td></tr>
+<tr><th>開始時間</th><td><code>concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T00:00:00Z')</code></td></tr>
+<tr><th>結束時間</th><td><code>concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T23:59:59Z')</code></td></tr>
 </table>
-<p class="muted">只取今天單日（台北 00:00–23:59），不加寬，避免全天事件 UTC 邊界誤撈昨天的假（同 1000 的理由）。</p>
+<details><summary>為什麼尾碼是 Z 不是 +08:00</summary>
+<p>此行事曆的全天請假事件一律用 <b>UTC 午夜</b>當全天邊界（<code>timeZone:"UTC"</code>）。尾碼用 <code>+08:00</code>（把台北當日換算成 UTC）會變成 UTC「前一天16:00～當天15:59」，跟「只請一天」的全天事件（如 <code>張耀中請年假，2026-07-06(全天)</code>，UTC 邊界 07-06T00:00～07-07T00:00）有 8 小時重疊——查 07-07 卻撈到他 07-06 的假。尾碼改 <code>Z</code>（台北日期字面數字直接當 UTC 邊界）：視窗變成 UTC「當天00:00～23:59」，跟該事件（結束於 07-07T00:00）恰好不重疊，不會撈到；跨日事件 UTC 邊界本來就橫跨好幾天，不受影響、照樣抓得到。</p>
+</details>
 
-<h3>2-2　迴圈內：判本人是否當天請假 <span class="tag t-new">新增</span></h3>
+<h3 id="fix-0945-filterevents">2-2　迴圈內：判本人是否當天請假 <span class="tag t-new">新增</span></h3>
 <p>在 <code>Compose_任務數量</code> 之後加：</p>
 <p><b>① 篩選陣列 <code>FilterEvents_本人請假</code>（<u>進階模式</u>）</b>：加「篩選陣列」後，點右上 <b>⋯ → 編輯進階模式</b>，where 變成單一 <code>@布林</code> 一格。</p>
 <table>
 <tr><th>來源 From</th><td><code>@body('取得行事曆_請假')?['value']</code></td></tr>
-<tr><th>where（進階模式一格，整段貼）</th><td><code>@and(contains(split(item()?['subject'],'代理')[0], items('apply_to_each_mail')?['姓名']), contains(item()?['subject'], formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd')), or(contains(replace(item()?['subject'],'：',':'),'10:00'), contains(item()?['subject'],'全天')))</code></td></tr>
+<tr><th>where（進階模式一格，整段貼）</th><td><pre><code>@and(
+  contains(split(item()?['subject'],'代理')[0], items('apply_to_each_mail')?['姓名']),
+  or(
+    and(
+      contains(item()?['subject'], formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd')),
+      or(contains(replace(item()?['subject'],'：',':'),'10:00'), contains(item()?['subject'],'全天'))
+    ),
+    greater(div(sub(ticks(item()?['end']), ticks(item()?['start'])), 864000000000), 1)
+  )
+)</code></pre></td></tr>
 </table>
-<p class="muted">與 1000 的 <code>FilterEvents</code> 同義（1000 用基本模式 <code>if(...)='Y'</code>，此處改進階 <code>@and(...)</code> 較簡潔、兩者等效）；姓名用本流程名冊 <code>items('apply_to_each_mail')?['姓名']</code>（1000 用 <code>field_4</code>）。半/全形冒號先 <code>replace('：',':')</code> 再比。</p>
-<p><b>② Compose <code>本人請假</code></b>（輸入框切 <span class="fx" style="font-style:italic">fx</span> 貼）：<code>@greater(length(body('FilterEvents_本人請假')),0)</code></p>
+<p><b>② Compose <code>本人請假</code></b>（輸入框直接貼，已含 <code>@</code>）：<code>@greater(length(body('FilterEvents_本人請假')),0)</code></p>
+<details><summary>為什麼這樣寫（2026-07-07 修正說明）</summary>
+<p>姓名用本流程名冊 <code>items('apply_to_each_mail')?['姓名']</code>；半/全形冒號先 <code>replace('：',':')</code> 再比對 <code>10:00</code>。</p>
+<p><b>症狀</b>：2026-07-07 匯出檔（<code>0945_清單_每日專案延誤通知EMAIL_v1_0707_...zip</code>）證實原 where 條件對<b>跨日年假／特休</b>格式（如 <code>郭冠妤請年假，2026-07-06 至2026-07-10，共40時，代理人:自理</code>）<b>必定判定為「無請假」</b>：這種格式不含「10:00／全天」字樣，<b>且</b>「主旨含今天日期」守衛也只在請假<b>起始日</b>當天成立（多日主旨只寫起訖日，中間/後續每一天都不含當天日期）——兩個 AND 條件同時擋下，導致跨日請假者<b>每天</b>都被判無請假，會被誤寄延遲信、field_7 也不會標記「4.」。</p>
+<p><b>修法</b>：新增第三個 or 分支，用<b>事件本身 start/end 相差 &gt;1 天</b>直接認定「跨日整天請假」，不必解析主旨、不受格式或日期影響；原「日期+10:00/全天」判斷保留給單日事件用，兩分支互不干擾。</p>
+</details>
 
 <h3>2-3　排除寄信：改「要寄嗎」條件 <span class="tag t-edit">改</span></h3>
 <p>把既有「要寄嗎」條件左值（原 <code>and(greater(length(body('篩選_延遲任務數量')),0), not(empty(...Email...)))</code>）加一項 <code>not(outputs('本人請假'))</code>：</p>
@@ -162,30 +217,9 @@ apply_to_each_mail   ← foreach 名冊
 <p class="muted">field_7 以 <code>4.</code> 開頭（＝當天已請假）或 field_8 已有值＝視為已回報 → 不列入提醒名單。</p>
 </div>
 
-<h2>5. 1000 工作延遲彙整→行政 email：排除請假 <span class="tag t-edit">改</span></h2>
+<h2>5. 1000 工作延遲彙整→行政 email：排除請假 <span class="tag t-todo">流程待大修，暫不修</span></h2>
 <div class="card">
-<p>流程 <code>1000工作延遲彙整_通知行政email</code>（週一~五 10:00）：讀 <b>Excel TaskDB.xlsx</b>，逐「有延遲的人」寄彙整信給行政 <code>domain.e</code>。此流程以 <b>Excel 欄「姓名/Email」</b>為鍵，<b>無 field_7/field_8</b>，故排除請假要靠行事曆判定＋條件擋信。</p>
-<p class="muted">現況結構：<code>列出表格中的列</code>(Excel GetItems) → <code>未回覆_篩選陣列</code>(where <code>@not(empty(item()?['姓名']))</code>) → <code>選取</code>(Email) → <code>UniMail_Compose</code>(<code>@union</code>去重) → <code>Apply_to_Each_Mail</code>{ <code>篩選_延遲任務</code>(該人) → <code>選取_任務明細</code> → <code>聯結_任務明細</code> → <code>傳送電子郵件_(V2)</code>(To domain.e) → <code>延遲</code>(Wait 15s) }。</p>
-
-<h3>5-1　迴圈外：取當天行事曆一次 <span class="tag t-new">新增</span></h3>
-<p>在 <code>Apply_to_Each_Mail</code> <b>之前</b>（例如 <code>UniMail_Compose</code> 之後）加「取得行事曆檢視的事件 (V3)」<code>取得行事曆_請假</code>，行事曆選 <b>domain.e</b>，時間範圍（fx 插入，今天台北 00:00–23:59）：</p>
-<table>
-<tr><th>開始時間</th><td><code>concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T00:00:00+08:00')</code></td></tr>
-<tr><th>結束時間</th><td><code>concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T23:59:59+08:00')</code></td></tr>
-</table>
-
-<h3>5-2　迴圈內：判本人請假 <span class="tag t-new">新增</span></h3>
-<p>在 <code>篩選_延遲任務</code> 之後加篩選陣列 <code>FilterEvents_本人請假</code>，From <code>@body('取得行事曆_請假')?['value']</code>，進階模式 where：</p>
-<pre><code>@and(
-  contains(split(item()?['subject'],'代理')[0], first(body('篩選_延遲任務'))?['姓名']),
-  contains(item()?['subject'], formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd')),
-  or(contains(replace(item()?['subject'],'：',':'),'10:00'), contains(item()?['subject'],'全天'))
-)</code></pre>
-<p class="muted">此流程無 field_4，姓名改取該人第一筆延遲列 <code>first(body('篩選_延遲任務'))?['姓名']</code>（Excel 欄名「姓名」）。</p>
-
-<h3>5-3　條件擋住請假者寄信 <span class="tag t-edit">改</span></h3>
-<p>加條件 <code>條件_未請假才寄</code>（<u>基本模式</u>，條件無進階模式）：左值切 <span class="fx" style="font-style:italic">fx</span> <code>@empty(body('FilterEvents_本人請假'))</code>、運算子 <b>等於</b>、右值切 <span class="fx" style="font-style:italic">fx</span> 插入 <code>true</code>（布林一律 fx，直接打字變字串永遠 false）。把既有 <code>選取_任務明細 / 聯結_任務明細 / 傳送電子郵件_(V2)</code> 三個 action <b>移進「是」（＝未請假）分支</b>；「否」分支留空。<code>延遲</code>(Wait) 留在迴圈末不動。</p>
-<p class="muted">效果：請假者 → FilterEvents&gt;0 → 條件否 → 不寄彙整信給行政。（邊角：若當天延遲者全部請假，行政不會收到人別信，也不會觸發「無人延遲」信——那支是看 <code>選取</code> 筆數；可接受。）</p>
+<p><b>此節（原 5-1～5-3 的請假排除補丁）已移除</b>——這支流程 <code>1000工作延遲彙整_通知行政email</code> 排定要大修，不在現有結構上疊補丁。等重建規格另開新章節。</p>
 </div>
 
 <h2>6. 套用順序與驗收</h2>
@@ -201,5 +235,20 @@ apply_to_each_mail   ← foreach 名冊
 </div>
 
 <p class="muted" style="margin-top:30px">— 建置指南由 Claude@Win 依 PO 確認之 0706.txt 產出；線上流程需由使用者於 Power Automate Portal 就地套用。行事曆技術點對照 <code>Flow_1000_米米信主旨寫入清單_建置指南.html</code>。</p>
+
+<script>
+(function(){
+  var KEY='todo請假整合fix_v1';
+  var items=[].slice.call(document.querySelectorAll('#todo .it'));
+  function save(){var s={};items.forEach(function(it){s[it.dataset.k]=it.querySelector('input').checked;});try{localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}}
+  function load(){var s={};try{s=JSON.parse(localStorage.getItem(KEY)||'{}');}catch(e){}items.forEach(function(it){var on=!!s[it.dataset.k];it.querySelector('input').checked=on;it.classList.toggle('done',on);});}
+  function prog(){var done=items.filter(function(it){return it.querySelector('input').checked;}).length;var pg=document.getElementById('todoPg');pg.textContent=(done===items.length?'✅ ':'')+done+'/'+items.length;pg.classList.toggle('alldone',done===items.length);}
+  window.todoCheck=function(cb){cb.closest('.it').classList.toggle('done',cb.checked);save();prog();};
+  window.todoGo=function(id){var el=document.getElementById(id);if(!el)return;el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');};
+  window.todoToggle=function(){var t=document.getElementById('todo');t.classList.toggle('collapsed');document.getElementById('todoCv').textContent=t.classList.contains('collapsed')?'▲':'▼';};
+  window.todoReset=function(){items.forEach(function(it){it.querySelector('input').checked=false;it.classList.remove('done');});save();prog();};
+  load();prog();
+})();
+</script>
 
 </div>

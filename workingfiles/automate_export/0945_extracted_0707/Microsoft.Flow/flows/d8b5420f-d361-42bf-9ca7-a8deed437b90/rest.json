@@ -1,0 +1,93 @@
+{
+ "今日前綴": {
+  "runAfter": {},
+  "type": "Compose",
+  "inputs": "formatDateTime(addHours(utcNow(),8),'yyyyMMdd')"
+ },
+ "取得清單項目": {
+  "runAfter": {
+   "今日前綴": [
+    "Succeeded"
+   ]
+  },
+  "type": "OpenApiConnection",
+  "inputs": {
+   "parameters": {
+    "dataset": "https://techartgroup.sharepoint.com/sites/PLANNER_CK",
+    "table": "9bd1cdf3-4d38-49d3-ab8f-51c7448455bc",
+    "$filter": "@concat('startswith(Title,''', formatDateTime(addHours(utcNow(),8),'yyyyMMdd'), '_'')')\n",
+    "$top": 5000
+   },
+   "host": {
+    "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+    "connectionName": "shared_sharepointonline",
+    "operationId": "GetItems"
+   },
+   "authentication": "@parameters('$authentication')"
+  }
+ },
+ "延遲列": {
+  "runAfter": {
+   "取得清單項目": [
+    "Succeeded"
+   ]
+  },
+  "type": "Query",
+  "inputs": {
+   "from": "@outputs('取得清單項目')?['body/value']",
+   "where": "@not(endsWith(item()?['Title'],'_TaskOnSchedule'))"
+  }
+ },
+ "列出表格中的列_名冊": {
+  "runAfter": {
+   "延遲列": [
+    "Succeeded"
+   ]
+  },
+  "metadata": {
+   "01YOOPXWNA7INQ4QDWMVEYTEMZ3AXUFDUL": "/TEST_PLANNER_CK/TaskDB.xlsx",
+   "tableId": "{67870985-434E-4538-AC8D-3C6A5B409136}"
+  },
+  "type": "OpenApiConnection",
+  "inputs": {
+   "parameters": {
+    "source": "groups/4e9fefe9-17d7-4aa1-8837-149909d4e456",
+    "drive": "b!i68ahSj1dEipxrHpGiAh94rDy7JMwe1ElyBnnWY0g72M4M9I8Ua3TLflQKcZhT3p",
+    "file": "01YOOPXWNA7INQ4QDWMVEYTEMZ3AXUFDUL",
+    "table": "{67870985-434E-4538-AC8D-3C6A5B409136}"
+   },
+   "host": {
+    "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+    "connectionName": "shared_excelonlinebusiness",
+    "operationId": "GetItems"
+   },
+   "authentication": "@parameters('$authentication')"
+  },
+  "runtimeConfiguration": {
+   "paginationPolicy": {
+    "minimumItemCount": 500
+   }
+  }
+ },
+ "取得行事曆_請假": {
+  "runAfter": {
+   "列出表格中的列_名冊": [
+    "Succeeded"
+   ]
+  },
+  "type": "OpenApiConnection",
+  "inputs": {
+   "parameters": {
+    "calendarId": "AAMkADM0N2NjZjcxLTIwNjItNGQ0NC04OTkyLWM0ZDBkNTUxMGNiYwBGAAAAAADOorK1N1EKQpa5w7XkCcDOBwCdSYVBDQDBTJ73bHjSVry-AAAAAAEGAACdSYVBDQDBTJ73bHjSVry-AAAAAJcuAAA=",
+    "startDateTimeUtc": "@concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T00:00:00+08:00')",
+    "endDateTimeUtc": "@concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T23:59:59+08:00')"
+   },
+   "host": {
+    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+    "connectionName": "shared_office365",
+    "operationId": "GetEventsCalendarViewV3"
+   },
+   "authentication": "@parameters('$authentication')"
+  }
+ }
+}

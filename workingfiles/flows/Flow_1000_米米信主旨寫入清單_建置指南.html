@@ -24,9 +24,49 @@
   .warn{border-left:4px solid var(--warn);background:#fffbeb;padding:12px 16px;border-radius:8px;margin:10px 0;}
   .ok{border-left:4px solid var(--ok);background:#f0fdf4;padding:12px 16px;border-radius:8px;margin:10px 0;}
   .fx{background:#f5f3ff;color:#6d28d9;padding:1px 6px;border-radius:4px;font-size:12px;font-weight:600;}
+  /* 浮動修改待辦 */
+  #todo{position:fixed;top:16px;right:16px;width:272px;z-index:9999;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.16);font-size:13px;overflow:hidden;}
+  #todo .hd{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#0f172a;color:#fff;cursor:pointer;user-select:none;}
+  #todo .hd b{font-size:13px;}
+  #todo .hd .pg{margin-left:auto;font-size:12px;background:#1e293b;padding:2px 9px;border-radius:99px;}
+  #todo .hd .pg.alldone{background:#15803d;}
+  #todo .hd .cv{font-size:11px;opacity:.85;width:14px;text-align:center;}
+  #todo .bd{padding:6px;max-height:62vh;overflow:auto;}
+  #todo.collapsed .bd,#todo.collapsed .ft{display:none;}
+  #todo .it{display:flex;gap:8px;align-items:flex-start;padding:8px;border-radius:8px;}
+  #todo .it:hover{background:#f1f5f9;}
+  #todo .it input{margin-top:2px;width:16px;height:16px;flex:none;cursor:pointer;}
+  #todo .it .tx{cursor:pointer;line-height:1.45;}
+  #todo .it .tx .n{font-weight:700;color:var(--accent);}
+  #todo .it .tx small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px;}
+  #todo .it.done .tx,#todo .it.done .tx .n{text-decoration:line-through;color:var(--muted);}
+  #todo .ft{display:flex;justify-content:flex-end;padding:4px 10px 10px;}
+  #todo .ft button{font-size:11.5px;color:var(--muted);background:none;border:1px solid var(--line);border-radius:6px;padding:3px 9px;cursor:pointer;}
+  #todo .ft button:hover{background:#f1f5f9;}
+  @keyframes flashbg{0%{background:#fde68a;}100%{background:transparent;}}
+  .flash{animation:flashbg 1.7s ease-out;border-radius:6px;}
+  @media(max-width:780px){
+    #todo{top:auto;bottom:0;left:0;right:0;width:auto;border-radius:12px 12px 0 0;}
+    #todo .bd{max-height:44vh;}
+    .wrap{padding-bottom:240px;}
+  }
 </style>
 </head>
 <body>
+<div id="todo">
+  <div class="hd" onclick="todoToggle()"><b>🛠 修改待辦</b><span class="pg" id="todoPg">0/2</span><span class="cv" id="todoCv">▼</span></div>
+  <div class="bd">
+    <div class="it" data-k="calviewwindow">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('fix-calview-window')"><span class="n">① 取得行事曆檢視(V3) 時間參數尾碼 +08:00→Z</span><small>全天事件用 UTC 午夜當邊界，舊尾碼撈到昨天單日假 → §2b</small></span>
+    </div>
+    <div class="it" data-k="filterevents">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('fix-filterevents')"><span class="n">② FilterEvents 加第三個 or 分支（跨日整天事件）</span><small>原判斷漏跨日年假格式，同人請假仍被判無請假 → 2026-07-07 修正節</small></span>
+    </div>
+  </div>
+  <div class="ft"><button onclick="todoReset()">重設打勾</button></div>
+</div>
 <div class="wrap">
 
 <h1>1000 米米信「**」主旨寫入清單 建置指南</h1>
@@ -38,7 +78,7 @@
 </div>
 
 <div class="warn">
-<b>平台鐵則（沿用前案踩坑）</b>：① 運算式一律用 <span class="fx">fx</span> 插入成紫色 chip，別在欄位直接打字。② 清單中文欄內部名是 <b>field_N</b>：<code>field_3 Email／field_8 實際出勤狀態</code>；唯一鍵欄 <code>Title</code>、項目編號 <code>ID</code>。③ Power Automate 的 <code>equals()</code> <b>分大小寫</b>（與 Power Fx 不同），email 比對要 <code>toLower</code> 兩邊。④ 「今日」用 <code>Title</code> 前綴 <code>yyyyMMdd_</code> 篩。</div>
+<b>平台鐵則（沿用前案踩坑，2026-07-07 更新）</b>：① 運算式<b>整段複製「已含 <code>@</code> 開頭」的文字直接貼進欄位</b>即可，貼上後失焦會自動變運算式 chip，<b>免點開 fx 圖示</b>這一步；本指南標 <span class="fx">fx</span> 的地方，貼的內容本身就帶 <code>@</code>。只有貼上後仍是灰字（沒變 chip）才需要點 fx 手動修正。別在欄位打「不含 @」的裸文字（會被當字面字串，不計算）。② 清單中文欄內部名是 <b>field_N</b>：<code>field_3 Email／field_8 實際出勤狀態</code>；唯一鍵欄 <code>Title</code>、項目編號 <code>ID</code>。③ Power Automate 的 <code>equals()</code> <b>分大小寫</b>（與 Power Fx 不同），email 比對要 <code>toLower</code> 兩邊。④ 「今日」用 <code>Title</code> 前綴 <code>yyyyMMdd_</code> 篩。</div>
 
 <div class="ok"><b>UI 操作查證狀態</b>（2026-06-26，依官方文件，非憑記憶）：① <b>條件</b>複合判斷＝條件卡片「新增」按鈕加列＋且/或群組（<a href="https://learn.microsoft.com/en-us/power-automate/add-condition">add-condition</a>，已驗證）。② <b>篩選陣列</b>官方頁只示範單列篩選查詢、未示範進階模式（<a href="https://learn.microsoft.com/en-us/power-automate/data-operations">data-operations</a>）→ 故本指南複合篩選改「單列＋ <code>if(and(...),'Y','N')</code> 等於 <code>Y</code>」，不依賴未證實的進階模式。③ 動作存在性以你的 1000 匯出檔為準。仍有把握不足處會明標。</div>
 
@@ -83,14 +123,14 @@
 
 <h3>1. 三個 Compose（時間/篩選字串）</h3>
 <div class="card">
-各加一個 <code>Compose</code>，內容用 <span class="fx">fx</span> 整段貼：
+各加一個 <code>Compose</code>，內容整段直接貼（已含 <code>@</code>，免點 fx）：
 <h3>Compose_清單篩選</h3>
-<pre><code>concat('startswith(Title,''',formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyyMMdd'),'_'')')</code></pre>
+<pre><code>@concat('startswith(Title,''',formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyyMMdd'),'_'')')</code></pre>
 <p>產出 <code>startswith(Title,'20260626_')</code>（先 Compose 成完整字串再餵篩選查詢，避巢狀單引號被截）。</p>
 <h3>Compose_下界0001</h3>
-<pre><code>formatDateTime(convertToUtc(addMinutes(startOfDay(convertFromUtc(utcNow(),'Taipei Standard Time')),1),'Taipei Standard Time'),'yyyy-MM-ddTHH:mm:ssZ')</code></pre>
+<pre><code>@formatDateTime(convertToUtc(addMinutes(startOfDay(convertFromUtc(utcNow(),'Taipei Standard Time')),1),'Taipei Standard Time'),'yyyy-MM-ddTHH:mm:ssZ')</code></pre>
 <h3>Compose_上界10</h3>
-<pre><code>formatDateTime(convertToUtc(addHours(startOfDay(convertFromUtc(utcNow(),'Taipei Standard Time')),10),'Taipei Standard Time'),'yyyy-MM-ddTHH:mm:ssZ')</code></pre>
+<pre><code>@formatDateTime(convertToUtc(addHours(startOfDay(convertFromUtc(utcNow(),'Taipei Standard Time')),10),'Taipei Standard Time'),'yyyy-MM-ddTHH:mm:ssZ')</code></pre>
 <div class="warn" style="margin-top:8px"><b>時區備案</b>：既有 1000 流程在此環境用 <code>convertFromUtc/convertToUtc('Taipei Standard Time')</code> 是<b>跑得通的</b>，故沿用。萬一某天報「時區無效」（0945 曾遇），改 addHours 版：前綴 <code>formatDateTime(addHours(utcNow(),8),'yyyyMMdd')</code>；下界0001 <code>formatDateTime(addMinutes(addHours(startOfDay(addHours(utcNow(),8)),-8),1),'yyyy-MM-ddTHH:mm:ssZ')</code>；上界10 <code>formatDateTime(addHours(startOfDay(addHours(utcNow(),8)),2),'yyyy-MM-ddTHH:mm:ssZ')</code>（台北00:01=UTC前一日16:01、10:00=UTC當日02:00）。</div>
 </div>
 
@@ -105,15 +145,19 @@ Office 365 Outlook → <b>取得電子郵件 (V3)</b>：
 <p style="color:var(--muted);font-size:12.5px">searchQuery 只設下界（≥00:01）；上界(&lt;10:00)與「**」開頭留給下一步 Filter array 精準過濾。</p>
 </div>
 
-<h3>2b. 取得行事曆檢視 (V3)（請假來源）</h3>
+<h3 id="fix-calview-window">2b. 取得行事曆檢視 (V3)（請假來源）<span style="font-weight:400;font-size:12px;color:var(--warn)">（2026-07-07 已修正時間參數，見下）</span></h3>
 <div class="card">
 Office 365 Outlook → <b>取得行事曆檢視的事件 (V3)</b>（沿用既有 1000 流程的同一行事曆＝domain.e 行事曆）：
-<ul>
-<li><b>行事曆 ID</b>：選 domain.e 信箱的行事曆。</li>
-<li><b>開始時間</b>（＝今天 00:00）：<span class="fx">fx</span> <code>concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T00:00:00+08:00')</code></li>
-<li><b>結束時間</b>（＝今天 23:59）：<span class="fx">fx</span> <code>concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T23:59:59+08:00')</code></li>
-<li style="color:var(--muted)"><b>只取今天單日（00:00～23:59 台北）</b>。先前加寬到昨天～明天會把<b>前天/昨天的全天請假</b>在午夜邊界撈進來（全天事件 start/end 存 UTC 整天，與台北當日窗在午夜重疊）——例：今天 06-26 卻撈到 06-24 陳宏錡的假。改單日視窗即從源頭排除。今天的全天事件（UTC 06-26 00:00→06-27 00:00）仍與台北當日窗重疊、照樣取得，不會漏。</li>
-</ul>
+<table><tr><th>欄位</th><th>值</th></tr>
+<tr><td>行事曆 ID</td><td>domain.e 信箱的行事曆</td></tr>
+<tr><td>開始時間</td><td><code>@concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T00:00:00Z')</code></td></tr>
+<tr><td>結束時間</td><td><code>@concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T23:59:59Z')</code></td></tr>
+</table>
+<details><summary>為什麼尾碼改成 Z（不是 +08:00）</summary>
+<p>此行事曆的全天請假事件一律用 <b>UTC 午夜</b>當全天邊界（回傳 <code>timeZone:"UTC"</code>），不是台北午夜。舊版時間參數尾碼用 <code>+08:00</code>（台北當日換算成 UTC），會變成 UTC「前一天16:00～當天15:59」——跟「只請一天」的全天事件（如 <code>張耀中請年假，2026-07-06(全天)</code>，UTC 邊界 07-06T00:00～07-07T00:00）有 8 小時重疊，導致查 07-07 卻撈到他 07-06 的假。</p>
+<p>尾碼改 <code>Z</code>（把台北日期字面數字直接當 UTC 邊界，不做時區換算）：查詢視窗變成 UTC「當天00:00～23:59」，跟上例事件（結束於 07-07T00:00）恰好不重疊，不會撈到；跨日事件（如 <code>郭冠妤請年假，2026-07-06 至2026-07-10</code>）UTC 邊界本來就橫跨好幾天，改用哪種尾碼都照樣重疊、不會漏抓。</p>
+<p>舊教訓「改單日視窗即從源頭排除前一天的假」（06-26 陳宏錡案例）只解決了「查詢範圍過寬（±1天）」，沒解決「單日視窗跟全天事件 UTC 邊界仍有 8 小時重疊」這個更細的邊界問題——本次修正才是真正從源頭排除。</p>
+</details>
 <p style="color:var(--muted);font-size:12.5px">請假事件＝某人在 domain.e 行事曆上的請假/代理登記，主旨形如「<code>王小明 代理…</code>」。比對方式沿用既有：<code>split(主旨,'代理')[0]</code> 含該人姓名即視為當日請假。</p>
 </div>
 
@@ -133,14 +177,14 @@ SharePoint → <b>取得項目 Get items（複數）</b>：
 <b>套用至每一個</b>，來源＝<b>取得項目 的 value</b>。內含 4 個動作：
 
 <h3>① FilterEmails（篩選陣列）</h3>
-<p><b>來源（From）</b>：動態內容 <b>取得電子郵件 的 value</b>。<b>篩選查詢用單列</b>：左值放下面整段 <span class="fx">fx</span>、運算子 <b>等於</b>、右值打 <code>Y</code>（官方文件僅確認單列篩選＋值可為運算式，故用 if 把複合判斷塞左值，不賭進階模式）：</p>
-<pre><code>if(and(equals(toLower(item()?['from']),toLower(items('套用至每一個')?['field_3'])),startsWith(item()?['subject'],'**'),less(item()?['receivedDateTime'],outputs('Compose_上界10'))),'Y','N')</code></pre>
+<p><b>來源（From）</b>：動態內容 <b>取得電子郵件 的 value</b>。<b>篩選查詢用單列</b>：左值整段直接貼（已含 <code>@</code>，貼上失焦即自動變運算式，不必點 fx）、運算子 <b>等於</b>、右值打 <code>Y</code>（官方文件僅確認單列篩選＋值可為運算式，故用 if 把複合判斷塞左值，不賭進階模式）：</p>
+<pre><code>@if(and(equals(toLower(item()?['from']),toLower(items('套用至每一個')?['field_3'])),startsWith(item()?['subject'],'**'),less(item()?['receivedDateTime'],outputs('Compose_上界10'))),'Y','N')</code></pre>
 <p style="color:var(--muted);font-size:12.5px">迴圈名若非「套用至每一個」請改成實際名稱。<code>from</code>＝寄件者信箱字串、<code>receivedDateTime</code>＝收信時間（V3 輸出屬性名）。</p>
 <div class="ok"><b>米米信＝「**信」</b>（同義）。主旨格式＝<code>**</code> ＋ 短名 ＋ 狀態文字，實例：<code>**Ed 今日異地辦公</code>、<code>**耀中 11.進</code>、<code>** Ray 11點進</code>、<code>**怡惠1020到</code>（<code>**</code> 後有無空格不一，故只用 <code>startsWith(subject,'**')</code> 判頭）。主旨裡的短名（Ed/Ray/耀中）<b>不一定對得上全名或 Email</b>，所以「對應到誰」靠<b>寄件者 Email</b>、不靠主旨解析。</div>
 
 <h3>② FilterEvents（篩選陣列｜請假，主旨判涵蓋 10:00）</h3>
-<p><b>來源（From）</b>：動態內容 <b>取得行事曆檢視 的 value</b>。<b>篩選查詢用單列</b>：左值放下面整段 <span class="fx">fx</span>、運算子 <b>等於</b>、右值打 <code>Y</code>：</p>
-<pre><code>if(and(contains(split(item()?['subject'],'代理')[0],items('套用至每一個')?['field_4']),contains(item()?['subject'],formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd')),or(contains(replace(item()?['subject'],'：',':'),'10:00'),contains(item()?['subject'],'全天'))),'Y','N')</code></pre>
+<p><b>來源（From）</b>：動態內容 <b>取得行事曆檢視 的 value</b>。<b>篩選查詢用單列</b>：左值整段直接貼（已含 <code>@</code>，免點 fx）、運算子 <b>等於</b>、右值打 <code>Y</code>：</p>
+<pre><code>@if(and(contains(split(item()?['subject'],'代理')[0],items('套用至每一個')?['field_4']),contains(item()?['subject'],formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd')),or(contains(replace(item()?['subject'],'：',':'),'10:00'),contains(item()?['subject'],'全天'))),'Y','N')</code></pre>
 <p style="color:var(--muted);font-size:12.5px"><code>field_4</code>＝姓名（主旨「代理」前段含姓名，連「代理人:自理」也安全）。<b>涵蓋 10:00 改用主旨字串判（依你定義）</b>：主旨含 <code>10:00</code>（如 <code>(10:00-14:00)</code>，10:00 起的假）<b>或</b> <code>全天</code> → 視為 10:00 不在公司。因 <b>10 點上班、不會有早於 10:00 起的假</b>，主旨出現「10:00」即代表該假從 10:00 起算。<b>不靠事件 start/end，免時區坑</b>（行事曆動作只用來拿主旨）。<br><b>保留「主旨含今天日期」守衛</b> <code>contains(subject, 今天yyyy-MM-dd)</code>：視窗已改單日，但<b>昨天的全天事件</b>（UTC 整天）仍可能在午夜邊界漏進當日窗，這條把它擋掉、確保只算<b>今天</b>的假。實例主旨 <code>…請無薪事假 ，2026-06-26(全天)…</code> 含 <code>2026-06-26</code> 即命中；前天/昨天日期的主旨一律不中。</p>
 <div class="warn" style="margin-top:8px"><b>冒號半全形</b>：截圖顯示你系統主旨冒號半形「:」與全形「：」混用（如 <code>10：00</code>／<code>10:25</code>）。故 <code>replace(subject,'：',':')</code> 先把全形換半形再比 <code>10:00</code>，兩種都中。若還有其他寫法（如 <code>10 點</code>）回報我加。</div>
 <div class="ok" style="margin-top:8px"><b>真資料證實（取得行事曆檢視輸出）</b>：請假事件 <code>isAllDay:true</code>、<code>start/end</code>＝整天（如 <code>2026-06-26T00:00 → 06-27T00:00</code>、timeZone UTC），<b>實際時段只在主旨</b>（如 <code>(14:00-18:00)</code>）。所以<b>必須用主旨判斷、不能用事件 start/end</b>（用 start/end 會把每筆都當整天、誤判）。範例：<code>陳宏錡…(14:00-18:00)</code> 下午假 → 主旨無「10:00/全天」→ 正確不算。</div>
@@ -149,31 +193,49 @@ SharePoint → <b>取得項目 Get items（複數）</b>：
 <div class="warn"><b>動作查證</b>：平行分支用「+」→「<b>新增平行分支</b>」（你截圖的「+」選單有此項）。每支裡的判斷用「<b>條件</b>」（你截圖「控制」清單有，經「新增動作」加入）。<b>切換(Switch)</b> 你舊流程用過、確定存在但菜單沒列、需搜尋——本案改平行分支，不用它。<br><b>更新項目</b>＝SharePoint 連接器標準動作（與你剛加的「取得項目」同連接器；非從你的匯出檔驗到，名稱不同回報我）。<br><b>平行分支無自動互斥（Codex 查證）</b>：3 支同時跑，故 B、C 必須各加「無請假」守衛，否則同時有請假＋米米信會雙重更新。</div>
 
 <h3>③-A 分支A（請假）</h3>
-<p>條件左值 <span class="fx">fx</span> <code>length(body('FilterEvents'))</code>　<b>大於</b>　<code>0</code>：</p>
-<ul><li><b>是</b> → SharePoint <b>更新項目</b>：識別碼 <span class="fx">fx</span> <code>items('套用至每一個')?['ID']</code>、標題 <span class="fx">fx</span> <code>items('套用至每一個')?['Title']</code>、<b>實際出勤狀態 ＝</b> <span class="fx">fx</span> <code>first(body('FilterEvents'))?['subject']</code>（寫該請假事件主旨，如 <code>林子硯請無薪事假 ，2026-06-26(全天)，共8時，代理人:自己</code>）。</li></ul>
+<p>條件左值 <span class="fx">fx</span> <code>@length(body('FilterEvents'))</code>　<b>大於</b>　<code>0</code>：</p>
+<ul><li><b>是</b> → SharePoint <b>更新項目</b>：識別碼 <span class="fx">fx</span> <code>@items('套用至每一個')?['ID']</code>、標題 <span class="fx">fx</span> <code>@items('套用至每一個')?['Title']</code>、<b>實際出勤狀態 ＝</b> <span class="fx">fx</span> <code>@first(body('FilterEvents'))?['subject']</code>（寫該請假事件主旨，如 <code>林子硯請無薪事假 ，2026-06-26(全天)，共8時，代理人:自己</code>）。</li></ul>
 
 <div class="warn"><b>複合條件（B、C）用條件卡片的「新增」按鈕加列、群組選「且 (And)」</b>（已查證 MS Learn add-condition：「You can create complex conditions by using the Add button on the condition card」）。每列左值用 <span class="fx">fx</span>，不需要進階模式。</div>
 
 <h3>③-B 分支B（米米信，需無請假）</h3>
 <p>「+ → 新增平行分支」加第二支「條件」，加兩列、關係選 <b>且 (And)</b>：</p>
 <ul>
-<li>列1：<span class="fx">fx</span> <code>length(body('FilterEvents'))</code>　<b>等於</b>　<code>0</code></li>
-<li>列2：<span class="fx">fx</span> <code>length(body('FilterEmails'))</code>　<b>大於</b>　<code>0</code></li>
-<li><b>是</b> → <b>更新項目</b>：識別碼／標題同上、實際出勤狀態 ＝ <span class="fx">fx</span> <code>first(body('FilterEmails'))?['subject']</code>。</li>
+<li>列1：<span class="fx">fx</span> <code>@length(body('FilterEvents'))</code>　<b>等於</b>　<code>0</code></li>
+<li>列2：<span class="fx">fx</span> <code>@length(body('FilterEmails'))</code>　<b>大於</b>　<code>0</code></li>
+<li><b>是</b> → <b>更新項目</b>：識別碼／標題同上、實際出勤狀態 ＝ <span class="fx">fx</span> <code>@first(body('FilterEmails'))?['subject']</code>。</li>
 </ul>
 
 <h3>③-C 分支C（都沒有，不動）</h3>
 <p>第三支「條件」，兩列、關係 <b>且 (And)</b>：</p>
 <ul>
-<li>列1：<span class="fx">fx</span> <code>length(body('FilterEvents'))</code>　<b>等於</b>　<code>0</code></li>
-<li>列2：<span class="fx">fx</span> <code>length(body('FilterEmails'))</code>　<b>等於</b>　<code>0</code></li>
+<li>列1：<span class="fx">fx</span> <code>@length(body('FilterEvents'))</code>　<b>等於</b>　<code>0</code></li>
+<li>列2：<span class="fx">fx</span> <code>@length(body('FilterEmails'))</code>　<b>等於</b>　<code>0</code></li>
 <li><b>是</b> → 不放任何動作（保留位；未來要對「沒回報又沒到」寫預設值如「未回報」放這支）。</li>
 </ul>
-<p style="color:var(--muted);font-size:12.5px">替代法：左值放整串布林 <span class="fx">fx</span> <code>and(equals(length(body('FilterEvents')),0), greater(length(body('FilterEmails')),0))</code>、運算子<b>等於</b>、右值 <code>true</code>（單列即可，但 true 比對偶有型別問題，逐列＋且較穩）。</p>
+<p style="color:var(--muted);font-size:12.5px">替代法：左值放整串布林 <span class="fx">fx</span> <code>@and(equals(length(body('FilterEvents')),0), greater(length(body('FilterEmails')),0))</code>、運算子<b>等於</b>、右值 <code>true</code>（單列即可，但 true 比對偶有型別問題，逐列＋且較穩）。</p>
 
 <div class="ok">兩個「更新項目」都<b>只填「識別碼／標題／實際出勤狀態」三欄</b>，其餘留空＝保持原值。<br><b>互斥保證</b>：A 條件 <code>FilterEvents&gt;0</code>、B/C 條件含 <code>FilterEvents=0</code> → 任一列只會有一支觸發。「套用至每一個」並行與否皆安全（每列＝不同清單項目，跨列不互撞）。</div>
 </div>
 
+<h2 id="fix-filterevents">2026-07-07 修正：FilterEvents 漏判跨日年假</h2>
+<div class="card">
+<table><tr><th>動作</th><th>設定</th></tr>
+<tr><td>FilterEvents（篩選陣列）</td><td>where 整段換成：<pre id="filterevents-expr"><code>@and(
+  contains(replace(split(item()?['subject'], '代理')[0], ' ', ''), replace(items('套用至每一個')?['field_4'], ' ', '')),
+  or(
+    contains(item()?['subject'], '10:00'),
+    contains(item()?['subject'], '全天'),
+    greater(div(sub(ticks(item()?['end']), ticks(item()?['start'])), 864000000000), 1)
+  )
+)</code></pre></td></tr>
+</table>
+<details><summary>為什麼要改</summary>
+<p><b>症狀</b>：使用者手動測試（<code>0706_today</code> 擷取），行事曆查得到請假事件，但 field_8 沒被寫入請假主旨（分支A 沒觸發）。</p>
+<p><b>根因</b>：原條件判斷「請假是否涵蓋10:00」只認主旨字面含 <code>10:00</code> 或 <code>全天</code>，但<b>跨日年假／特休格式</b>（實例：<code>郭冠妤請年假，2026-07-06 至2026-07-10，共40時，代理人:自理</code>）不含任一字樣，永遠不命中，導致當事人被誤判為「今日無請假」。單日事件（如 <code>林子硯請無薪事假 ，2026-06-26(全天)</code>）不受影響，主旨本身就有「全天」字樣。</p>
+<p><b>修法邏輯</b>：跨日年假不會有「只請半天」的情境（一次請多整天），與其列舉假別關鍵字（未來新假別名稱仍會漏），改用<b>事件本身 start/end 相差是否 &gt; 1 天</b>直接判定「多日整天事件」，不必解析主旨文字、不受格式影響。第三個 or 分支＝事件跨度 &gt; 1 天（864000000000 ticks＝1 天）。單日全天事件 start/end 本身就固定相差剛好 1 天（Outlook all-day 慣例，end 為隔天 00:00），不會誤觸發此分支，仍靠既有「全天」文字判斷——兩分支互不干擾。</p>
+</details>
+</div>
 <h2>驗證與備註</h2>
 <div class="card">
 <ul>
@@ -187,5 +249,19 @@ SharePoint → <b>取得項目 Get items（複數）</b>：
 </div>
 
 </div>
+<script>
+(function(){
+  var KEY='todo1000fix_v1';
+  var items=[].slice.call(document.querySelectorAll('#todo .it'));
+  function save(){var s={};items.forEach(function(it){s[it.dataset.k]=it.querySelector('input').checked;});try{localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}}
+  function load(){var s={};try{s=JSON.parse(localStorage.getItem(KEY)||'{}');}catch(e){}items.forEach(function(it){var on=!!s[it.dataset.k];it.querySelector('input').checked=on;it.classList.toggle('done',on);});}
+  function prog(){var done=items.filter(function(it){return it.querySelector('input').checked;}).length;var pg=document.getElementById('todoPg');pg.textContent=(done===items.length?'✅ ':'')+done+'/'+items.length;pg.classList.toggle('alldone',done===items.length);}
+  window.todoCheck=function(cb){cb.closest('.it').classList.toggle('done',cb.checked);save();prog();};
+  window.todoGo=function(id){var el=document.getElementById(id);if(!el)return;el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');};
+  window.todoToggle=function(){var t=document.getElementById('todo');t.classList.toggle('collapsed');document.getElementById('todoCv').textContent=t.classList.contains('collapsed')?'▲':'▼';};
+  window.todoReset=function(){items.forEach(function(it){it.querySelector('input').checked=false;it.classList.remove('done');});save();prog();};
+  load();prog();
+})();
+</script>
 </body>
 </html>

@@ -1,0 +1,149 @@
+{
+ "foreach": "@body('列出表格中的列_名冊')?['value']\n",
+ "actions": {
+  "篩選_延遲任務數量": {
+   "type": "Query",
+   "inputs": {
+    "from": "@body('延遲列')",
+    "where": "@equals(toLower(trim(string(coalesce(item()?['field_3'],'')))), toLower(trim(string(coalesce(items('apply_to_each_mail')?['Email'],'')))))\n"
+   }
+  },
+  "Compose_任務數量": {
+   "runAfter": {
+    "篩選_延遲任務數量": [
+     "Succeeded"
+    ]
+   },
+   "type": "Compose",
+   "inputs": "@length(body('篩選_延遲任務數量'))"
+  },
+  "要寄嗎": {
+   "actions": {
+    "傳送電子郵件_(V2)": {
+     "type": "OpenApiConnection",
+     "inputs": {
+      "parameters": {
+       "emailMessage/To": "domain.e@techartgroup.com",
+       "emailMessage/Subject": "工作延遲_@{items('apply_to_each_mail')?['姓名']} | @{formatDateTime(addHours(utcNow(),8),'MM/dd')}",
+       "emailMessage/Body": "<p class=\"editor-paragraph\">@{items('apply_to_each_mail')?['姓名']}，您今天有 @{outputs('Compose_任務數量')} 件延遲工作，請回填出勤儀表板，更新卡片狀態，感謝！</p><p class=\"editor-paragraph\">你的儀表板網址；<br>https://apps.powerapps.com/play/e/default-41b8ec6e-6a43-4dcc-87e3-8f73d38bf5df/a/b385ff38-e873-4595-8dde-cca6145d7e00?tenantId=41b8ec6e-6a43-4dcc-87e3-8f73d38bf5df&amp;hint=2a427e09-207d-4e34-984f-1779b0aa8f83&amp;source=sharebutton&amp;sourcetime=1782078372244</p><br>",
+       "emailMessage/Importance": "Normal"
+      },
+      "host": {
+       "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+       "connectionName": "shared_office365",
+       "operationId": "SendEmailV2"
+      },
+      "authentication": "@parameters('$authentication')"
+     }
+    },
+    "延遲": {
+     "runAfter": {
+      "傳送電子郵件_(V2)": [
+       "Succeeded"
+      ]
+     },
+     "type": "Wait",
+     "inputs": {
+      "interval": {
+       "count": 10,
+       "unit": "Second"
+      }
+     }
+    }
+   },
+   "runAfter": {
+    "本人請假": [
+     "Succeeded"
+    ]
+   },
+   "else": {
+    "actions": {}
+   },
+   "expression": {
+    "and": [
+     {
+      "equals": [
+       "@and(\r\n  greater(length(body('篩選_延遲任務數量')),0),\r\n  not(empty(trim(string(coalesce(items('apply_to_each_mail')?['Email'],''))))),\r\n  not(outputs('本人請假'))\r\n)",
+       "@true"
+      ]
+     }
+    ]
+   },
+   "type": "If"
+  },
+  "FilterEvents_本人請假": {
+   "runAfter": {
+    "Compose_任務數量": [
+     "Succeeded"
+    ]
+   },
+   "type": "Query",
+   "inputs": {
+    "from": "@body('取得行事曆_請假')?['value']",
+    "where": "@and(contains(split(item()?['subject'],'代理')[0], items('apply_to_each_mail')?['姓名']), contains(item()?['subject'], formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd')), or(contains(replace(item()?['subject'],'：',':'),'10:00'), contains(item()?['subject'],'全天')))"
+   }
+  },
+  "本人請假": {
+   "runAfter": {
+    "FilterEvents_本人請假": [
+     "Succeeded"
+    ]
+   },
+   "type": "Compose",
+   "inputs": "@greater(length(body('FilterEvents_本人請假')),0)"
+  },
+  "條件_請假需標記": {
+   "actions": {
+    "apply_to_each_請假列": {
+     "foreach": "@body('篩選_延遲任務數量')",
+     "actions": {
+      "更新項目_標記請假": {
+       "type": "OpenApiConnection",
+       "inputs": {
+        "parameters": {
+         "dataset": "https://techartgroup.sharepoint.com/sites/PLANNER_CK",
+         "table": "9bd1cdf3-4d38-49d3-ab8f-51c7448455bc",
+         "id": "@items('apply_to_each_請假列')?['ID']",
+         "item/Title": "@items('apply_to_each_請假列')?['Title']",
+         "item/field_7": "4. 延遲（09:30沒到公司，當天已請假）"
+        },
+        "host": {
+         "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+         "connectionName": "shared_sharepointonline",
+         "operationId": "PatchItem"
+        },
+        "authentication": "@parameters('$authentication')"
+       }
+      }
+     },
+     "type": "Foreach"
+    }
+   },
+   "runAfter": {
+    "要寄嗎": [
+     "Succeeded"
+    ]
+   },
+   "else": {
+    "actions": {}
+   },
+   "expression": {
+    "and": [
+     {
+      "equals": [
+       "@and(outputs('本人請假'), greater(length(body('篩選_延遲任務數量')),0))",
+       "@true"
+      ]
+     }
+    ]
+   },
+   "type": "If"
+  }
+ },
+ "runAfter": {
+  "取得行事曆_請假": [
+   "Succeeded"
+  ]
+ },
+ "type": "Foreach"
+}

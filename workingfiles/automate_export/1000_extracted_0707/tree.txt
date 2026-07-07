@@ -1,0 +1,17 @@
+- Compose_清單篩選 [Compose]
+- Compose_下界0001 [Compose]
+- Compose_上界10 [Compose]
+- 取得電子郵件_(V3) [OpenApiConnection]
+- 取得事件的行事曆檢視_(V3) [OpenApiConnection]
+- 取得清單項目 [OpenApiConnection]
+- 套用至每一個 [Foreach]
+  - FilterEmails [Query]
+  - FilterEvents [Query]
+  - 分支A（請假 [If]
+    - 更新項目 [OpenApiConnection]
+    else:
+  - 分支B（米米信，需無請假） [If]
+    - 更新項目_1 [OpenApiConnection]
+    else:
+  - 分支C（都沒有，不動） [If]
+    else:

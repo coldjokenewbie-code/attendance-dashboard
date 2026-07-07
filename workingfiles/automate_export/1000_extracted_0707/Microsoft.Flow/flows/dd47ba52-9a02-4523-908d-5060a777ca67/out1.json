@@ -1,0 +1,146 @@
+{
+ "foreach": "@outputs('取得清單項目')?['body/value']",
+ "actions": {
+  "FilterEmails": {
+   "type": "Query",
+   "inputs": {
+    "from": "@outputs('取得電子郵件_(V3)')?['body/value']",
+    "where": "@and(\n  equals(toLower(item()?['from']), toLower(items('套用至每一個')?['field_3'])),\n  startsWith(item()?['subject'], '**'),\n  less(item()?['receivedDateTime'], outputs('Compose_上界10'))\n)"
+   }
+  },
+  "FilterEvents": {
+   "runAfter": {
+    "FilterEmails": [
+     "Succeeded"
+    ]
+   },
+   "type": "Query",
+   "inputs": {
+    "from": "@outputs('取得事件的行事曆檢視_(V3)')?['body/value']",
+    "where": "@and(contains(replace(split(item()?['subject'], '代理')[0], ' ', ''), replace(items('套用至每一個')?['field_4'], ' ', '')), or(contains(item()?['subject'], '10:00'), contains(item()?['subject'], '全天')))\n"
+   }
+  },
+  "分支A（請假": {
+   "actions": {
+    "更新項目": {
+     "type": "OpenApiConnection",
+     "inputs": {
+      "parameters": {
+       "dataset": "https://techartgroup.sharepoint.com/sites/PLANNER_CK",
+       "table": "9bd1cdf3-4d38-49d3-ab8f-51c7448455bc",
+       "id": "@items('套用至每一個')?['ID']",
+       "item/Title": "@items('套用至每一個')?['Title']",
+       "item/field_8": "@first(body('FilterEvents'))?['subject']"
+      },
+      "host": {
+       "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+       "connectionName": "shared_sharepointonline",
+       "operationId": "PatchItem"
+      },
+      "authentication": "@parameters('$authentication')"
+     }
+    }
+   },
+   "runAfter": {
+    "FilterEvents": [
+     "Succeeded"
+    ]
+   },
+   "else": {
+    "actions": {}
+   },
+   "expression": {
+    "and": [
+     {
+      "greater": [
+       "@length(body('FilterEvents'))",
+       0
+      ]
+     }
+    ]
+   },
+   "type": "If"
+  },
+  "分支B（米米信，需無請假）": {
+   "actions": {
+    "更新項目_1": {
+     "type": "OpenApiConnection",
+     "inputs": {
+      "parameters": {
+       "dataset": "https://techartgroup.sharepoint.com/sites/PLANNER_CK",
+       "table": "9bd1cdf3-4d38-49d3-ab8f-51c7448455bc",
+       "id": "@items('套用至每一個')?['ID']",
+       "item/Title": "@items('套用至每一個')?['Title']",
+       "item/field_8": "@first(body('FilterEmails'))?['subject']"
+      },
+      "host": {
+       "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+       "connectionName": "shared_sharepointonline",
+       "operationId": "PatchItem"
+      },
+      "authentication": "@parameters('$authentication')"
+     }
+    }
+   },
+   "runAfter": {
+    "FilterEvents": [
+     "Succeeded"
+    ]
+   },
+   "else": {
+    "actions": {}
+   },
+   "expression": {
+    "and": [
+     {
+      "equals": [
+       "@length(body('FilterEvents'))",
+       0
+      ]
+     },
+     {
+      "greater": [
+       "@length(body('FilterEmails'))",
+       0
+      ]
+     }
+    ]
+   },
+   "type": "If"
+  },
+  "分支C（都沒有，不動）": {
+   "actions": {},
+   "runAfter": {
+    "FilterEvents": [
+     "Succeeded"
+    ]
+   },
+   "else": {
+    "actions": {}
+   },
+   "expression": {
+    "and": [
+     {
+      "equals": [
+       "@length(body('FilterEvents'))",
+       0
+      ]
+     },
+     {
+      "equals": [
+       "@length(body('FilterEmails'))",
+       0
+      ]
+     }
+    ]
+   },
+   "type": "If"
+  }
+ },
+ "runAfter": {
+  "取得清單項目": [
+   "Succeeded"
+  ]
+ },
+ "type": "Foreach"
+}

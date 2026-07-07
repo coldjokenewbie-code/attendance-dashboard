@@ -1,0 +1,100 @@
+{
+ "Compose_清單篩選": {
+  "runAfter": {},
+  "type": "Compose",
+  "inputs": "@concat('startswith(Title,''',formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyyMMdd'),'_'')')\n"
+ },
+ "Compose_下界0001": {
+  "runAfter": {
+   "Compose_清單篩選": [
+    "Succeeded"
+   ]
+  },
+  "type": "Compose",
+  "inputs": "@formatDateTime(convertToUtc(addMinutes(startOfDay(convertFromUtc(utcNow(),'Taipei Standard Time')),1),'Taipei Standard Time'),'yyyy-MM-ddTHH:mm:ssZ')\n"
+ },
+ "Compose_上界10": {
+  "runAfter": {
+   "Compose_下界0001": [
+    "Succeeded"
+   ]
+  },
+  "type": "Compose",
+  "inputs": "@formatDateTime(convertToUtc(addHours(startOfDay(convertFromUtc(utcNow(),'Taipei Standard Time')),10),'Taipei Standard Time'),'yyyy-MM-ddTHH:mm:ssZ')\n"
+ },
+ "取得電子郵件_(V3)": {
+  "runAfter": {
+   "Compose_上界10": [
+    "Succeeded"
+   ]
+  },
+  "metadata": {
+   "Id::AAMkADM0N2NjZjcxLTIwNjItNGQ0NC04OTkyLWM0ZDBkNTUxMGNiYwAuAAAAAADOorK1N1EKQpa5w7XkCcDOAQCdSYVBDQDBTJ73bHjSVry-AAOcT6KjAAA=": "**信"
+  },
+  "type": "OpenApiConnection",
+  "inputs": {
+   "parameters": {
+    "importance": "Any",
+    "folderPath": "Id::AAMkADM0N2NjZjcxLTIwNjItNGQ0NC04OTkyLWM0ZDBkNTUxMGNiYwAuAAAAAADOorK1N1EKQpa5w7XkCcDOAQCdSYVBDQDBTJ73bHjSVry-AAOcT6KjAAA=",
+    "fetchOnlyUnread": false,
+    "includeAttachments": false,
+    "searchQuery": "received>=@{outputs('Compose_下界0001')}",
+    "top": 50
+   },
+   "host": {
+    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+    "connectionName": "shared_office365",
+    "operationId": "GetEmailsV3"
+   },
+   "authentication": "@parameters('$authentication')"
+  }
+ },
+ "取得事件的行事曆檢視_(V3)": {
+  "runAfter": {
+   "取得電子郵件_(V3)": [
+    "Succeeded"
+   ]
+  },
+  "type": "OpenApiConnection",
+  "inputs": {
+   "parameters": {
+    "calendarId": "AAMkADM0N2NjZjcxLTIwNjItNGQ0NC04OTkyLWM0ZDBkNTUxMGNiYwBGAAAAAADOorK1N1EKQpa5w7XkCcDOBwCdSYVBDQDBTJ73bHjSVry-AAAAAAEGAACdSYVBDQDBTJ73bHjSVry-AAAAAJcuAAA=",
+    "startDateTimeUtc": "@concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T00:01:00+08:00')",
+    "endDateTimeUtc": "@concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T23:59:59+08:00')"
+   },
+   "host": {
+    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+    "connectionName": "shared_office365",
+    "operationId": "GetEventsCalendarViewV3"
+   },
+   "authentication": "@parameters('$authentication')"
+  }
+ },
+ "取得清單項目": {
+  "runAfter": {
+   "取得事件的行事曆檢視_(V3)": [
+    "Succeeded"
+   ]
+  },
+  "type": "OpenApiConnection",
+  "inputs": {
+   "parameters": {
+    "dataset": "https://techartgroup.sharepoint.com/sites/PLANNER_CK",
+    "table": "9bd1cdf3-4d38-49d3-ab8f-51c7448455bc",
+    "$filter": "@outputs('Compose_清單篩選')",
+    "$top": 5000
+   },
+   "host": {
+    "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+    "connectionName": "shared_sharepointonline",
+    "operationId": "GetItems"
+   },
+   "authentication": "@parameters('$authentication')"
+  },
+  "runtimeConfiguration": {
+   "paginationPolicy": {
+    "minimumItemCount": 5000
+   }
+  }
+ }
+}
