@@ -1,9 +1,11 @@
 # 手動畫面屬性（Studio 內手動設定，此檔案無法貼出這段）：
-#   Screen.OnVisible = UpdateContext({locShowPopup: false}); Set(gToday, Text(Today(), "yyyy/mm/dd"))
+#   Screen.OnVisible = UpdateContext({locShowPopup: false, locIsAdmin: !IsBlank(LookUp(team_member, Email = User().Email, '出勤存取權限'))}); Set(gToday, Text(Today(), "yyyy/mm/dd"))
 #   （gToday 為全域變數，避免 Filter 內直接用 Text(Today()...) 造成不可委派；日期格式為零填補 yyyy/mm/dd，須與清單「日期」欄格式一致）
+#   （locIsAdmin：判斷是否行政，供下方「10:00 後一般同事回覆唯讀」鎖用，行政不受鎖；UI 鎖非硬安全，見 變更_回覆10點後唯讀.html）
 # 用法：畫布全選現有控件 → 刪除 → 貼上本檔（Cmd/Ctrl+V）→ 回 Studio 手動加上方 OnVisible
 # 基準：2026-07-06 從 Studio 匯出的最新內容；本次改動＝拆分個人/行政：移除「行政查核」鈕(btnAdmin, Navigate(ScrAdmin))，
 #   頭部標題與使用者資訊改全寬（原標題 Width 0.62 為讓位按鈕，在窄手機換行與姓名重疊），姓名/email 分兩行。行政查核改獨立 app/服務。
+# 併入 flow-0955 分支（2026-07-08 merge main）：補回「10:00 後一般同事回覆唯讀，行政不受限」，radReply／btnSubmit 加 DisplayMode 鎖＋OnSelect 二次防呆。
 
 - conHeader:
     Control: GroupContainer@1.5.0
@@ -211,6 +213,7 @@
                 Properties:
                   Color: =RGBA(31, 41, 55, 1)
                   Default: =locSelected.表單回覆
+                  DisplayMode: =If(locIsAdmin Or Hour(Now()) < 10, DisplayMode.Edit, DisplayMode.View)
                   Height: =Parent.Height - 132 - 72
                   Items: =["1. 已完成（請自行勾掉卡片）", "2. 延遲（09:30已到公司在補進度）", "3. 延遲（09:30沒到公司，請填寫假卡）", "4. 延遲（09:30沒到公司，當天已請假）", "5. 如為其他狀況，請於5分鐘內更新卡片"]
                   Items.Value: =Value
@@ -237,16 +240,21 @@
                 Control: Classic/Button@2.2.0
                 Properties:
                   Color: =RGBA(255, 255, 255, 1)
+                  DisplayMode: =If(locIsAdmin Or Hour(Now()) < 10, DisplayMode.Edit, DisplayMode.View)
                   Fill: =RGBA(37, 99, 235, 1)
                   Height: =46
                   HoverFill: =RGBA(29, 78, 216, 1)
                   OnSelect: |-
-                    =Patch(AttendanceHistory, locSelected, {表單回覆: radReply.Selected.Value});
-                    If(
-                        IsEmpty(Errors(AttendanceHistory, locSelected)),
-                        Notify("已送出回覆", NotificationType.Success);
-                        UpdateContext({locShowPopup: false}),
-                        Notify("送出失敗：" & First(Errors(AttendanceHistory, locSelected)).Message, NotificationType.Error)
+                    =If(
+                        !(locIsAdmin Or Hour(Now()) < 10),
+                        Notify("10:00 後僅行政人員可修改回覆", NotificationType.Error),
+                        Patch(AttendanceHistory, locSelected, {表單回覆: radReply.Selected.Value});
+                        If(
+                            IsEmpty(Errors(AttendanceHistory, locSelected)),
+                            Notify("已送出回覆", NotificationType.Success);
+                            UpdateContext({locShowPopup: false}),
+                            Notify("送出失敗：" & First(Errors(AttendanceHistory, locSelected)).Message, NotificationType.Error)
+                        )
                     )
                   Text: ="送出"
                   Width: =(Parent.Width - 48) / 2
