@@ -1,5 +1,8 @@
 # Lessons Learned
 
+## 2026-06-24（0955 再巡檢實建）
+- **「更新項目（PatchItem）」不要填 Title，否則報「Item/Title 已不存在於作業模式中」孤兒參照**：0955 從 0930「另存複本」來、更新動作帶著失效的 `item/Title` 繫結，當前清單 schema 無此 key（Title 顯示名改過）→ 存檔即報錯，Power Automate 訊息本身叫你「存檔前移除它」。修法：**直接移除 Title 那格參數即可，不必整個動作重建**（比 2026-06-16 條目的「刪動作重建」更省）。原理：更新是用 `id` 定位既有列，Title 留空不會被清空（非建新列）；只有「建立項目」才必填 Title（且兼唯一鍵）。已同步把 0955 指南所有「更新項目帶原 Title」改成「只填 Id＋field_7」。
+
 ## 2026-06-22（Power Apps / Power Automate 平台踩坑彙整）
 - **Power Automate 運算式必須用「fx 插入成 token」，不可在欄位直接打字**：直接打 `formatDateTime/concat/toLower/...` 會被當「字面字串」不計算（症狀：執行輸出出現整段運算式文字、或 Select 報「請輸入有效的 JSON」）。這是本次 0945 反覆卡關的真正主因。判斷：欄位裡是灰字＝字面(錯)、彩色 chip＝運算式(對)。**指南一律提供可整段貼的運算式，並註明「用 fx 插入」**。
 - **SharePoint 清單欄位「內部名」≠ 顯示名**：CSV 匯入/中文欄常變 `field_N`（Email→field_3、姓名→field_4…）；運算式用顯示名 `item()?['Email']` 會回 null。**從「取得項目」一次執行的原始輸出 JSON key 即可確認對照**，別猜。Title、Email(若 ASCII)有時保留原名，但本案連 Email 都成 field_3。

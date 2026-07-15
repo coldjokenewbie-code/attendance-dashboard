@@ -99,7 +99,7 @@
     </div>
     <div class="it" data-k="preflight">
       <input type="checkbox" onclick="todoCheck(this)">
-      <span class="tx" onclick="todoGo('do-preflight')"><span class="n">⑩ 上線前確認：field_7「3.」字串／更新帶原 Title／並行・pagination</span><small>四項缺一不可 → §7</small></span>
+      <span class="tx" onclick="todoGo('do-preflight')"><span class="n">⑩ 上線前確認：field_7「3.」字串／更新只填 Id＋field_7（不填 Title）／並行・pagination</span><small>四項缺一不可 → §7</small></span>
     </div>
     <div class="it" data-k="test">
       <input type="checkbox" onclick="todoCheck(this)">
@@ -270,16 +270,16 @@
 
 <p><b>是（Yes）分支</b> → 再加一個 <b>條件_仍逾期</b>（一列）：<code>本列仍逾期 等於 true</code> ?</p>
 <ul>
-<li><b>是＝卡片仍延遲（宣稱了但沒真的做）</b> → <b>SharePoint → 更新項目</b>：Id(fx) <code>items('Apply_to_each_列')?['ID']</code>、Title(fx) <code>items('Apply_to_each_列')?['Title']</code>（帶原值，必填欄不可空）、<b>field_7</b>(fx)：
+<li><b>是＝卡片仍延遲（宣稱了但沒真的做）</b> → <b>SharePoint → 更新項目</b>：Id(fx) <code>items('Apply_to_each_列')?['ID']</code>（用 Id 定位列即可，<b>不要填 Title</b>，否則報「Item/Title 已不存在」孤兒參照）、<b>field_7</b>(fx)：
 <pre><code>concat('3. 延遲（09:30沒到公司，請填寫假卡）（原勾選「', trim(coalesce(items('Apply_to_each_列')?['field_7'],'')), '」，卡片仍延遲）')</code></pre>
 （開頭「3.」＝<b>歸到 3、要請假</b>；括號內保留原勾選＋「卡片仍延遲」。）</li>
-<li><b>否＝卡片已退出逾期（真的改了）</b> → <b>更新項目</b>：Id、Title（同上）、<b>field_7</b>(fx)：
+<li><b>否＝卡片已退出逾期（真的改了）</b> → <b>更新項目</b>：Id（同上，<b>不填 Title</b>）、<b>field_7</b>(fx)：
 <pre><code>concat('原勾選「', trim(coalesce(items('Apply_to_each_列')?['field_7'],'')), '」，同事已修改狀態')</code></pre></li>
 </ul>
 
 <p><b>否（No）分支</b>（原 field_7 不是 1./4.）→ 加 <b>條件_未回覆</b>（一列）：<code>本列未回覆 等於 true</code> ?</p>
 <ul>
-<li><b>是</b> → <b>更新項目</b>：Id、Title（帶原值）、<b>field_7</b>(fx) ＝
+<li><b>是</b> → <b>更新項目</b>：Id（<b>不填 Title</b>）、<b>field_7</b>(fx) ＝
 <pre><code>'3. 延遲（09:30沒到公司，請填寫假卡）'</code></pre>
 （請與員工實際入口的「3.」字串一致；走儀表板就用此 radio 版。）</li>
 <li><b>否</b> → 不放任何動作（保留；2./3. 與已處理過的列走這裡）。</li>
@@ -291,7 +291,7 @@
 <div class="card">
 <ul>
 <li><b>field_7 的「3.」回填字串</b>：以員工實際入口（儀表板 radio）那版為準，貼一筆真實值核對前綴與全形括號。</li>
-<li><b>更新項目要帶 Title（原值）</b>：Title 是必填欄，不帶會報錯或被清空。只改 field_7，其餘欄不提供＝保持不變。</li>
+<li><b>更新項目只填 Id＋field_7，不要填 Title</b>：更新是用 Id 定位既有列，Title 留空不會被清空（非建新列）。若填 Title 反而會報「Item/Title 已不存在於作業模式中」孤兒參照（清單 Title 改過顯示名／複本動作 schema 失效）。只改 field_7，其餘欄不提供＝保持不變。</li>
 <li><b>兩層 Foreach 並行已關</b>（§2）；<b>取得清單項目已開 pagination 5000</b>（§6-1）。</li>
 <li><b>Title 結尾格式穩定為 <code>_&lt;taskId&gt;</code></b>：0930 寫入即如此；勿手改 Title，否則 endsWith 會誤判。</li>
 </ul>
@@ -335,7 +335,7 @@
 <li><b>關 Foreach 並行</b>：用「附加至陣列變數」累積，所有 Foreach（含新加的 <code>for_each_逾期任務</code>）必須循序。</li>
 <li><b>累積變數用「附加至陣列變數」，不要 Set variable 自我參照</b>（新版設計工具會擋：Self reference not supported）。</li>
 <li><b>欄位內部名 field_N</b>；<b>$filter 只認 Title</b>（fx concat、不可手打）。</li>
-<li><b>更新項目用整數 ID＋帶原 Title</b>（必填欄）。</li>
+<li><b>更新項目只填整數 ID＋field_7，Title 留空</b>（填 Title 會報「Item/Title 已不存在」孤兒參照）。</li>
 <li><b>新版「條件」無進階模式</b>：布林先用 Compose 算，條件只比 <code>=true</code>（§6-3）。</li>
 <li><b>比對一律 <code>startsWith(trim(coalesce(field_7,'')),'N.')</code></b>，不要 equals。</li>
 <li><b>本流程不發信、不發 Line、不寫 Excel、不碰 team_member、不建列、不刪列</b>。</li>
