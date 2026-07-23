@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScrAdmin team_member 動態權限閘 — 套用指南</title>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--line:#e5e7eb;--ink:#1f2937;--muted:#6b7280;--accent:#2563eb;--warn:#b45309;--warnbg:#fffbeb;--warnline:#fde68a;--ok:#15803d;--okbg:#f0fdf4;}
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px 16px 80px;background:var(--bg);color:var(--ink);font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;line-height:1.6;}
+  .wrap{max-width:840px;margin:0 auto;}
+  h1{font-size:21px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 18px;}
+  h2{font-size:16px;margin:26px 0 8px;padding-bottom:6px;border-bottom:2px solid var(--line);}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:12px 0;}
+  pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 16px;overflow-x:auto;font-size:12.5px;line-height:1.5;
+    font-family:"SF Mono",Menlo,Consolas,monospace;margin:8px 0;}
+  code{background:#eef2f7;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:13px;font-family:"SF Mono",Menlo,Consolas,monospace;}
+  table{width:100%;border-collapse:collapse;margin:6px 0;font-size:14px;}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top;}
+  th{background:#f1f5f9;color:var(--muted);font-weight:600;white-space:nowrap;}
+  .box{border-radius:10px;padding:13px 16px;margin:14px 0;font-size:14px;}
+  .warn{background:var(--warnbg);border:1px solid var(--warnline);color:var(--warn);}
+  .ok{background:var(--okbg);border:1px solid #bbf7d0;color:var(--ok);}
+  .num{display:inline-flex;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:700;align-items:center;justify-content:center;margin-right:8px;vertical-align:middle;}
+  .muted{color:var(--muted);font-size:13px;}
+  details{margin-top:8px;background:#fafbfc;border:1px solid var(--line);border-radius:8px;padding:6px 12px;}
+  summary{cursor:pointer;color:var(--accent);font-size:13px;font-weight:600;}
+  details p{color:var(--muted);font-size:13px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ScrAdmin 動態權限閘（team_member 驅動）</h1>
+  <p class="sub">目標：行政換人／代班時，只改 team_member 的「出勤存取權限」欄即生效，不必回 App 重設分享。</p>
+
+  <div class="box ok">
+    <b>判定規則</b>：登入者在 team_member 名冊的 <code>出勤存取權限</code> 欄非空白（值＝「行政管理」）＝行政。名冊改一格，下次開 App 立即反映。
+  </div>
+
+  <h2><span class="num">1</span>設定 ScrAdmin 的 Screen.OnVisible</h2>
+  <div class="card">
+    在 Studio 選 <b>ScrAdmin 畫面</b> → 屬性 <b>OnVisible</b> → 整段貼（此段同時初始化 gToday 與當日資料，取代原本的 OnVisible）：
+    <pre>Set(gToday, Text(Today(), "yyyy/mm/dd"));
+UpdateContext({locIsAdmin: !IsBlank(LookUp(team_member, Email = User().Email, "出勤存取權限"))});
+ClearCollect(colToday, Filter(AttendanceHistory, 日期 = gToday))</pre>
+    <details><summary>為什麼寫在 OnVisible</summary><p>OnVisible 是畫面屬性，貼上 pa.yaml 帶不進來，必須手動設。locIsAdmin 用 UpdateContext（畫面區域變數）即可，不必全域。</p></details>
+  </div>
+
+  <h2><span class="num">2</span>加入全螢幕遮罩（非行政看不到資料）</h2>
+  <div class="card">
+    把下面整段當作 <b>ScrAdmin 最後一個控件</b>貼入（放最後＝畫在最上層，蓋住整頁）：
+    <pre>- conNoAccess:
+    Control: GroupContainer@1.5.0
+    Variant: ManualLayout
+    Properties:
+      Fill: =RGBA(247, 248, 250, 1)
+      Height: =Parent.Height
+      Width: =Parent.Width
+      X: =0
+      Y: =0
+      Visible: =Not(locIsAdmin)
+    Children:
+      - lblNoAccess:
+          Control: Label@2.5.1
+          Properties:
+            Align: =Align.Center
+            Color: =RGBA(107, 114, 128, 1)
+            FontWeight: =FontWeight.Semibold
+            Height: =80
+            Size: =18
+            Text: ="此頁面僅限行政人員檢視"
+            VerticalAlign: =VerticalAlign.Middle
+            Width: =Parent.Width
+            Y: =Parent.Height * 0.4</pre>
+  </div>
+
+  <h2><span class="num">3</span>把名冊 Gallery 也綁定 locIsAdmin（雙保險）</h2>
+  <div class="card">
+    選 <code>galPeople</code> → 屬性 <b>Visible</b> → 填：
+    <pre>=locIsAdmin</pre>
+    <p class="muted">遮罩已蓋住畫面；再把 galPeople 隱藏，非行政連底層資料都不會渲染出來，避免遮罩若失效時走光。</p>
+  </div>
+
+  <h2><span class="num">4</span>調整 App 分享範圍</h2>
+  <div class="card">
+    此閘要當守門，App 需分享給<b>所有可能開它的人</b>（例：全體員工或全組織），改由 team_member 過濾誰真能用。
+    <table>
+      <tr><th>做法</th><th>效果</th></tr>
+      <tr><td>App 分享給全員 + 本動態閘</td><td>換行政只改 team_member，免動 App ✅（本次目標）</td></tr>
+      <tr><td>App 只分享給 2 位行政（現況）</td><td>換人要手動改分享面板 ❌（不符需求）</td></tr>
+    </table>
+    <p class="muted">兩者擇一。若採動態閘，記得回分享面板把範圍放寬，否則 team_member 加了新行政、對方仍開不了 App。</p>
+  </div>
+
+  <h2><span class="num">5</span>驗證</h2>
+  <div class="card">
+    • team_member 暫時把某位非行政的 <code>出勤存取權限</code> 填「行政管理」→ 該人開 App 應看得到表格。<br>
+    • 清掉該欄 → 再開應只見「此頁面僅限行政人員檢視」遮罩。<br>
+    • 現有 2 位行政開 App 應正常。
+  </div>
+
+  <div class="box warn">
+    <b>此閘的界線（誠實）</b>：這是 UI 層過濾，<b>非硬安全邊界</b>——懂技術者可繞過畫面直接對 AttendanceHistory 清單寫入。要堵這條，仍需你稍晚要處理的<b>清單層鎖定</b>（SharePoint 項目權限＋寫入導向 flow，白名單 1000／1010）。動態閘負責「日常換人免維護」，清單鎖負責「真安全」，兩者互補。
+  </div>
+</div>
+</body>
+</html>

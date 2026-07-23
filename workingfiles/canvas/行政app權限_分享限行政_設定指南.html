@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>行政儀表板權限設定 — App 分享限行政</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --card:#fff; --line:#e5e7eb; --ink:#1f2937; --muted:#6b7280;
+    --accent:#2563eb; --warn:#b45309; --warnbg:#fffbeb; --warnline:#fde68a;
+    --ok:#15803d; --okbg:#f0fdf4;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px 16px 80px;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;line-height:1.6;}
+  .wrap{max-width:820px;margin:0 auto;}
+  h1{font-size:22px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 20px;}
+  h2{font-size:17px;margin:28px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--line);}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:12px 0;}
+  table{width:100%;border-collapse:collapse;margin:8px 0;font-size:14px;}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top;}
+  th{background:#f1f5f9;color:var(--muted);font-weight:600;white-space:nowrap;}
+  code{background:#eef2f7;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:13px;
+    font-family:"SF Mono",Menlo,Consolas,monospace;}
+  details{margin-top:8px;background:#fafbfc;border:1px solid var(--line);border-radius:8px;padding:6px 12px;}
+  summary{cursor:pointer;color:var(--accent);font-size:13px;font-weight:600;}
+  details p{color:var(--muted);font-size:13px;margin:8px 0 4px;}
+  .box{border-radius:10px;padding:14px 18px;margin:14px 0;font-size:14px;}
+  .warn{background:var(--warnbg);border:1px solid var(--warnline);color:var(--warn);}
+  .ok{background:var(--okbg);border:1px solid #bbf7d0;color:var(--ok);}
+  .step{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--line);
+    border-radius:10px;padding:14px 16px;margin:12px 0;}
+  .step input{margin-top:5px;transform:scale(1.25);}
+  .step .num{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;
+    font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+  .step .body{flex:1;}
+  .step .body b{font-size:15px;}
+  .muted{color:var(--muted);font-size:13px;}
+  .done{opacity:.55;}
+  .done .body b{text-decoration:line-through;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>行政儀表板權限設定 — App 分享限行政</h1>
+  <p class="sub">目的：讓「行政查核」獨立 App 只有行政人員能開啟與編輯。此層在 Power Apps 後台操作，不動任何程式碼／YAML。</p>
+
+  <div class="box warn">
+    <b>現狀（等同無權限）</b><br>
+    行政查核是獨立的 Power App，目前<b>沒有任何權限判定</b>——凡是能開到這個 App 的帳號，都能看見全員出勤並直接寫入「實際出勤狀態」。本設定把它的「可使用者」收斂成僅 2 位行政；未被分享的人在自己的 Power Apps 清單裡看不到，貼連結也開不了。
+  </div>
+
+  <h2>行政名冊（可使用者，共 2 人）</h2>
+  <div class="card">
+    <table>
+      <tr><th>姓名</th><th>帳號（Email）</th></tr>
+      <tr><td>黃 文郁</td><td><code>wenyuhuang@techartgroup.com</code></td></tr>
+      <tr><td>陳 怡惠</td><td><code>ihueychen@techartgroup.com</code></td></tr>
+    </table>
+    <p class="muted">來源：team_member 名冊 <code>出勤存取權限</code> 欄＝「行政管理」的兩列。日後行政增減，以此欄為準。</p>
+  </div>
+
+  <h2>操作步驟</h2>
+
+  <div class="step" data-k="s1">
+    <input type="checkbox"><div class="num">1</div>
+    <div class="body">
+      <b>開啟 App 清單，找到「行政查核」獨立 App</b><br>
+      進 <code>make.powerapps.com</code> → 左側「應用程式 (Apps)」→ 找到含 <b>ScrAdmin</b> 畫面的那個獨立 App（<b>不是</b>員工用、含 ScrToday 的那個）。
+      <details><summary>怎麼分辨是哪一個</summary>
+        <p>2026-07-06 已把行政查核拆成獨立 App（B 案）。員工 App 只有 ScrToday（今日查核＋回覆）；行政 App 是橫向表格、頂部只有「↻ 重新整理」、無返回鈕。若兩個 App 名稱相近，開起來看畫面即可確認。</p>
+      </details>
+    </div>
+  </div>
+
+  <div class="step" data-k="s2">
+    <input type="checkbox"><div class="num">2</div>
+    <div class="body">
+      <b>先移除過廣的分享</b><br>
+      該 App 列 → <code>⋯</code> → <b>共用 (Share)</b>。檢查現有清單，若出現 <code>Everyone</code>、<b>整個組織</b>、或任何非行政的個人／群組 → <b>移除</b>。
+      <details><summary>為什麼先移除</summary>
+        <p>若之前曾分享給整個組織或大群組，只加 2 位行政不會收回既有的廣泛存取——舊分享仍讓所有人開得了 App。必須先清掉過廣的對象，收斂才有效。</p>
+      </details>
+    </div>
+  </div>
+
+  <div class="step" data-k="s3">
+    <input type="checkbox"><div class="num">3</div>
+    <div class="body">
+      <b>加入 2 位行政，權限選「User（可使用）」</b><br>
+      在同一個「共用」面板搜尋 <code>wenyuhuang@techartgroup.com</code> 與 <code>ihueychen@techartgroup.com</code> → 加入 → 權限層級選 <b>User（可使用，不要勾 Co-owner）</b> → 儲存 / Share。
+      <details><summary>User 與 Co-owner 差在哪</summary>
+        <p>Co-owner 能修改 App 設計、也能再把 App 分享給別人，權限過大。行政只需使用，給 <b>User</b> 即可。要有人一起維護 App 設計時，才個別給 Co-owner。</p>
+      </details>
+    </div>
+  </div>
+
+  <div class="step" data-k="s4">
+    <input type="checkbox"><div class="num">4</div>
+    <div class="body">
+      <b>確認底層資料源存取（最容易漏掉的一步）</b><br>
+      分享 App ≠ 給資料權限。2 位行政必須同時對資料源有權限，否則「開得了 App 但抓不到資料／寫入失敗」：
+      <table>
+        <tr><th>資料源</th><th>行政需要的權限</th></tr>
+        <tr><td>AttendanceHistory（SharePoint 清單）</td><td><b>編輯／參與 (Contribute)</b> 以上（因要寫 field_8 實際出勤狀態）</td></tr>
+        <tr><td>team_member（TaskDB.xlsx，Excel）</td><td><b>可讀取</b>該檔（判權限用）</td></tr>
+      </table>
+      <p class="muted">分享 App 時 Power Apps 通常會提示一併授予連線；若清單／檔案權限是由 SharePoint 站台繼承，確認這 2 人在站台已有對應角色。</p>
+    </div>
+  </div>
+
+  <div class="step" data-k="s5">
+    <input type="checkbox"><div class="num">5</div>
+    <div class="body">
+      <b>雙向驗證</b><br>
+      • 用<b>非行政</b>帳號登入 → Power Apps 清單應<b>看不到</b>此 App；貼 App 連結也應被擋（顯示無權限）。<br>
+      • 用<b>行政</b>帳號 → 可開、可在下拉／自訂欄寫入 → 出勤狀態變<b>藍字</b>＝已成功存回清單。
+    </div>
+  </div>
+
+  <div class="box ok">
+    <b>完成後的邊界</b><br>
+    此設定控制「<b>誰能開這個 App</b>」，對只給 2 位行政已是實用且乾淨的硬界線（未分享者根本進不來）。
+  </div>
+
+  <div class="box warn">
+    <b>此層做不到的（誠實說明，屬已知缺口）</b><br>
+    這不是<b>清單層硬鎖</b>。若日後把 App 分享範圍放寬，或有人不經 App、直接對 AttendanceHistory 清單編輯，仍寫得進 field_8。要堵這個，需另做「SharePoint 項目層權限＋寫入導向 Power Automate flow」（且須白名單 1000／1010 兩支自動流程的帳號，又不能擋到員工寫自己的 field_7 表單回覆）。此層本次未做。
+  </div>
+
+  <h2>未來維護建議</h2>
+  <div class="card">
+    行政增減頻繁時，改用 <b>資安群組 (security group)</b> 分享比逐一 Email 好維護：把「行政」群組加進共用一次，日後只改群組成員，不必回來動 App 分享設定。目前僅 2 人，直接用 Email 即可。
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.step').forEach(function(step){
+    var k = 'admShare_' + step.dataset.k;
+    var cb = step.querySelector('input');
+    cb.checked = localStorage.getItem(k) === '1';
+    step.classList.toggle('done', cb.checked);
+    cb.addEventListener('change', function(){
+      localStorage.setItem(k, cb.checked ? '1' : '0');
+      step.classList.toggle('done', cb.checked);
+    });
+  });
+</script>
+</body>
+</html>

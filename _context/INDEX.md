@@ -1,8 +1,5 @@
 # 出勤專案 — 現況總覽 (INDEX)
-
-> ⚠️ **版控架構**：本資料夾（Google Drive）不進 git 追蹤，不要在此嘗試 `git init`／`add`／`commit`／`push`。真正版控在本機獨立資料夾 `/Users/coma/git_mirror/attendance-dashboard/`（**注意資料夾名跟本專案名不同，已於 2026-07-15 統一改用 GitHub repo 名 `attendance-dashboard`，不再用 `出勤專案`**；GitHub: `https://github.com/coldjokenewbie-code/attendance-dashboard.git`，branch `main`，完整 clone；Windows 對應路徑 `E:\git_mirror\attendance-dashboard\`，不隨 Drive 同步過去，各機各自 clone）。要 commit／push，先把 code/文字檔（依副檔名白名單：html/css/js/json/md/ts/tsx/jsx/mjs/py/txt/yaml/yml/sh）鏡像複製到 mirror 資料夾再操作；大型文檔（docx/pptx/pdf/圖片/影片）不鏡像，留 Drive 原地。機制詳見 WTF repo `wtf-config/GLOBAL.md`「Claude_cowork 專案的版控架構」段。
-
-> 進場先讀。最後更新：2026-07-15（本日：Drive 舊快照與 mirror main 合併完成，本檔內容以 mirror main 版為準更新）
+> 進場先讀。最後更新：2026-07-02
 
 ## ✅ 跨機接續：Windows 端 worktree 已重建（2026-06-24 [Claude@Win] 完成）
 > 三資料夾並列佈局已在 DESKTOP-7SF21LR 重建完成，與 Mac 一致：
@@ -11,7 +8,6 @@
 > - `E:\Git_work\attendance-0955` → `flow-0955`
 >
 > 跨機紀律：每次換機前先在當前機 `commit + push`；worktree 資料夾本身不會同步，只有已提交的 commit 會過去。
-> （2026-07-15 註：Mac 端 main 已遷至 `git_mirror/attendance-dashboard`；Windows 端仍為上列 Git_work 佈局、待搬。）
 
 ## 一句話目標
 MS365 Power Apps 員工出勤儀表板；先重作模組一 Popup MVP，讓員工查看今日出勤查核並回寫 `表單回覆`。
@@ -35,7 +31,7 @@ MS365 Power Apps 員工出勤儀表板；先重作模組一 Popup MVP，讓員�
   - `workingfiles/canvas/匯入指南.html`、`變更_回覆改單選.html`
   - 結案紀錄：`_context/archive/ClosedTaskLog_2026-06-13_module1-canvas-yaml.md`
 - **模組一介面更新（2026-06-24 [Claude@Win]）**：行政頁重作成表格版＋自動存（`workingfiles/canvas/ScrAdmin_table.pa.yaml`）；ScrAdmin／ScrToday 統一簡約淺色風格。**待 PO 實機驗收**。
-- **最新工作紀錄**：`_context/TaskLog_2026-07-06_個人行政拆分與請假整合.md`（個人/行政拆分＝行政獨立新 app、回覆 5 選項、請假整合流程指南 `Flow_請假整合_建置指南.html`；⚠ 待辦：**1000 有誤，待使用者修**；各流程待 Portal 套用）。前一份：`_context/TaskLog_2026-06-16_架構落實與晨間流程.md`（06-30~07-02 追記：0955 修判定＋發卡、1005/1030 米米信提醒指南、1000 視窗修單日、field_8 粒度待決策；07-03：ScrToday/ScrAdmin 委派警告 bug 修復，5 處公式改用 gToday 變數；**07-05 新增：日期欄格式改零填補 yyyy/MM/dd（0930 流程＋App gToday 同步）＋既有列回填指南**，以上皆**待使用者 Studio／Portal 套用**）。另一份：`_context/TaskLog_2026-06-24_儀表板表格化與淺色改版.md`（表格化＋自動存 bug 鏈＋雙頁淺色，待 PO 實機驗收）。
+- **最新工作紀錄**：`_context/TaskLog_2026-07-23_行政儀表板權限.md`（行政 App 加 team_member 驅動 UI 權限閘＝只有「行政管理」者可看可改，已實測成功；`ScrAdmin_權限閘_paste.pa.yaml`＋OnVisible 判定式；⚠ 待辦：**清單層硬鎖稍晚做**、App 分享放寬全員、Owner 共用帳號漏洞）。前一份：`_context/TaskLog_2026-07-06_個人行政拆分與請假整合.md`（個人/行政拆分＝行政獨立新 app、回覆 5 選項、請假整合流程指南 `Flow_請假整合_建置指南.html`；⚠ 待辦：**1000 有誤，待使用者修**；各流程待 Portal 套用）。前一份：`_context/TaskLog_2026-06-16_架構落實與晨間流程.md`（06-30~07-02 追記：0955 修判定＋發卡、1005/1030 米米信提醒指南、1000 視窗修單日、field_8 粒度待決策；07-03：ScrToday/ScrAdmin 委派警告 bug 修復，5 處公式改用 gToday 變數；**07-05 新增：日期欄格式改零填補 yyyy/MM/dd（0930 流程＋App gToday 同步）＋既有列回填指南**，以上皆**待使用者 Studio／Portal 套用**）。另一份：`_context/TaskLog_2026-06-24_儀表板表格化與淺色改版.md`（表格化＋自動存 bug 鏈＋雙頁淺色，待 PO 實機驗收）。
 - 欄位已從 `_context/AttendanceHistory.csv` 確認（九欄顯示名稱）。
 
 ## 待辦 / 下一步
@@ -43,7 +39,7 @@ MS365 Power Apps 員工出勤儀表板；先重作模組一 Popup MVP，讓員�
 - 上游 ③ Office Scripts 寬轉長自動化（目前人工暫代）；RowKey 需在此步驟產生（橋接前置）。
 - 模組三（假期餘額）、角色權限、⑥ SharePoint 嵌入。
 - 請 Claude 補上它的 ai-team CLI 協作版本：登入、短 prompt、卡住處理、避免直接讀寫檔案。
-- [x] Antigravity 已補上其 ai-team CLI 協作規格至參考文件中（`_context/ai-team-agent-cli-reference.html` 角色分段版，2026-07-15 已併入 mirror main）。
+- 請 Antigravity 補上它的 ai-team CLI 協作版本：權限需求、寫檔限制、編碼風險、signal 寫入慣例。
 - Claude / Antigravity 版本補齊後，推回 WTF repo，系統化成共用流程。
 - 整理完成後分享給同事，讓 ai-team CLI 協作可被團隊複用。
 

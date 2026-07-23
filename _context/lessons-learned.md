@@ -1,5 +1,11 @@
 # Lessons Learned
 
+## 2026-07-23（Power Apps 權限：`IsBlank()` 對 Excel 空欄不可靠；畫布 UI 閘 vs App 分享面板的分工；Screen.OnVisible 貼不進 pa.yaml）
+- **判「Excel 欄非空白」不能用 `!IsBlank(LookUp(...))`——Excel 空儲存格常回傳空字串 `""`，`IsBlank("")`＝false，於是 `!IsBlank` 對每一列都成立**：行政權限判定 `locIsAdmin: !IsBlank(LookUp(team_member, ..., '出勤存取權限'))` 實測讓**名冊裡每個人都被判成行政**（權限遮罩閃一下就被 locIsAdmin=true 收掉，非行政仍看到全部內容）。根因是 Excel 連接器的空欄是 `""` 不是 `Blank()`。**修法＝改值比對**：`Trim(Coalesce(LookUp(...), "")) = "行政管理"`（用 Coalesce 收 Blank、Trim 去空白、直接比對期望值），比「非空白」語意更嚴謹也躲開 `""` 陷阱。凡「欄有沒有填」的判定，來源是 Excel 就別用 IsBlank，改比對長度或值。
+- **Power Apps 兩種「行政才能看」機制分工，別混為一談**：①**App 分享面板**（make.powerapps.com→Share）＝控制「誰能開這個 App」，是真正硬界線（未分享者進不來），但**靜態、換人要手動改**、且無法讀 team_member。②**畫布 UI 閘**（Screen.OnVisible 算 `locIsAdmin` 讀 team_member→遮罩／`Visible`）＝可**動態換人**（改名冊一格即生效）但**非硬安全**（懂技術者可繞畫面直接讀寫清單）。需求是「換人免維護」時只能走②並把 App 分享給全員由閘過濾；要「真安全」仍須第三層 SharePoint 清單項目權限。三層互補，不是擇一。
+- **權限遮罩別只靠一個 overlay 蓋最上層，要同時把內容容器 `Visible` 綁 locIsAdmin**：GroupContainer 遮罩靠 z-order 蓋住兄弟控件不夠穩（貼上後順序可能變、或載入時序露內容）。把 conHeaderA／conColHead／galPeople 每個都設 `Visible = locIsAdmin`，非行政連底層資料都不渲染，遮罩只當視覺提示。雙保險。
+- **Screen.OnVisible 是畫面屬性，pa.yaml 控件層貼上帶不進來，必須手動設**：交付含權限閘的 yaml 時，`locIsAdmin` 靠 OnVisible 定義；若使用者只貼控件沒設 OnVisible，`locIsAdmin` 未定義會讓所有 `=locIsAdmin`／`=Not(locIsAdmin)` 引用報「名稱無效／Not 引數無效」。交付時務必把 OnVisible 一行獨立標為「必做手動步驟」，別假設貼 yaml 就完成。
+
 ## 2026-07-08（Power Apps 控件「值卡住不動」先懷疑公式被貼成純文字覆蓋；Studio 全選匯出可能疊有重複控件組）
 - **畫面欄位顯示「凍結在某個舊值、不會跟著今天/現況更新」，優先檢查該屬性是不是被貼成純文字字面值蓋掉了公式，而非邏輯 bug**：`ScrAdmin.lblTitleA.Text` 應為 `="行政出勤查核　" & Text(Today(), "yyyy/mm/dd")`（repo 內 `ScrAdmin_table.pa.yaml` 本來就對），但使用者貼出的 Studio 現況是純字串 `="出勤查核　2026/07/06"`——沒有任何程式改動、純粹是屬性被手動貼成當下算出來的字面值，日期自然停在貼入那天不會再動。排查「顯示值卡住」類問題，先比對 repo/公式正本，若正本是動態公式而現況是常數字面值，直接判定是覆蓋問題，不必往資料源或委派方向找。
 - **使用者從 Studio「全選複製」匯出的 yaml，可能包含座標完全重疊的兩組重複控件（新舊各一份疊放）**：`scradmin0708_原始匯出.yml` 內同時有 `conHeaderA/conColHead/galPeople`（標題仍寫死舊日期）與 `conHeaderA_1/...`（標題已修好、控件座標與前者完全相同、Y 皆從 0 起），代表 Studio 畫布上舊控件在改用新控件後沒有真的被刪除，只是被新的一份疊在上面蓋住。**拿到全選匯出檔案時，先掃一次是否有 `_1`/`_2` 等後綴的重複控件組，並比對其座標是否與非後綴版重疊**——若重疊，代表底下藏了一份死掉但仍在的舊控件，之後有人誤編輯到那份不會生效，且會讓 App 控件數量與資料源存取次數平白加倍。
