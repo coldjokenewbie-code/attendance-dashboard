@@ -8,6 +8,9 @@
 - **提議「清理資料讓它變少」前先確認該資料源是不是單一真相源**：使用者問「清理掉清單就可以嗎」——答案是不行，`AttendanceHistory` 是模組二請假查詢與歷史查核的唯一來源，刪掉回不來，且幾週後照樣爆。資料量觸發的 bug 要修觸發它的公式，不是修剪資料。
 - **Label 固定 `Height` 在手機上必裁長文字，凡「內容長度不可控」的 Label 都該 `AutoHeight: =true`，並讓下方控件的 `Y` 引用它的 `Height` 而非寫死座標**：Popup 內 `lblPopMeta` 固定 `Height: =72`＋`radReply.Y` 寫死 `132`，任務名一換行就被切、溢出的行還被下方控件蓋住。桌機測試看不出來（字少、寬度夠），是同事用手機才回報。**（未驗證）** `AutoHeight` 能否由 pa.yaml 貼入 `Label@2.5.1`、以及 `AutoHeight=true` 時 `.Height` 被跨控件引用是否回傳計算後高度，兩者尚未實測；備援是把固定值改大（Height 110／Y 174）。
 - **同一畫面上同型 bug 會有複數處，修完一處要掃全檔**：Popup 修了，Gallery 卡片的 `lblPlan`／`lblTask` 仍是固定高度（26～28px）、`TemplateSize` 固定 280，長專案名在卡片上照樣被裁。委派問題同理——其餘畫面（ScrAdmin 等）的 Filter／LookUp／UpdateIf 都該逐條看警告，別只修爆掉的那一條。
+- **「文字被切」在不同裝置／不同版面上的正解相反，不能把同一招套到每一頁**：ScrToday（手機、單欄、整頁可捲）的正解是放開 `AutoHeight` 讓 Label 長高、下方控件 `Y` 串接跟著下移；ScrAdmin（桌機、25 列表格、要求一頁全覽）的正解卻是反過來鎖成 `Wrap: =false` 單行截斷、全文丟進 `Tooltip` 靠滑鼠停留看。表徵相同（文字被裁／壓到隔壁），但約束不同——手機沒有 hover 所以 Tooltip 無效，表格頁若讓列長高就一頁看不完。**先問「這一頁的版面約束是什麼」再選修法，別複製上一頁的答案。**（未驗證：`Wrap`／`Tooltip` 能否由 pa.yaml 貼入 `Label@2.5.1`。）
+- **垂直 Gallery 的列高（`TemplateSize`）無法逐列依內容自動，只能取最壞情況的固定值**（平台限制，同 2026-06-22 那條）。因此「卡片內容改成 AutoHeight」只解決「文字被裁」，不解決「短內容留白」——留白是這個修法的必然代價，要嘛接受，要嘛改成截斷顯示把完整內容留在 Popup。交付這類修法時要一併講清楚代價，別讓使用者以為還會再自動縮。
+- **base64url 字串的結尾可能就是底線或減號，用 `Split(x, "_")` 取「最後一段」會靜默拿到空字串**：`AttendanceHistory.Title` 格式為 `yyyyMMdd_Email_PlannerTaskId`，樣本 `…_vXu-m6GEu0amsGMCTVsn5skAK6t_` 的 28 字元 Planner task id 本身**以底線結尾**，`Last(Split(Title,"_"))` 會回傳 `""`，後續呼叫直接失敗且不易看出原因。改用 `Mid(Title, Len(Email) + 11)` 可繞過，但**更該做的是讓上游 09:30 flow 多寫一欄 `PlannerTaskId`**——在 App 端解析複合鍵字串，等於把上游格式當契約，上游一改就靜默壞掉。
 - **（推測，待同事回報）從 LINE 訊息直接點連結開 Power Apps 會失敗**：截圖特徵（頂部綠色進度條、右上 X、底部導覽列）＝LINE 內建瀏覽器；Power Apps player 需 Microsoft 帳號多次重導向，LINE WebView 常擋掉，表徵是「無法開啟頁面。請確認網路連線狀態後，再試一次。」——看起來像網路或權限問題，實際是瀏覽器。**分享 App 連結給同事時預先提醒用 Safari／Chrome 開**，可省一輪誤判。
 
 ## 2026-07-23（Power Apps 權限：`IsBlank()` 對 Excel 空欄不可靠；畫布 UI 閘 vs App 分享面板的分工；Screen.OnVisible 貼不進 pa.yaml）

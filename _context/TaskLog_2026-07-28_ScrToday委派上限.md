@@ -64,22 +64,28 @@ App 設定→一般→資料列限制 500 改 **2000** → 重開 App → 資料
 
 ## 交接（2026-07-31 [Claude@Mac] session 結束，另開新 session 接手）
 
-**新 session 進場先做這件事**：把 `workingfiles/canvas/ScrToday_paste.pa.yaml` 貼進 Studio 的 ScrToday 畫面（全選現有控件→刪除→貼上），該檔已含下列兩處改動，一次貼上到位。
-
 | 項目 | 狀態 |
 |---|---|
-| 症狀 1 委派退回（抓不到今日資料） | 暫時解已上線（資料列限制 2000，正常運作）；治本巢狀 Filter **已寫入 yaml、未貼上驗證** |
+| 症狀 1 委派退回（抓不到今日資料） | ✅ **已上線**（巢狀 Filter 已貼、使用者 07-31 回報修好；暫時解「資料列限制 2000」保留無害） |
 | 症狀 2 同事手機打不開 | 已給處置建議（改用 Safari／Chrome），**未回報結果** |
-| 症狀 3 Popup 文字被裁 | 修法**已寫入 yaml、未貼上驗證** |
-| 症狀 4 Gallery 卡片文字被裁 | 修法**已寫入 yaml、未貼上驗證**（2026-07-31 追加，見下方「症狀 4」） |
+| 症狀 3 Popup 文字被裁 | ✅ **已上線**（使用者 07-31 回報修好） |
+| 症狀 4 Gallery 卡片文字被裁 | ✅ **已上線**；留白是否可接受**尚未回報** |
+| 症狀 5 ScrAdmin 長文字跨列重疊 | ⏳ 修法**已寫入 `ScrAdmin_權限閘_paste.pa.yaml`、未貼上驗證** ← 新 session 從這裡接 |
+| Planner 卡片整合 | 使用者裁定**下一階段**處理；前置事實與坑已寫入下方待辦 |
+
+**新 session 進場第一件事**：把 `workingfiles/canvas/ScrAdmin_權限閘_paste.pa.yaml` 貼進 Studio 的 ScrAdmin 畫面。
+
+**貼上前**：確認基準檔——本檔以 07-23 上線版為基準改，若其後在 Studio 手動改過，先匯出現況比對再貼，否則洗掉手改部分。ScrToday 就發生過 repo 版落後 Studio 的情況。
 
 **貼上後逐條驗收**：
-1. `Screen.OnVisible` 仍在（`UpdateContext({locShowPopup: false}); Set(gToday, Text(Today(), "yyyy/mm/dd"))`）——全選刪除會連帶掉，貼完必補。
-2. `galToday.Items` 委派警告三角消失。
-3. 開一筆長任務名的卡片，Popup 內「【專案】／【工作】」兩行文字完整不裁。
-4. 手機實開看得到今日延遲工作，且卡片上長專案名／工作名完整換行、欄位不互相重疊。
+1. `Screen.OnVisible` 補回（`Set(gToday, ...)`＋`locIsAdmin` 判定式＋`ClearCollect(colToday, ...)`，全文見本檔檔頭）——pa.yaml 帶不進畫面屬性，全選刪除會連帶掉。
+2. 長內容（如 MI-005 紅字、MI-007 請假字串）單行截斷、不再壓到相鄰列。
+3. 滑鼠停留在被截斷的儲存格上看得到全文。
+4. 權限閘（非行政看不到內容）與下拉自動存仍正常。
 
-**兩點未驗證，失敗就走備援**（見「症狀 3」段）：`AutoHeight` 屬性能否由 YAML 貼入 `Label@2.5.1`；`AutoHeight=true` 時 `lblPopMeta.Height` 被別的控件引用是否回傳計算後高度。任一不成立→`lblPopMeta.Height` 固定 `110`、`radReply.Y` 固定 `174`。
+**（未驗證）** `Wrap: =false` 與 `Tooltip` 能否由 pa.yaml 貼入 `Label@2.5.1`。若 Studio 報屬性無效，先把該兩行拿掉再貼，另尋壓住溢出的方式（例如把 `Text` 外包一層 `Left(..., N) & "…"` 手動截斷）。
+
+**ScrToday 側殘留**：`AutoHeight` 已實證可用（症狀 3／4 已上線），先前記的備援值（`lblPopMeta.Height` 110／`radReply.Y` 174）不再需要。唯一待回報＝`TemplateSize: =420` 造成的短內容留白是否可接受；嫌多就改截斷顯示、`TemplateSize` 收回 300 上下（見症狀 4 末段）。
 
 ## 症狀 5（2026-07-31）：行政頁 ScrAdmin 長文字跨列重疊
 - 現象：「今日延遲工作｜同事回覆」欄與「出勤狀態（已存）」欄的長內容壓到相鄰列上（截圖 MI-005 紅字、MI-007 請假字串）。
