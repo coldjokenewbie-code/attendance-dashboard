@@ -1,6 +1,14 @@
 # ScrAdmin — 含 team_member 動態權限閘（全選整段貼；一畫面一檔）
 # ⚠ Screen.OnVisible 需手動設（pa.yaml 帶不進畫面屬性），整段貼：
 #   Set(gToday, Text(Today(), "yyyy/mm/dd")); UpdateContext({locIsAdmin: Trim(Coalesce(LookUp(team_member, Lower(Email) = Lower(User().Email), '出勤存取權限'), "")) = "行政管理"}); ClearCollect(colToday, Filter(AttendanceHistory, 日期 = gToday))
+#
+# 2026-07-31 改動：長文字跨列重疊（使用者截圖回報）
+#   列高是寫死的 (Parent.Height - 116) / 25，Label 的 Height 等於列高；文字一換行就超出自己的框、
+#   被畫到相鄰列上去。修法＝把會爆的兩個 Label 改成不換行的單行，超出寬度即裁在自己欄位內：
+#   ① lblReply：多筆延遲工作的分隔符 Char(10) → 全形「／」（串成一行）；Wrap: =false；
+#      另加 Tooltip 保留原本 Char(10) 多行版本，滑鼠停留可看全文。
+#   ② lblStatusView：Wrap: =false ＋ Tooltip 顯示完整出勤狀態。
+#   代價：行政頁只能桌機用（手機沒有滑鼠停留）。此頁本來就是桌機作業。
 - conHeaderA:
     Control: GroupContainer@1.5.0
     Variant: ManualLayout
@@ -203,7 +211,9 @@
             Height: =Parent.TemplateHeight
             Size: =10
             Text: =If(!IsBlank(ThisItem.CurStatus) && ThisItem.CurStatus <> "（待確認）", ThisItem.CurStatus, "待確認")
+            Tooltip: =If(!IsBlank(ThisItem.CurStatus) && ThisItem.CurStatus <> "（待確認）", ThisItem.CurStatus, "待確認")
             Width: =Parent.TemplateWidth * 0.125
+            Wrap: =false
             X: =Parent.TemplateWidth * 0.125
       - drpStatus:
           Control: Classic/DropDown@2.3.1
@@ -279,10 +289,20 @@
                   If(
                       CountRows(d) = 0,
                       "（今日無延遲工作）",
+                      Concat(d, "・" & If(IsBlank(方案名稱), "", 方案名稱 & "｜") & 任務名稱 & "：" & If(IsBlank(表單回覆), "（未回覆）", 表單回覆), "　／　")
+                  )
+              )
+            Tooltip: |-
+              =With(
+                  {d: Filter(colToday, Email = ThisItem.Email && 任務名稱 <> Blank())},
+                  If(
+                      CountRows(d) = 0,
+                      "（今日無延遲工作）",
                       Concat(d, "・" & If(IsBlank(方案名稱), "", 方案名稱 & "｜") & 任務名稱 & "：" & If(IsBlank(表單回覆), "（未回覆）", 表單回覆), Char(10))
                   )
               )
             Width: =Parent.TemplateWidth * 0.465
+            Wrap: =false
             X: =Parent.TemplateWidth * 0.525
 - conNoAccess:
     Control: GroupContainer@1.5.0

@@ -81,8 +81,21 @@ App 設定→一般→資料列限制 500 改 **2000** → 重開 App → 資料
 
 **兩點未驗證，失敗就走備援**（見「症狀 3」段）：`AutoHeight` 屬性能否由 YAML 貼入 `Label@2.5.1`；`AutoHeight=true` 時 `lblPopMeta.Height` 被別的控件引用是否回傳計算後高度。任一不成立→`lblPopMeta.Height` 固定 `110`、`radReply.Y` 固定 `174`。
 
+## 症狀 5（2026-07-31）：行政頁 ScrAdmin 長文字跨列重疊
+- 現象：「今日延遲工作｜同事回覆」欄與「出勤狀態（已存）」欄的長內容壓到相鄰列上（截圖 MI-005 紅字、MI-007 請假字串）。
+- 根因：列高寫死 `TemplateSize: =(Parent.Height - 116) / 25`（一頁塞 25 列），Label 的 `Height` 等於列高；`lblReply` 用 `Char(10)` 把多筆延遲工作串成多行，超出的行沒被裁在框內，直接畫到隔壁列。
+- **取捨已由使用者定案（2026-07-31）：維持一頁 25 列全覽，長內容單行截斷，滑鼠停留看全文。** 否決的兩案：加大列高自動換行（一頁看不完要捲）、點列展開浮層（工比較大，可留作日後）。
+- 修法（已寫入 `ScrAdmin_權限閘_paste.pa.yaml`，**待 Studio 貼上驗證**）：
+  - `lblReply`：`Concat` 分隔符 `Char(10)` → 全形「　／　」；`Wrap: =false`；新增 `Tooltip`（保留 `Char(10)` 多行版）
+  - `lblStatusView`：`Wrap: =false`；新增 `Tooltip`
+- **與 ScrToday 的修法方向相反、是刻意的**：ScrToday 是手機、單欄、可捲，所以放開 `AutoHeight` 讓它長高；ScrAdmin 是桌機表格、要一頁全覽，所以反過來鎖成單行。同一個「文字被切」的表徵，兩頁的正解不同。
+- 代價：行政頁只能桌機用（手機沒有滑鼠停留）。此頁本來就是桌機作業。
+- ⚠ **基準檔待確認**：以 `ScrAdmin_權限閘_paste.pa.yaml`（07-23 上線版）為基準修改，截圖上的元素與該檔一致。若 07-23 後有在 Studio 手動改過，貼上前先匯出現況比對，否則會把手改的部分洗掉。
+
 ## 待辦
-- [ ] **（最優先）** 貼上 yaml 並跑完上述四條驗收（原訂 07-28 17:00，未執行，順延）。
+- [x] ~~ScrToday：貼上 yaml 並驗收~~ **2026-07-31 使用者回報已修好**（症狀 1／3／4 的修法皆已上線）。
+- [ ] **（最優先）** ScrAdmin：貼上 `ScrAdmin_權限閘_paste.pa.yaml` 驗收——長內容單行不再壓到隔壁列、滑鼠停留看得到全文、權限閘與自動存仍正常。貼上前先確認基準檔（見症狀 5 末段）。
+- [ ] **下一階段（使用者 2026-07-31 提出）：儀表板帶入 Planner 卡片，讓同事就地改卡片狀態**。已確認清單 `Title` 第三段就是 Planner task id（樣本 `vXu-m6GEu0amsGMCTVsn5skAK6t_`，28 字元 base64url ＝ Graph `plannerTask`，非 Project for the web 的 GUID）。**注意結尾底線是 id 本身的字元，用 `Split` 取最後一段會拿到空字串**；要取就用 `Mid(Title, Len(Email) + 11)`，但更建議讓 09:30 flow 直接多寫一欄 `PlannerTaskId`，別在 App 端解析字串。尚待確認：同事是否都是該 Planner 計畫的成員（非成員會拿到權限錯誤）。做法取捨＝App 直接接 Planner 連接器（修改者顯示為本人，但連接器不可委派、每人首次要授權） vs 呼叫 flow 代改（異動全掛同一帳號、稽核失真）。**先做最小驗證**：加連接器＋一顆測試按鈕寫死 task id 設完成度 100，確認能改、修改者是本人、非 owner 的同事不被擋。
 - [ ] 同事改用 Safari／Chrome 後回報結果；仍失敗則查 App 分享範圍。
 - [ ] **全檔掃同型 bug**：其餘畫面（ScrAdmin 等）的 Filter／LookUp／UpdateIf 逐條檢查委派警告，別只修爆掉的這一條。
 - [ ] **清單索引**：`AttendanceHistory` 破 5000 列後，未編索引欄的篩選即使可委派也會失敗。建議在清單設定給 `Email`、`日期` 兩欄加索引。
