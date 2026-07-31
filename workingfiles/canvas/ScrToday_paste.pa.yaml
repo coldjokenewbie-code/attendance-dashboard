@@ -1,11 +1,16 @@
-# 手動畫面屬性（Studio 內手動設定，此檔案無法貼出這段）：
-#   Screen.OnVisible = UpdateContext({locShowPopup: false, locIsAdmin: !IsBlank(LookUp(team_member, Email = User().Email, '出勤存取權限'))}); Set(gToday, Text(Today(), "yyyy/mm/dd"))
-#   （gToday 為全域變數，避免 Filter 內直接用 Text(Today()...) 造成不可委派；日期格式為零填補 yyyy/mm/dd，須與清單「日期」欄格式一致）
-#   （locIsAdmin：判斷是否行政，供下方「10:00 後一般同事回覆唯讀」鎖用，行政不受鎖；UI 鎖非硬安全，見 變更_回覆10點後唯讀.html）
-# 用法：畫布全選現有控件 → 刪除 → 貼上本檔（Cmd/Ctrl+V）→ 回 Studio 手動加上方 OnVisible
-# 基準：2026-07-06 從 Studio 匯出的最新內容；本次改動＝拆分個人/行政：移除「行政查核」鈕(btnAdmin, Navigate(ScrAdmin))，
-#   頭部標題與使用者資訊改全寬（原標題 Width 0.62 為讓位按鈕，在窄手機換行與姓名重疊），姓名/email 分兩行。行政查核改獨立 app/服務。
-# 併入 flow-0955 分支（2026-07-08 merge main）：補回「10:00 後一般同事回覆唯讀，行政不受限」，radReply／btnSubmit 加 DisplayMode 鎖＋OnSelect 二次防呆。
+# 基準：2026-07-28 使用者從 Studio 匯出的現用版本。
+# 手動畫面屬性（Studio 內手動設，此檔貼不出這段，貼上後須確認仍在）：
+#   Screen.OnVisible = UpdateContext({locShowPopup: false}); Set(gToday, Text(Today(), "yyyy/mm/dd"))
+#   （gToday 為全域變數：Filter 內直接寫 Text(Today()...) 不可委派。日期格式零填補 yyyy/mm/dd，須與清單「日期」欄一致。）
+# 用法：畫布全選現有控件 → 刪除 → 貼上本檔（Cmd/Ctrl+V）→ 確認 OnVisible 仍在。
+#
+# 2026-07-28 本次兩處改動（詳見 _context/TaskLog_2026-07-28_ScrToday委派上限.md）：
+# ① galToday.Items 改巢狀 Filter ── 治本委派。原式含 `任務名稱 <> Blank()`（SharePoint 不可委派），
+#    整條退回本機只取前 500 列（依 ID 遞增＝最舊），清單累積至 550 筆後最新一天永遠抓不到，
+#    症狀為靜默顯示「今天沒有需要回覆的延遲工作」。內層只留可委派條件（Email／日期），外層再本機篩數筆。
+#    暫時解「資料列限制 500→2000」在此修法後不再是必要條件，但留著無害。
+# ② Popup 任務名稱被裁掉 ── lblPopMeta 原固定 Height 72，長任務名換行即被切，且 radReply.Y 寫死 132 蓋住溢出行。
+#    改 AutoHeight + Size 13；radReply.Y 改跟隨 lblPopMeta 實際高度；conPopup 高度 580→680 補足空間。
 
 - conHeader:
     Control: GroupContainer@1.5.0
@@ -22,7 +27,7 @@
             FontWeight: =FontWeight.Semibold
             Height: =32
             Size: =18
-            Text: ="今日出勤查核　" & Text(Today(), "yyyy/mm/dd")
+            Text: ="今日工作時程狀況　" & Text(Today(), "yyyy/mm/dd")
             Width: =Parent.Width - 32
             X: =16
             Y: =14
@@ -31,7 +36,6 @@
           Properties:
             Color: =RGBA(75, 85, 99, 1)
             Height: =22
-            Size: =13
             Text: =User().FullName
             Width: =Parent.Width - 32
             X: =16
@@ -72,9 +76,7 @@
       Height: =Parent.Height - 100
       Items: |-
         =Filter(
-            AttendanceHistory,
-            Email = User().Email,
-            日期 = gToday,
+            Filter(AttendanceHistory, Email = User().Email, 日期 = gToday),
             任務名稱 <> Blank()
         )
       TemplatePadding: =6
@@ -180,7 +182,7 @@
           Variant: ManualLayout
           Properties:
             Fill: =RGBA(255, 255, 255, 1)
-            Height: =Min(Parent.Height - 64, 580)
+            Height: =Min(Parent.Height - 40, 680)
             Width: =Min(Parent.Width - 24, 560)
             X: =(Parent.Width - Self.Width) / 2
             Y: =(Parent.Height - Self.Height) / 2
@@ -199,9 +201,9 @@
             - lblPopMeta:
                 Control: Label@2.5.1
                 Properties:
+                  AutoHeight: =true
                   Color: =RGBA(107, 114, 128, 1)
-                  Height: =72
-                  Size: =14
+                  Size: =13
                   Text: |-
                     ="【專案】" & locSelected.方案名稱 & Char(10) &
                      "【工作】" & locSelected.任務名稱
@@ -213,14 +215,13 @@
                 Properties:
                   Color: =RGBA(31, 41, 55, 1)
                   Default: =locSelected.表單回覆
-                  DisplayMode: =If(locIsAdmin Or Hour(Now()) < 10, DisplayMode.Edit, DisplayMode.View)
-                  Height: =Parent.Height - 132 - 72
+                  Height: =Parent.Height - Self.Y - 72
                   Items: =["1. 已完成（請自行勾掉卡片）", "2. 延遲（09:30已到公司在補進度）", "3. 延遲（09:30沒到公司，請填寫假卡）", "4. 延遲（09:30沒到公司，當天已請假）", "5. 如為其他狀況，請於5分鐘內更新卡片"]
                   Items.Value: =Value
                   Size: =15
                   Width: =Parent.Width - 40
                   X: =20
-                  Y: =132
+                  Y: =lblPopMeta.Y + lblPopMeta.Height + 12
             - btnCancel:
                 Control: Classic/Button@2.2.0
                 Properties:
@@ -240,21 +241,16 @@
                 Control: Classic/Button@2.2.0
                 Properties:
                   Color: =RGBA(255, 255, 255, 1)
-                  DisplayMode: =If(locIsAdmin Or Hour(Now()) < 10, DisplayMode.Edit, DisplayMode.View)
                   Fill: =RGBA(37, 99, 235, 1)
                   Height: =46
                   HoverFill: =RGBA(29, 78, 216, 1)
                   OnSelect: |-
-                    =If(
-                        !(locIsAdmin Or Hour(Now()) < 10),
-                        Notify("10:00 後僅行政人員可修改回覆", NotificationType.Error),
-                        Patch(AttendanceHistory, locSelected, {表單回覆: radReply.Selected.Value});
-                        If(
-                            IsEmpty(Errors(AttendanceHistory, locSelected)),
-                            Notify("已送出回覆", NotificationType.Success);
-                            UpdateContext({locShowPopup: false}),
-                            Notify("送出失敗：" & First(Errors(AttendanceHistory, locSelected)).Message, NotificationType.Error)
-                        )
+                    =Patch(AttendanceHistory, locSelected, {表單回覆: radReply.Selected.Value});
+                    If(
+                        IsEmpty(Errors(AttendanceHistory, locSelected)),
+                        Notify("已送出回覆", NotificationType.Success);
+                        UpdateContext({locShowPopup: false}),
+                        Notify("送出失敗：" & First(Errors(AttendanceHistory, locSelected)).Message, NotificationType.Error)
                     )
                   Text: ="送出"
                   Width: =(Parent.Width - 48) / 2
