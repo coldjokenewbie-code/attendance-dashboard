@@ -11,6 +11,13 @@
 #    暫時解「資料列限制 500→2000」在此修法後不再是必要條件，但留著無害。
 # ② Popup 任務名稱被裁掉 ── lblPopMeta 原固定 Height 72，長任務名換行即被切，且 radReply.Y 寫死 132 蓋住溢出行。
 #    改 AutoHeight + Size 13；radReply.Y 改跟隨 lblPopMeta 實際高度；conPopup 高度 580→680 補足空間。
+#
+# 2026-07-31 追加改動 ③ Gallery 卡片文字被裁（與 ② 同病，使用者手機截圖回報）：
+#    卡片內六個 Label 原為固定 Height（28／26／22／30／22／46）且 Y 寫死座標，專案名或工作名一換行
+#    就被切一半、下一欄位還蓋上來。改法＝六個 Label 全開 AutoHeight，Y 一律引用上一個控件的
+#    Y + Height + 間距（串接），btnReply.Y 與 recCard.Height 同樣跟著算。
+#    TemplateSize 280→420：垂直 Gallery 的列高無法逐列自動（平台限制），只能取最壞情況的固定值，
+#    代價是短內容卡片下方留白；recCard 高度已改為隨內容縮，留白落在卡片外的灰底、不是空白的卡片。
 
 - conHeader:
     Control: GroupContainer@1.5.0
@@ -80,7 +87,7 @@
             任務名稱 <> Blank()
         )
       TemplatePadding: =6
-      TemplateSize: =280
+      TemplateSize: =420
       Width: =Parent.Width
       Y: =100
     Children:
@@ -88,16 +95,16 @@
           Control: Rectangle@2.3.0
           Properties:
             Fill: =RGBA(255, 255, 255, 1)
-            Height: =268
+            Height: =btnReply.Y + btnReply.Height + 12
             Width: =Parent.TemplateWidth - 16
             X: =8
             Y: =4
       - lblPlan:
           Control: Label@2.5.1
           Properties:
+            AutoHeight: =true
             Color: =RGBA(31, 41, 55, 1)
             FontWeight: =FontWeight.Semibold
-            Height: =28
             Size: =17
             Text: ="【專案】" & ThisItem.方案名稱
             Width: =Parent.TemplateWidth - 40
@@ -106,53 +113,53 @@
       - lblTask:
           Control: Label@2.5.1
           Properties:
+            AutoHeight: =true
             Color: =RGBA(55, 65, 81, 1)
-            Height: =26
             Size: =14
             Text: ="【工作】" & ThisItem.任務名稱
             Width: =Parent.TemplateWidth - 40
             X: =20
-            Y: =46
+            Y: =lblPlan.Y + lblPlan.Height + 4
       - lblReplyHeader:
           Control: Label@2.5.1
           Properties:
+            AutoHeight: =true
             Color: =RGBA(107, 114, 128, 1)
             FontWeight: =FontWeight.Semibold
-            Height: =22
             Text: ="【工作延遲回覆（請勾選）】"
             Width: =Parent.TemplateWidth - 40
             X: =20
-            Y: =78
+            Y: =lblTask.Y + lblTask.Height + 10
       - lblReplyVal:
           Control: Label@2.5.1
           Properties:
+            AutoHeight: =true
             Color: =If(IsBlank(ThisItem.表單回覆), RGBA(220, 38, 38, 1), RGBA(22, 101, 52, 1))
-            Height: =30
             Size: =15
             Text: =If(IsBlank(ThisItem.表單回覆), "（未回覆）", ThisItem.表單回覆)
             Width: =Parent.TemplateWidth - 54
             X: =34
-            Y: =102
+            Y: =lblReplyHeader.Y + lblReplyHeader.Height + 2
       - lblStatusHeader:
           Control: Label@2.5.1
           Properties:
+            AutoHeight: =true
             Color: =RGBA(107, 114, 128, 1)
             FontWeight: =FontWeight.Semibold
-            Height: =22
             Text: ="【實際出勤狀態（米米信/行政人員填寫）】"
             Width: =Parent.TemplateWidth - 40
             X: =20
-            Y: =136
+            Y: =lblReplyVal.Y + lblReplyVal.Height + 10
       - lblStatusVal:
           Control: Label@2.5.1
           Properties:
+            AutoHeight: =true
             Color: =RGBA(55, 65, 81, 1)
-            Height: =46
             Size: =14
             Text: =If(IsBlank(ThisItem.實際出勤狀態), "（未填）", ThisItem.實際出勤狀態)
             Width: =Parent.TemplateWidth - 54
             X: =34
-            Y: =160
+            Y: =lblStatusHeader.Y + lblStatusHeader.Height + 2
       - btnReply:
           Control: Classic/Button@2.2.0
           Properties:
@@ -167,7 +174,7 @@
             Text: ="填寫回覆"
             Width: =Parent.TemplateWidth - 40
             X: =20
-            Y: =214
+            Y: =lblStatusVal.Y + lblStatusVal.Height + 14
 - conOverlay:
     Control: GroupContainer@1.5.0
     Variant: ManualLayout

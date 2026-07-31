@@ -1,4 +1,4 @@
-<!-- WTF-AUTOGEN:AGENTS | 真相源: wtf-config/AGENTS.md | 由 sync_config.py 產生 | 最後同步: 2026-07-31 12:51:52 | 機器: comaMacBookAir.local | 請勿手動編輯，改源頭後重跑 sync。 WTF-AUTOGEN:END -->
+<!-- WTF-AUTOGEN:AGENTS | 真相源: wtf-config/AGENTS.md | 由 sync_config.py 產生 | 最後同步: 2026-07-31 18:37:27 | 機器: comaMacBookAir.local | 請勿手動編輯，改源頭後重跑 sync。 WTF-AUTOGEN:END -->
 
 # Agent 協作規則（AGENTS）
 

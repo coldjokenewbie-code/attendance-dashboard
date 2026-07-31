@@ -50,7 +50,17 @@ App 設定→一般→資料列限制 500 改 **2000** → 重開 App → 資料
   - `radReply.Height`：`=Parent.Height - Self.Y - 72`
   - `conPopup.Height`：`Min(Parent.Height - 64, 580)` → `Min(Parent.Height - 40, 680)`
 - **備援**（若 `AutoHeight` 貼不進或 Height 引用不生效）：`lblPopMeta.Height` 固定改 `110`、`radReply.Y` 固定改 `174`，可涵蓋約 4 行。
-- ⚠ **Gallery 卡片同病未修**：`lblPlan`／`lblTask` 亦為固定高度（26～28px）、`TemplateSize` 固定 280，長專案名在卡片上一樣被切。依「UI 增量修改」原則本次未動，待 Popup 驗證通過後再處理。
+
+## 症狀 4（2026-07-31 使用者手機截圖回報）：Gallery 卡片文字被裁
+- 現象：卡片內【專案】【工作】長名稱被切一半，下一個欄位還疊上來（截圖可見「更新」只顯示上半、工作名第二行被切）。與症狀 3 同病、不同位置。
+- 根因：卡片內六個 Label 全是固定 `Height`（`lblPlan` 28／`lblTask` 26／`lblReplyHeader` 22／`lblReplyVal` 30／`lblStatusHeader` 22／`lblStatusVal` 46），且每個的 `Y` 都是寫死座標（16／46／78／102／136／160／btnReply 214），文字一換行就超出自己的框、又被下一個控件蓋住。
+- 修法（已寫入 `ScrToday_paste.pa.yaml`，**待 Studio 貼上驗證**）：
+  - 六個 Label 全開 `AutoHeight: =true`，移除固定 `Height`
+  - `Y` 改串接：每個引用上一個控件的 `Y + Height + 間距`（4／10／2／10／2），`btnReply.Y = lblStatusVal.Y + lblStatusVal.Height + 14`
+  - `recCard.Height`：`268` → `=btnReply.Y + btnReply.Height + 12`（白卡隨內容縮）
+  - `TemplateSize`：`280` → `420`
+- **為何 TemplateSize 只能給固定值**：垂直 Gallery 的列高無法逐列依內容自動（平台限制，見 lessons 2026-06-22），只能取最壞情況。代價＝短內容卡片下方留白；因 `recCard` 已改成隨內容縮，留白落在卡片外的灰底，不是一張很空的白卡。
+- **若嫌留白太多**的替代方向（未做，需使用者決定）：卡片上的專案／工作名改截斷顯示（如取前 N 字加「…」），完整內容只在 Popup 呈現，`TemplateSize` 就能收回 300 上下。
 
 ## 交接（2026-07-31 [Claude@Mac] session 結束，另開新 session 接手）
 
@@ -61,13 +71,13 @@ App 設定→一般→資料列限制 500 改 **2000** → 重開 App → 資料
 | 症狀 1 委派退回（抓不到今日資料） | 暫時解已上線（資料列限制 2000，正常運作）；治本巢狀 Filter **已寫入 yaml、未貼上驗證** |
 | 症狀 2 同事手機打不開 | 已給處置建議（改用 Safari／Chrome），**未回報結果** |
 | 症狀 3 Popup 文字被裁 | 修法**已寫入 yaml、未貼上驗證** |
-| Gallery 卡片同病 | **完全未動**（依 UI 增量原則，等 Popup 驗證通過再處理） |
+| 症狀 4 Gallery 卡片文字被裁 | 修法**已寫入 yaml、未貼上驗證**（2026-07-31 追加，見下方「症狀 4」） |
 
 **貼上後逐條驗收**：
 1. `Screen.OnVisible` 仍在（`UpdateContext({locShowPopup: false}); Set(gToday, Text(Today(), "yyyy/mm/dd"))`）——全選刪除會連帶掉，貼完必補。
 2. `galToday.Items` 委派警告三角消失。
 3. 開一筆長任務名的卡片，Popup 內「【專案】／【工作】」兩行文字完整不裁。
-4. 手機實開看得到今日延遲工作。
+4. 手機實開看得到今日延遲工作，且卡片上長專案名／工作名完整換行、欄位不互相重疊。
 
 **兩點未驗證，失敗就走備援**（見「症狀 3」段）：`AutoHeight` 屬性能否由 YAML 貼入 `Label@2.5.1`；`AutoHeight=true` 時 `lblPopMeta.Height` 被別的控件引用是否回傳計算後高度。任一不成立→`lblPopMeta.Height` 固定 `110`、`radReply.Y` 固定 `174`。
 
