@@ -1,1 +1,4 @@
 .DS_Store
+
+# Portal 匯出的歷史備份 zip（informaiton/archive），不入版控
+informaiton/archive/
