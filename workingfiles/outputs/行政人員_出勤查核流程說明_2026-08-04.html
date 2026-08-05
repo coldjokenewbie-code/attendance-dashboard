@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>出勤查核系統｜行政人員作業說明</title>
+<style>
+  :root{
+    --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb; --bg:#f7f8fa; --card:#fff;
+    --blue:#2563eb; --blue-bg:#eff6ff; --red:#dc2626; --red-bg:#fef2f2;
+    --amber:#d97706; --amber-bg:#fffbeb; --green:#166534; --green-bg:#f0fdf4;
+    --grey:#94a3b8; --grey-bg:#f1f5f9;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    line-height:1.75;font-size:15px}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 20px 80px}
+  header{background:linear-gradient(180deg,#dbeafe,#eff6ff);border:1px solid #bfdbfe;
+    border-radius:14px;padding:26px 28px;margin-bottom:28px}
+  header h1{margin:0 0 8px;font-size:25px;letter-spacing:.5px}
+  header p{margin:0;color:#1e40af;font-size:14.5px}
+  .meta{margin-top:14px;font-size:13px;color:#3b5b9a}
+  h2{font-size:20px;margin:38px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+  h3{font-size:16px;margin:24px 0 10px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:18px 20px;margin:14px 0}
+  table{width:100%;border-collapse:collapse;background:var(--card);
+    border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:12px 0;font-size:14px}
+  th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:#f3f4f6;font-weight:600;white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  .scroll{overflow-x:auto}
+  code{background:#f1f5f9;padding:2px 6px;border-radius:5px;font-size:13px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12.5px;
+    font-weight:600;white-space:nowrap}
+  .t-red{background:var(--red-bg);color:var(--red);border:1px solid #fecaca}
+  .t-amber{background:var(--amber-bg);color:var(--amber);border:1px solid #fde68a}
+  .t-green{background:var(--green-bg);color:var(--green);border:1px solid #bbf7d0}
+  .t-grey{background:var(--grey-bg);color:var(--grey);border:1px solid #e2e8f0}
+  .t-blue{background:var(--blue-bg);color:var(--blue);border:1px solid #bfdbfe}
+  .time{font-weight:700;color:var(--blue);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .who{font-size:12.5px;padding:1px 7px;border-radius:4px;white-space:nowrap}
+  .w-sys{background:#eef2ff;color:#4338ca}
+  .w-adm{background:#fef3c7;color:#92400e}
+  .w-emp{background:#dcfce7;color:#166534}
+  .note{background:var(--amber-bg);border-left:4px solid var(--amber);
+    padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;font-size:14px}
+  .warn{background:var(--red-bg);border-left:4px solid var(--red);
+    padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;font-size:14px}
+  .ok{background:var(--green-bg);border-left:4px solid var(--green);
+    padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;font-size:14px}
+  details{background:#fafafa;border:1px solid var(--line);border-radius:8px;
+    padding:10px 14px;margin:10px 0}
+  summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
+  details p,details ul{font-size:13.5px;color:var(--muted);margin:8px 0 2px}
+  ul{padding-left:22px}li{margin:5px 0}
+  .muted{color:var(--muted);font-size:13.5px}
+  .big{font-size:17px;font-weight:600}
+  .axis{position:relative;padding-left:0}
+  .step{display:grid;grid-template-columns:74px 1fr;gap:14px;margin:0 0 4px;
+    background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .step + .step{margin-top:10px}
+  .step.adm{border-left:4px solid var(--amber)}
+  .step.sys{border-left:4px solid #6366f1}
+  .step h4{margin:0 0 4px;font-size:15.5px}
+  .step p{margin:4px 0;font-size:14px}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13.5px;margin-top:6px}
+  .kv b{color:var(--muted);font-weight:600;white-space:nowrap}
+  footer{margin-top:50px;padding-top:18px;border-top:1px solid var(--line);
+    color:var(--muted);font-size:13px}
+  @media(max-width:640px){
+    .step{grid-template-columns:1fr}
+    .wrap{padding:18px 14px 60px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>出勤查核系統｜行政人員作業說明</h1>
+  <p>系統每天早上自動巡檢 Planner 的延遲工作、通知同事回報，行政在儀表板上查核與追辦。</p>
+  <div class="meta">版本 2026-08-04｜適用於 0945／0955／1015 改版後的流程</div>
+</header>
+
+<div class="ok">
+  <b>這次改版最重要的一件事：系統不再改寫同事填的回覆。</b><br>
+  以前同事勾了「1. 已完成」但卡片沒更新，系統會把他的回覆<b>直接改成</b>「3. 延遲…」，原本填什麼就看不到了。
+  現在系統只在旁邊多寫一欄「Planner 狀態」記錄卡片的真實情況，<b>同事填的內容永遠保持原樣</b>，
+  兩邊擺在一起由行政判斷。
+</div>
+
+<h2>一、每天的流程</h2>
+<p class="muted">
+  <span class="who w-sys">系統</span> 自動執行
+  <span class="who w-adm">行政</span> 人工作業
+  <span class="who w-emp">同事</span> 自己回報
+</p>
+
+<div class="axis">
+
+  <div class="step sys">
+    <div class="time">09:20</div>
+    <div>
+      <h4>建立今天的查核清單 <span class="who w-sys">系統</span></h4>
+      <p>掃描全公司 Planner，把<b>逾期的工作</b>一件一件寫進清單，一件一列。</p>
+      <p>當天沒有任何逾期工作的人，也會建一筆「無延遲」的紀錄，代表系統確實檢查過他了。</p>
+    </div>
+  </div>
+
+  <div class="step adm">
+    <div class="time">09:30</div>
+    <div>
+      <h4>登記已到公司的人 <span class="who w-adm">行政</span></h4>
+      <p>在儀表板的「行政人員輸入」欄，把這個時間點已經到公司的同事登記起來。</p>
+      <p class="muted">有延遲工作的人規定 09:30 就要到公司早加班，所以這一次登記是後續判斷的依據。</p>
+    </div>
+  </div>
+
+  <div class="step sys">
+    <div class="time">09:45</div>
+    <div>
+      <h4>通知有延遲工作的同事 <span class="who w-sys">系統</span></h4>
+      <p>逐一發 LINE 通知，請他們更新 Planner 卡片並到儀表板回報。</p>
+      <div class="note">
+        <b>改版後的差異：請假的人也會收到通知。</b>
+        以前系統會自動跳過請假者、還幫他們把回覆填成「4. 當天已請假」。
+        現在不代填了——請假的人一樣要自己到儀表板回報，
+        因為原則上請假前就該先安排好工作、調整卡片截止日。
+      </div>
+    </div>
+  </div>
+
+  <div class="step sys">
+    <div class="time">09:55</div>
+    <div>
+      <h4>第一次核對卡片狀態 <span class="who w-sys">系統</span></h4>
+      <p>重新讀一次 Planner，把每筆工作當下的卡片狀況寫進「<b>Planner 狀態</b>」欄：</p>
+      <div class="kv">
+        <b>已更新</b><span>卡片已經不在逾期清單裡（同事處理過了）</span>
+        <b>延遲</b><span>卡片還在逾期清單裡（沒動）</span>
+      </div>
+      <p style="margin-top:8px">接著對「<b>卡片還在延遲，而且回覆是 1、5 或還沒回覆</b>」的人再發一次 LINE 提醒。</p>
+      <details>
+        <summary>為什麼是 1、5 和未回覆這三種</summary>
+        <p>勾「1. 已完成」卻沒把卡片勾掉、勾「5. 其他狀況」卻沒在 5 分鐘內更新卡片——這兩種都是<b>說了要處理但沒做</b>。
+        沒回覆的則是完全沒表態。這三種需要再推一把。</p>
+        <p>勾 2、3、4 的人已經說明了原因（在補進度／要補請假／當天請假），不會再收到提醒。</p>
+      </details>
+    </div>
+  </div>
+
+  <div class="step adm">
+    <div class="time">10:00</div>
+    <div>
+      <h4>登記到公司的人 <span class="who w-adm">行政</span></h4>
+      <p>第二次登記。公司規定 10:00 到，但可以晚到或在其他地方工作，<b>唯一的義務是發米米信</b>。</p>
+    </div>
+  </div>
+
+  <div class="step sys">
+    <div class="time">10:00</div>
+    <div>
+      <h4>米米信與請假寫入 ＋ 彙整通知 <span class="who w-sys">系統</span></h4>
+      <p>系統讀今天的米米信（主旨 <code>**</code> 開頭）和請假行事曆，寫進「實際出勤狀態」欄：</p>
+      <ul>
+        <li><b>有請假</b> → 填請假事件的標題</li>
+        <li><b>沒請假、有米米信</b> → 填米米信主旨</li>
+        <li><b>兩者都沒有</b> → 這一欄不動（保留行政先前填的內容）</li>
+      </ul>
+      <p>同時寄一封彙整信，列出今天有哪些人、哪些工作延遲。</p>
+    </div>
+  </div>
+
+  <div class="step sys">
+    <div class="time">10:10</div>
+    <div>
+      <h4>補收晚發的米米信 <span class="who w-sys">系統</span></h4>
+      <p>10:00 到 10:10 之間才發的米米信，這一輪補進去。</p>
+    </div>
+  </div>
+
+  <div class="step sys">
+    <div class="time">10:15</div>
+    <div>
+      <h4>第二次核對卡片狀態 <span class="who w-sys">系統</span></h4>
+      <p>再讀一次 Planner，<b>覆蓋</b>「Planner 狀態」欄——所以這一欄看到的永遠是最近一次核對的結果。</p>
+      <p>條件同 09:55，仍未處理的再發一次 LINE。</p>
+      <div class="note">
+        同事在 10:05 更新了卡片，09:55 寫的「延遲」會在這一輪變成「已更新」。
+        反過來卡片又被改回逾期，也會變回「延遲」。
+      </div>
+    </div>
+  </div>
+
+  <div class="step adm">
+    <div class="time">10:15 後</div>
+    <div>
+      <h4>查核與追辦 <span class="who w-adm">行政</span></h4>
+      <p class="big">這是行政真正要動手的時間點。</p>
+      <p>兩輪核對都跑完了，儀表板上的紅字就是需要處理的人。詳見下面第三節。</p>
+    </div>
+  </div>
+
+  <div class="step sys">
+    <div class="time">10:30<br><span class="muted" style="font-size:12px">每週一</span></div>
+    <div>
+      <h4>上週彙整週報 <span class="who w-sys">系統</span></h4>
+      <p>統計上週一到週五每個人的逾期件數與未早加班件數，寄兩封信。</p>
+    </div>
+  </div>
+
+</div>
+
+<h2>二、儀表板上每一欄的意思</h2>
+
+<div class="scroll">
+<table>
+  <tr><th>欄位</th><th>誰填的</th><th>看什麼</th></tr>
+  <tr>
+    <td><b>出勤狀態（已存）</b></td>
+    <td><span class="who w-adm">行政</span><span class="who w-sys">系統</span></td>
+    <td>行政登記的到勤狀況，或系統寫入的米米信主旨／請假事件。<br>
+        <span class="muted">藍色粗體＝已經存檔；灰色「待確認」＝還沒有任何人填。</span></td>
+  </tr>
+  <tr>
+    <td><b>行政人員輸入</b></td>
+    <td><span class="who w-adm">行政</span></td>
+    <td>下拉選常用狀態，或在旁邊的空格自己打字。<b>選完／打完就自動存檔</b>，不用按儲存。<br>
+        <span class="muted">自訂欄的提示文字寫著「自訂／未早加班打 @@」，滑鼠停留可看完整規則，見第四節。</span></td>
+  </tr>
+  <tr>
+    <td><b>今日延遲工作｜同事回覆</b></td>
+    <td><span class="who w-emp">同事</span></td>
+    <td>同事在自己的儀表板上勾的選項，<b>系統絕不會改動它</b>。<br>
+        <span class="muted">內容太長會截在一行內，滑鼠移上去看得到全文。</span></td>
+  </tr>
+  <tr>
+    <td><b>Planner 狀態</b></td>
+    <td><span class="who w-sys">系統</span></td>
+    <td>卡片在最近一次核對時的真實狀況，見下表。</td>
+  </tr>
+</table>
+</div>
+
+<h3>Planner 狀態欄的四種顯示</h3>
+<div class="scroll">
+<table>
+  <tr><th>顯示</th><th>意思</th><th>要做什麼</th></tr>
+  <tr>
+    <td><span class="tag t-red">延遲</span><span class="muted">（紅字，整列也是紅的）</span></td>
+    <td>卡片還在逾期，而且同事回覆 1、5 或根本沒回覆。</td>
+    <td><b>要追辦。</b>說了要處理卻沒做，或完全沒表態。</td>
+  </tr>
+  <tr>
+    <td><span class="tag t-amber">延遲</span><span class="muted">（橘字）</span></td>
+    <td>卡片還在逾期，但同事已經勾了 2、3、4 說明原因。</td>
+    <td>不用追進度，但如果是「3. 待填寫假卡」要記得<b>確認假單有沒有補</b>。</td>
+  </tr>
+  <tr>
+    <td><span class="tag t-green">已更新</span></td>
+    <td>卡片已經處理掉了。</td>
+    <td>不用處理。</td>
+  </tr>
+  <tr>
+    <td><span class="tag t-grey">未巡檢</span></td>
+    <td>系統還沒核對到這一筆（09:55 之前都是這樣）。</td>
+    <td>等 09:55 之後再看。如果 10:15 過後還是灰的，<b>代表流程沒跑成功</b>，要回報。</td>
+  </tr>
+  <tr>
+    <td><span class="tag t-grey">—</span></td>
+    <td>這個人今天沒有延遲工作。</td>
+    <td>不用處理。</td>
+  </tr>
+</table>
+</div>
+
+<div class="warn">
+  <b>整列變紅字＝這個人需要人工追辦。</b>
+  判斷條件是「卡片還在延遲」<b>而且</b>「回覆是 1、5 或未回覆」兩個同時成立。
+  只有其中一個成立不會變紅。
+</div>
+
+<h2>三、行政要追辦什麼</h2>
+
+<div class="card">
+  <h3 style="margin-top:0">① 說已完成，但卡片沒勾掉</h3>
+  <p><b>畫面上看到</b>：整列紅字，回覆欄寫「1. 已完成（請自行勾掉卡片）」，Planner 狀態是紅色的「延遲」。</p>
+  <p><b>意思</b>：同事說做完了，但 Planner 上的卡片還掛在那裡。可能真的忘了勾，也可能其實沒做完。</p>
+  <p><b>怎麼處理</b>：請他去把卡片勾掉。如果其實沒做完，請他改回實際狀況。</p>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">② 說有其他狀況，但卡片沒更新</h3>
+  <p><b>畫面上看到</b>：整列紅字，回覆欄寫「5. 如為其他狀況，請於5分鐘內更新卡片」，Planner 狀態紅色「延遲」。</p>
+  <p><b>意思</b>：同事選了「其他狀況」，代表他要自己去卡片上說明，但一直沒動。</p>
+  <p><b>怎麼處理</b>：請他更新卡片內容或調整截止日。</p>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">③ 完全沒回覆</h3>
+  <p><b>畫面上看到</b>：整列紅字，回覆欄顯示「（未回覆）」，Planner 狀態紅色「延遲」。</p>
+  <p><b>意思</b>：09:45 和 09:55、10:15 都發過 LINE 了，人還是沒有任何回應。</p>
+  <p><b>怎麼處理</b>：直接聯繫本人。這一類最需要注意，因為連「人在不在」都不知道。</p>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">④ 勾了「待填寫假卡」</h3>
+  <p><b>畫面上看到</b>：<b>不是紅字</b>（因為同事已經說明了），回覆欄寫「3. 延遲（09:30沒到公司，待填寫假卡）」。</p>
+  <p><b>意思</b>：同事自己承認 09:30 沒到，要補請假。</p>
+  <p><b>怎麼處理</b>：追蹤假單有沒有真的補上。這一類系統不會再提醒，<b>要靠行政自己記得追</b>。</p>
+</div>
+
+<h2>四、行政的人工註記：<code>@@</code> 開頭</h2>
+
+<div class="card">
+  <p class="big">系統不會自動判定「這個人到底有沒有早加班」，這件事由行政人工查核並記錄。</p>
+
+  <div class="warn" style="margin-top:4px">
+    <b><code>@@</code> 只用在一種情況：工作延遲、而且沒有於 09:30 到公司早加班。</b><br>
+    其他任何狀況（已早加班、卡片忘記更新、一般到勤登記）都用<b>普通文字</b>填，前面不要加 <code>@@</code>。
+  </div>
+
+  <p class="muted">這是少數事件——到 2026-08-04 為止還沒發生過，所以沒有做成下拉選項，只在欄位上做提示。</p>
+
+  <h3 style="margin-top:18px">填在哪裡</h3>
+  <p>「行政人員輸入」欄位右邊那個<b>自訂輸入框</b>（下拉選單旁邊、顯示淡灰色
+     「<span class="muted">自訂／未早加班打 @@</span>」提示的那格）。滑鼠停留在上面會顯示完整規則。</p>
+  <p>直接打字，<b>打完自動存檔</b>，不用按儲存。例如：</p>
+  <ul>
+    <li><code>@@未早加班，已補請假</code></li>
+    <li><code>@@未早加班，無故缺席</code></li>
+    <li><code>@@未早加班，臨時外出處理客戶問題</code></li>
+  </ul>
+  <p>系統只認前面那兩個 <code>@@</code>，後面寫什麼都不影響統計，原因照實況寫就好。</p>
+
+  <div class="ok">
+    <b>不用擔心打成全形或多了空格。</b>
+    系統會自動處理——<code>@@</code>、<code>＠＠</code>、<code>@＠</code>、<code>＠ ＠</code>、
+    前面多幾個空格，全部都認得。只有單獨一個 <code>@</code> 不算。
+  </div>
+
+  <div class="note">
+    <b>為什麼要有這個標記</b>：「實際出勤狀態」這一欄同時裝三種來源的資料——
+    行政登記的到勤狀況、系統抓的米米信主旨、系統抓的請假事件標題。
+    加上 <code>@@</code> 前綴，週報統計時才分得出哪些是行政查核後認定的「未早加班」。
+  </div>
+</div>
+
+<div class="warn">
+  <b>沒填就等於沒發生。</b>
+  週報的「未早加班」件數<b>完全依據 <code>@@</code> 註記</b>統計——行政沒填，那筆就不會出現在週報上。
+  同事自己在儀表板勾了什麼，不影響這個數字。
+</div>
+
+<h2>五、每週一的彙整週報</h2>
+<div class="card">
+  <p>每週一 10:30 自動寄出兩封信，統計範圍是<b>上週一到上週五</b>。兩封信各講一件事，不重複。</p>
+  <p><b>第一封</b>「工作延遲彙整周報」──上週誰有幾件工作逾期：<br>
+     <span class="muted">〔姓名〕：上週有 8 件工作逾期紀錄。</span></p>
+  <p><b>第二封</b>「工作延遲早加班狀況_」──其中哪些是<b>沒有早加班</b>的，依行政的 <code>@@</code> 註記統計：<br>
+     <span class="muted">〔姓名〕：上週有 3 件工作延遲未早加班之紀錄</span></p>
+  <p class="muted">全員都有早加班時，第二封只寄一句話帶過，並提醒確認行政是否漏填註記。</p>
+  <div class="note">
+    這兩封信會再轉發到 LINE，所以<b>主旨格式是固定的</b>，不能任意更動。
+  </div>
+</div>
+
+<h2>六、需要注意的狀況</h2>
+
+<div class="scroll">
+<table>
+  <tr><th>看到什麼</th><th>代表什麼</th><th>怎麼辦</th></tr>
+  <tr>
+    <td>10:15 過後 Planner 狀態還是灰色「未巡檢」</td>
+    <td>巡檢流程沒跑成功</td>
+    <td>回報系統維護者。這時候紅字判斷是不準的。</td>
+  </tr>
+  <tr>
+    <td>整頁的人都沒有延遲工作</td>
+    <td>可能是 09:20 建立清單那支沒跑，也可能真的全員準時</td>
+    <td>看隔天有沒有恢復；連續兩天都這樣就回報。</td>
+  </tr>
+  <tr>
+    <td>同事說他有填，但畫面顯示「（未回覆）」</td>
+    <td>可能填在別天的紀錄上，或送出時失敗了</td>
+    <td>按右上角「↻ 重新整理」再看一次。</td>
+  </tr>
+  <tr>
+    <td>同事重開儀表板，發現之前勾的選項不見了</td>
+    <td>選項文字改過版，舊紀錄對不上新選項</td>
+    <td>資料還在、行政這邊看得到，請他重新勾一次即可。</td>
+  </tr>
+</table>
+</div>
+
+<footer>
+  出勤查核系統｜行政人員作業說明　2026-08-04 版<br>
+  這份文件描述的是 0945／0955／1015 改版後的行為。系統邏輯有異動時請一併更新本文件。
+</footer>
+
+</div>
+</body>
+</html>

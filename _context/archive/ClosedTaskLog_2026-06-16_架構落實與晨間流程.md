@@ -1,0 +1,246 @@
+# TaskLog_2026-06-16_架構落實與晨間流程
+> [Claude@Mac]
+
+## 本次完成
+- **模組一 MVP 收尾**：回覆改 4 選項單選（存完整文案）、整份改響應式手機優先（Parent 比例、單欄直向）。已交付，前段已結案歸檔（`archive/ClosedTaskLog_2026-06-13_module1-canvas-yaml.md`）。
+- **檔案歸位**：`outputs/canvas/` → `workingfiles/canvas/`（過程工作檔不放 outputs；全專案引用一併修正）。
+- **架構計畫轉 HTML**：`_context/Plan_2026-06-15_excel-list-bridge.html`。
+- **釐清實況（取代先前假設）**：
+  - RowKey＝Excel `ID` 欄（欄名 `yyyyMMdd_Email` 為舊名沿用，**實際內容＝日期_email_任務ID，唯一**），每任務一列。
+  - 目標清單**沿用現有 `AttendanceHistory`**（App 不改資料源）；清單需**新增 `RowKey` 欄**存 ID。
+  - 員工編號 from 同檔 `team_member` 工作表 by Email。
+  - 清單涵蓋**全體同事**（延遲者每任務一列＋未延遲者占位列 RowKey＝`yyyymmdd_Email`）。
+  - **發 Line＝既有 Planner2Line**（`/Users/coma/Git_work/Planner2Line`）：Windows 桌機程式監聽 Outlook「工作延遲_人名 | MM/DD」信→清理正文（自動縮網址）→依 `contacts.json`（Email→LINE 聯絡人名）透過 LINE Desktop 發送。**連結取自郵件正文，非 Power Automate**。
+- **產出 09:40 晨間流程規格 v3**：`workingfiles/flows/Flow_0940_晨間同步與通知_建置規格.html`（段A 延遲者 upsert／段B 未延遲占位／段C 發Line 歸既有鏈路、不在 Power Automate）。
+- **實際參數收錄**：站台 PLANNER_CK、TaskDB.xlsx（Table TaskDB）、team_member（Email/員工編號）、清單 AttendanceHistory、排程 09:40。
+
+## 未解決 / 下一步
+1. **方向已確認**：09:40 流程＋清單同步上線、員工儀表板正式運作後，**Line 發的連結改為員工儀表板**（取代現行 MS365 表單信件）。切換點＝改「發延遲通知郵件那支」的正文連結為儀表板 web 連結（Planner2Line 自動縮網址轉發、不用改）。待確認：發那封郵件的是哪支（09:30 舊 flow 或另一支）。
+2. 清單新增 `RowKey` 欄。
+3. 09:40 flow 段 A/B 待 Portal 實建測：Excel「今日」篩選未驗證（附 fallback：全讀＋`startsWith(ID, yyyymmdd)`）；5 分鐘窗口非硬約束（發 Line 獨立鏈路）。
+4. **行政查核頁簽 — ✅ 已完成（待匯入測試）**：
+   - 產出：`workingfiles/canvas/ScrAdmin_paste.pa.yaml`（新畫面，YAML 驗證通過）、`ScrToday_paste.pa.yaml` 更新（Header 加高至 100、加橘色 `btnAdmin` 行政入口）、`行政頁簽_建置與匯入.html`。
+   - 列當天全體：`Sort(GroupBy(Filter(AttendanceHistory, DateString=今日), Email,'姓名','員工編號',"明細"),'姓名')` 去重到人——**靠清單本身已同步的全體，不另接 team_member 當資料源**。
+   - 權限：`btnAdmin.Visible = !IsBlank(LookUp(team_member, Lower(Email)=Lower(User().Email),'出勤存取權限'))`，直接算、免改 App.OnStart。team_member 走 Excel 連接器，僅判權限。
+   - 寫回：行政選狀態 → `UpdateIf(AttendanceHistory, Email=ThisItem.Email && DateString=今日, {'實際出勤狀態': drpStatus.Selected.Value})`。10 個出勤狀態選項見 `行政頁簽_建置與匯入.html` §4。
+   - **待確認**：(a) `出勤存取權限` 值格式（目前「非空白＝行政」，若用「是/否」要改判斷式）；(b) 員工不能改 `實際出勤狀態` 的硬保障須靠 SharePoint 清單權限，UI `Visible` 非安全邊界。
+5. 後續 flow：Sync-back（表單回覆回寫 Excel）、Prune；模組二請假查詢。
+
+## 流程調整（2026-06-16 後續，待改規格）
+- **架構反轉**：原「Excel 寬表（主檔）→ 09:40 同步進清單」改為 **0930 掃 Planner 直接寫入清單 AttendanceHistory → 處理完（查核／回覆完成）清單資料移到 Excel 當備份**。清單變主要工作區、Excel 變備份。
+- 影響：`Flow_0940_晨間同步與通知_建置規格.html` 的「Excel→清單 sync-in（段A/B）」取消，改為 Planner→清單（Power Automate Planner 連接器讀延遲任務→建清單項目，員工編號 join team_member）＋ 清單→Excel 備份。發 Line 仍走既有 Planner2Line。
+- 員工查歷史：~~歷史在 Excel 備份；清單只留處理中／當日~~ → **2026-06-21 修正見下方「清單保留策略」**。
+
+## 模組三：請假餘額查詢（2026-06-21 定案）
+- 資料源：**獨立的請假 Excel 檔**（與 TaskDB.xlsx 是**不同檔案**，須另加一個 Excel 連線；範圍須格式化為 Table）。
+- **Excel 直連唯讀、不建清單**：一年約幾百列 < 2000、唯讀低頻，適用儲存選型準則。
+- 餘額：`LookUp(請假表, Lower(Email)=Lower(User().Email))`；紀錄：`Filter(請假表, Lower(Email)=Lower(User().Email))`，自動只顯示當事人。
+- **請假申請走外部既有表單**，ScrLeave 只放連結按鈕 `Launch(URL)`，app 不做申請邏輯。
+- ScrLeave 待建，待辦見下方。
+
+## 2026-06-21 進度
+- **0930 流程改造指南產出**：`workingfiles/flows/0930_Planner改寫_寫入清單_建置指南.html`。匯出既有流程 zip 讀懂後，定「就地編輯」路線（換連接器 Excel→SharePoint 無法可靠手改 JSON 重匯入：清單內部欄名／連線繫結租戶外不可知）。
+  - 既有流程「0930每日巡檢Planer_v0」實況：寫入 **TEST_PLANNER_CK/TaskDB.xlsx**（test 即正式在用、直接改沿用）、**只抓延遲者**、**不發郵件不發 Line**。
+  - 改造＝段A（Excel AddRow→SharePoint 建立項目）＋段B（讀回今日清單比對 team_member 補占位，避變數競態）；員工編號由流程查 team_member 補、App 不改。
+- **清單 schema 確認**（`_context/AttendanceHistory.csv`）：10 欄，第一欄 `ID (yyyyMMdd_Email)`＝改名後的內建 Title，唯一鍵寫這欄。
+  - 唯一鍵：延遲列＝`日期_email_任務id`、占位列＝`日期_email_TaskOnSchedule`；**僅作不透明唯一值，禁用 `_` 切開解析**（email／任務id 可能含 `_`／`-`）。
+  - **`表單回覆`＝員工寫；`實際出勤狀態`＝僅行政寫、員工唯讀**（兩欄本質不同；員工唯讀硬保障須靠清單欄位／項目權限）。
+- **端到端流程圖 v1**：`workingfiles/flows/出勤查核_端到端流程_v1.html`（7 階段管線＋表單回覆狀態機＋請假模組＋待確認）。
+- **讀通 Planner2Line**（未改碼）：`真核域`=`domain.e@techartgroup.com`（中繼信箱＋summary LINE 對象，非誤字）；三種路由 personal／summary／weekly_summary；**LINE 連結取自信件正文**（改連結＝只改步驟2信件正文 URL）；**App 已 `User().Email` 自篩，全公司共用同一 App 連結即可、不必逐人預填**；寄件者須白名單（domain.e／ihueychen）；上線維運：`config.json` env→prod、outlook.account 改實際信箱、新人加 contacts.json。
+- **清單保留策略（定案傾向，待最終確認）**：**不建議每天清空**。SharePoint 清單上限 3000 萬筆，「5000」是 view threshold 非儲存上限；只要 Email／DateString 建索引＋可委派等值篩選，查詢只取小集合，總量大不影響。Excel 當**附加備份**（append 不刪）；真要精簡用**保留期裁切**（留近 60–90 天）非每天歸零。每天清空會逼歷史查詢改讀 Excel（不可委派＋2000 上限）反更糟。
+
+## 待辦（2026-06-21）
+0. **週報通知（沿用既有成功模式＋加請假）**：現有週報 Power Automate（發送端）不在 Planner2Line repo，需使用者匯出該流程 JSON 我才能延伸。Planner2Line 接收端既有路由＝主旨含 `工作延遲彙整周報`／`早加班狀況` → `weekly_summary` → LINE 群組「天工開物工作群組」、**原文直送不套模板**（`line_sender.py`）。使用者選定**走既有群組彙整模式（方案1）**，把「請假紀錄」加進彙整內容。逐人版（方案2）暫不做。
+1. **ScrLeave 待建**，需使用者提供：請假 Excel 站台/檔名/Table 名、欄位清單、對應鍵（Email/員工編號）、餘額是否已算好（否則配額−已用）、外部請假表單 URL。
+2. **清單保留策略最終拍板**：儀表板是否需查「今日以外」的出勤歷史？要 → 清單當主存放＋索引＋附加備份（不每天清）；不要 → 清單可當今日暫存但歷史不能靠清單。
+3. 步驟2「延遲名單發信」流程未建（讀清單→逐人信進 domain.e，主旨 `工作延遲_姓名 | MM/DD`，正文放儀表板 URL，09:45 前）。
+4. 步驟6 再巡檢同步（狀態1刪列／2,3保留／4收斂）規格未定：觸發頻率、刪列由流程或行政。
+5. 清單 Email／DateString 建索引。
+6. `實際出勤狀態` 員工唯讀：設 SharePoint 清單欄位／項目權限。
+7. 待確認：`出勤存取權限` 值格式（目前非空白＝行政）。
+
+## 2026-06-22 進度（v1 上線 + 0930 流程 + 資料轉檔）
+- **第一版儀表板實際建成並匯入測試**（使用者在 SharePoint 自建 AttendanceHistory + team_member 清單後）：
+  - 定版：AttendanceHistory 走清單、team_member 維持 Excel、響應式、含行政頁簽（權限控制）。產出 `儀表板v1_建置指南.html`。
+  - 一檔一畫面、全選整段貼（合併兩畫面一檔會 PA1001）。
+  - **ScrToday** 改版：移除「全部紀錄」、卡片改【專案】【工作】【工作延遲回覆（請勾選）】＋值【實際出勤狀態（米米信/行政人員填寫）】＋值；回覆 4 選項加編號；只顯示有任務的列（`!IsBlank('任務名稱')` 濾占位）；字級加大。
+  - **ScrAdmin** 數次重構：① GroupBy 改 team_member 名冊（避 GroupBy 識別碼/型別錯）；② 篩選欄位 DateString→`日期`（日期欄是單行文字）；③ Email 欄使用者誤建為「個人或群組」致比對失敗，改單行文字解決；④ 排序改員工編號；⑤ 每人加「延遲工作＋員工回覆」明細（內嵌小 gallery）；⑥ 多筆切字 → 改開捲軸固定高度（列高固定，gallery 無法每列動態高）；版面比照使用者微調（藍標頭「工作時程狀態與同事回覆內容」「現場查核輸入」、出勤狀態移到下拉下方）。
+- **資料轉檔（長版考勤歷史 CSV）**：用 `週紀錄`(延遲)＋`歷史紀錄_現場查核`(實際出勤狀態)＋`聯絡人`(員工編號) 組長版；占位列補未延遲者。0621 檔聯絡人 3 林姓員工編號對調錯誤→以舊資料為準修正；0622 檔源頭已修正，重產 `AttendanceHistory_長版_20260601-0618.csv`（301 列、6/1~6/18 排除 6/19 端午）。同產 `聯絡人_team_member_清單.csv`。CSV 一律 BOM UTF-8（rules）。
+- **0930 流程改造指南定稿**（`0930_Planner改寫_寫入清單_建置指南.html` 重寫為乾淨最終版）：段A Planner→清單 Create item（主欄 PA 顯示為 `Title`、員工編號 join team_member）；段B 用**陣列變數 `延遲Emails` 去重**（初始化+附加+條件），不查清單、不用 `$filter`/Compose；時間用 `addHours(utcNow(),8)`（環境的 convertFromUtc 時區 ID 不被吃時的備案）。
+
+## 待辦（2026-06-22 更新）
+1. **0930 流程 Portal 實建測**：使用者照最終指南建，段A/B 跑通即可上線。
+2. **ScrLeave 待建**（同前：請假 Excel 站台/檔名/Table/欄位/鍵/餘額算法/外部表單 URL）。
+3. 週報加請假（需使用者匯出現有週報流程 JSON）。
+4. 步驟2 發信流程、步驟6 再巡檢、清單索引、`實際出勤狀態` 員工唯讀清單權限。
+5. 清單保留策略最終拍板（是否查今日以外歷史）。
+6. `出勤存取權限` 值格式確認（目前非空白＝行政；CSV 值為「行政管理」）。
+
+## 2026-06-22（續）Power Automate 0945／0955 建置與除錯
+- **既有流程匯出讀通**：使用者交付 `0945每日專案延誤通知EMAIL`（讀 Excel 今日逾期 → union 去重 → 逐人寄信到 domain.e、主旨 `工作延遲_姓名 | MM/dd`、內文含 Forms 預填連結、每封等 10 秒）；`1000核對米米信出勤`（zip 未成功取得）。
+- **清單欄位內部名確認＝field_N**（由「取得清單項目」原始輸出證實）：`field_1 員工編號／field_2 日期／field_3 Email／field_4 姓名／field_5 方案名稱／field_6 任務名稱／field_7 表單回覆／field_8 實際出勤狀態／field_9 DateString`；Title＝唯一鍵。**運算式一律用 field_N**（顯示名抓不到、回 null）。
+- **0945 改讀清單指南**：`workingfiles/flows/Flow_0945_延遲通知信_改讀清單_建置指南.html`（含整體結構圖、可直接貼運算式）。連結 Forms→儀表板（單一共用 App 連結，App 已 `User().Email` 自篩、不需逐任務預填）。
+- **0945 除錯（大量來回，已收斂）**：① 篩選查詢/Select/主旨運算式被當「字面文字」未計算 → 必須用 fx 插入成 token。② OData `$filter` 用 Title 前綴（中文/改名欄內部名會「欄不存在」）。③ 時區 `addHours(utcNow(),8)`（環境的 convertFromUtc 'Taipei Standard Time' 報無效）。④ Filter array 是「相對於迴圈值」過濾——輸入有列卻空輸出＝迴圈值不符（病灶在 Select 去重餵錯 email，非該列）。⑤ 與 Codex 兩輪討論定 `@or` 防呆 where（字串/物件模式都中）。⑥ 最終定案：**棄用 Select 去重，改用 team_member(Excel) 當人員名冊跑迴圈**（姓名/Email 走 Excel header、清單只用 field_3），徹底移除會壞的 Select Map——待使用者套上驗收。
+- **0955 再巡檢與同步規格**（subagent 規劃、Tech Lead 審）：`workingfiles/flows/Flow_0955_再巡檢與同步_建置規格.html`。觸發 09:55；重掃 Planner 逾期 → 比對清單今日延遲列 → 依 field_7 Switch（1→刪／2,3→留／4→不再逾期比照完成、仍逾期收斂2/3）。**Tech Lead 採納並標 PO 待裁示**：首版不自動真刪（改軟刪/標記）、建議 0930 多寫「純任務id」欄供精確比對、「收斂2或3」自動分不出建議標待人工。
+
+## 待辦（2026-06-22 更新）
+0. **0945 套 team_member 名冊版並驗收**（取代 Select 去重）；確認 domain.e 收到逐人信、連結指向儀表板。
+1. **0930 流程 Portal 實建測**：使用者照最終指南建，段A/B 跑通即可上線。
+   - 建議併入：0930 寫清單時**多寫一個「純任務id」欄**，供 0955 精確比對（消 Title 拆字風險）。
+2. **ScrLeave 待建**（請假 Excel 站台/檔名/Table/欄位/鍵/餘額算法/外部表單 URL）。
+3. 週報加請假（需匯出現有週報流程 JSON）。
+4. **0955 三項 PO 裁示**：自動刪列策略（建議軟刪）、收斂2/3、純任務id欄。
+5. 清單保留策略最終拍板；`實際出勤狀態` 員工唯讀清單權限；清單 Email/DateString 索引。
+6. `出勤存取權限` 值格式（CSV 值「行政管理」）。
+
+## 2026-06-26 進度（清單→TaskDB 備份流程）
+- **「清單→Excel 備份」那一段落地**（架構反轉後的日結備份）：把 SharePoint 清單 AttendanceHistory 的今日列，append 寫入 TaskDB.xlsx 的 `TaskDB` 表。產出 `workingfiles/flows/Flow_清單轉TaskDB備份_建置指南.html`。
+  - 三決策（使用者拍板）：**append 累積不清空**（重跑同日會重複，指南附 3 種防呆）／**手動按鈕觸發**（即時雲端流程）／TaskDB 多出的 3 欄 `Line 顯示名稱`、`到期日`、`狀態` **全留空**。
+  - **TaskDB schema 確認**（解 `informaiton/TaskDB_0622.xlsx` 得）：`TaskDB` 表 11 欄＝`ID (yyyyMMdd_Email)／檢核日期／方案名稱／任務名稱／姓名／Email／Line 顯示名稱／到期日／工作延遲_出勤回覆／狀態／10點出勤狀況`；**無員工編號欄**。同檔另有 WeekDB/MonthDB（同 schema、累積）、team_member、歷史紀錄_現場查核 等表。
+  - 欄位對應：Title→ID、field_2→檢核日期、field_5→方案名稱、field_6→任務名稱、field_4→姓名、field_3→Email、field_7→工作延遲_出勤回覆、field_8→10點出勤狀況；清單 field_1 員工編號捨棄。
+  - **「今日」改用 Title 前綴 `yyyyMMdd_` 篩**（DateString 樣本為空、不可靠）；篩選字串先 Compose（`concat('startswith(Title,''',formatDateTime(addHours(utcNow(),8),'yyyyMMdd'),'_'')')`）再餵 Get items 的篩選查詢，避巢狀單引號被截。
+
+## 待辦（2026-06-26 新增）
+- **［新需求·待建］把當天同事「發信報告行程」的信件標題截取，登記到本日清單的表格中**。
+  - 釐清缺口（待使用者補）：① 來源信箱／資料夾（domain.e？個人 Outlook？）；② 如何辨識「報告行程」信（寄件者白名單／主旨關鍵字／收件匣標籤）；③ 標題要截哪段（整個主旨／去前綴）、寫進清單哪一欄（`表單回覆`？另開欄？）；④ 對應到哪一列（用寄件者 Email match 今日占位列？）；⑤ 觸發（手動／排程幾點，須在 09:45 發信前？）。
+  - 推測（未驗證）：可能是「員工自己寄行程信→自動填進當日 AttendanceHistory 的回覆欄」，取代/補充手動回覆。先確認上述 5 點再設計。
+
+## 2026-06-26（續）0930 失敗診斷 + 1000 米米信流程
+- **0930（Excel 版）今日執行失敗**：匯出 `informaiton/0930excel_20260626024432.zip` 讀定義；截圖定位失敗動作＝`列出群組的方案 (ListGroupPlans)` for groupId `1fd4f9f7-…-f85698e95e97`。使用者回報錯誤＝**#3 Planner 節流 429**（暫時性）。根治建議：別逐一掃「我所屬全部群組」（任一群組失敗即整 run 爆、無容錯），**只鎖 PLANNER_CK 單一 groupId**；或對 ListGroupPlans 設「設定執行後」容錯。
+  - 流程結構：Recurrence 09:26 → 列我所屬群組 → 篩 → 逐群組 ListGroupPlans → 逐方案 ListTasks → 篩逾期 → 逐任務逐 assignment → 取使用者設定檔(V2) → Excel AddRow（寫死 drive/file/table GUID）。
+- **1000 米米信流程（新建指南）**：`workingfiles/flows/Flow_1000_米米信主旨寫入清單_建置指南.html`。
+  - 讀通既有 `informaiton/1000米米信_20260626042558.zip`：Recurrence 10:00 → 讀 Excel 名冊列 → 取信(V3)＋行事曆 → 逐人 FilterEmails(from=Email)／FilterEvents(主旨含姓名=請假) → Check_Status(Email/Leave/None) → Switch 寫 Excel `出勤狀態`＝信件主旨。**核心＝拿符合信主旨寫狀態欄**。
+  - 新規格（使用者拍板）：① 主旨**以「**」開頭**、② 限**今日 06:00–10:00**、③ 寫進**SharePoint 清單 field_8 實際出勤狀態**（今日該人**所有列**）、④ 比對＝**寄件者 Email=該人 Email**（toLower 兩邊；PA equals 分大小寫）、⑤ 寫**完整主旨**（含 **）、⑥ 既非請假也沒發信者該列不動。
+  - **請假分支（後補保留＋改規則）**：「請假就不用出勤」→ **請假優先**。沿用既有行事曆判定（取行事曆檢視 V3，FilterEvents＝`split(主旨,'代理')[0]` 含姓名 field_4），但 Check_Status 改**先判 Leave 再判 Email**；命中 Leave 時 **實際出勤狀態寫固定字串「請假」**（非事件主旨），讓行政一眼知免核對。Switch：Leave→更新「請假」／Email→更新主旨／預設不動。
+  - **請假再精準化（「只要他 10:00 不會到公司的請假都要進清單」）**：FilterEvents 加時間重疊條件＝**假涵蓋 10:00**：`ticks(start) ≤ ticks(Compose_上界10) < ticks(end)`，用 ticks() 避時區格式坑。下午假、10:00 前結束的假不算；整天假必命中。前提：行事曆 start/end 與 Compose_上界10 同為 UTC（V3 預設）；漏算則改 startWithTimeZone/endWithTimeZone。
+  - **請假涵蓋 10:00 改主旨字串判（PO 定）**：棄事件 start/end ticks 比對，改 FilterEvents 第二條件＝`or(contains(subject,'10:00'), contains(subject,'全天'))`（10:00 起的假或全天）。好處：免行事曆時區坑（行事曆只用來拿主旨）。**10 點上班、不會有早於 10:00 起的假**（PO 澄清）→ 主旨出現「10:00」即代表 10:00 起算，08:00 跨段邊界不存在。冒號需半形（系統若全形需改）。
+  - **分流改 3 平行分支（PO 拍板＋ai-team 查證）**：使用者要求棄巢狀條件/切換，改「3 個以上平行分支、每支自帶條件」。Claude 任 Tech Lead，`codex exec` 獨立評估（1 輪達設計共識）：平行分支＝同時/獨立/無自動互斥 → B、C 須加「FilterEvents=0」守衛才互斥。三支條件：A `length(FilterEvents)>0`→「請假」；B `and(equals(length(FilterEvents),0),greater(length(FilterEmails),0))`→信主旨；C `and(equals(...Events,0),equals(...Emails,0))`→不動。競態：每列＝不同清單項目跨列不撞、同列互斥只一支寫 → 安全（Apply to each 並行與否皆可）。Codex 個人推薦巢狀較不易錯，但 PO 已選平行、照做。指南步驟4 改為平行分支版（加法：「+」→新增平行分支；條件經「新增動作→條件」）。
+  - **請假事件實況（行事曆輸出真資料）＋規則定版**：請假事件 `isAllDay:true`、start/end＝整天 UTC（`2026-06-26T00:00→06-27T00:00`），**實際時段只在主旨**（如 `(14:00-18:00)`）→ 確認**必須用主旨判、不能用 start/end**。FilterEvents 終版＝`if(and(contains(split(subject,'代理')[0],姓名), contains(subject,今天yyyy-MM-dd), or(contains(replace(subject,'：',':'),'10:00'),contains(subject,'全天'))),'Y','N')` 等於 `Y`。行事曆視窗加寬昨天～明天（抓全天邊界，已驗證成功）＋主旨含今天日期守衛。下午假（14:00-18:00）正確不算。**請假分支寫入值改為請假事件主旨** `first(body('FilterEvents'))?['subject']`（PO 要寫主旨、非固定「請假」）。
+  - **取信來源更正（截圖證實）**：米米信**不在收件匣**，被規則歸到 domain.e 底下名為「**信」的資料夾（791 封）。「取得電子郵件 V3」folderPath 要選此資料夾。
+  - **主旨冒號半全形混用（截圖證實）**：** 信主旨 `10：00`(全形) 與 `10:25`(半形) 並存。行事曆請假 10:00 比對改 `contains(replace(subject,'：',':'),'10:00')` 先換半形再比。
+  - **UI 步驟查證（官方文件）**：條件複合判斷＝條件卡片「新增」鈕加列＋且/或群組（add-condition 頁，已驗證）；篩選陣列官方頁只示範單列、未示進階模式 → 複合篩選改「單列＋`if(and(...),'Y','N')`等於`Y`」（左值放運算式，不賭進階模式）。指南頂部加「UI 查證狀態」區塊含來源連結。
+  - **動作查證糾正（使用者明令）**：「禁止提供不存在的動作，查好再更新」。改以**實際匯出檔**為動作存在性真相源——從 1000 匯出證實 Switch(切換)／Compose／GetEmailsV3／GetEventsCalendarViewV3／Foreach／Query(篩選陣列)／PatchItem／InitializeVariable 在此租戶存在；Switch 非不存在（舊流程就用），但「控制」菜單格子未列出 → 改指南為**巢狀「條件」**（截圖確認可見）分流、標切換為等價替代（搜尋框叫出）。SharePoint Get items 要**複數**（單數 Get item 才有識別碼欄）；更新項目標註為標準動作未從匯出驗到。已記教訓 [[verify-actions-before-instructing]]。
+  - **「米米信」＝「\*\*信」（使用者澄清，同義）**：原本擔心 \*\* 與米米信是兩種，實際是同一種；`startsWith(subject,'**')` 即正確的米米信篩選，不用加「米米」關鍵字。狀態下拉「已發\*\*」vs「已發米米信」只是行政人工標籤細分、與信件篩選無關。主旨格式＝`**`＋短名＋狀態文字，實例：`**Ed 今日異地辦公`／`**耀中 11.進`／`** Ray 11點進`／`**怡惠1020到`（\*\* 後空格不一，故只判頭）。主旨短名不一定對得上全名/Email，**對應靠寄件者 Email、不靠主旨解析**。
+  - 信箱沿用既有 domain.e 收件匣；時區用 convertFromUtc('Taipei Standard Time')（既有 1000 證實可跑）＋附 addHours 備案。「今日」用 Title 前綴 yyyyMMdd_ 篩。
+
+## 待辦（2026-06-26 補）
+- 0930：依錯誤＝429，決定是否改流程縮群組範圍（只鎖 PLANNER_CK）；或暫時靠重試。
+- 1000 米米信新流程：使用者照指南 Portal 實建測（確認 domain.e 收件匣選對、抓到「**」信、清單 field_8 寫入）。
+- 前一支「本日清單→TaskDB 備份」仍待實機驗證。
+
+## 2026-06-30 進度（1000 米米信視窗修正）
+- **1000 行事曆視窗：3 天 → 單日**（`Flow_1000_米米信主旨寫入清單_建置指南.html`）。根因：請假存全天事件（start/end 為 UTC 整天，真實時段只在主旨），3 天視窗（昨天～明天）在午夜邊界把**前天**的全天假撈進來，主旨又含 `10:00`→誤命中（實例：今天 06-26 卻抓到 06-24 陳宏錡 10:00-14:00 假）。改開始/結束時間都取**今天**（`convertFromUtc(utcNow(),'Taipei Standard Time')`，`T00:00:00+08:00`～`T23:59:59+08:00`）。今天的全天假仍與台北當日窗重疊、不漏；「主旨含今天日期」守衛保留當昨天邊界後備。
+
+## 待辦（2026-06-30 新增）
+- **［新需求·建中］0955 再巡檢加「發 Planner 催填卡片」**：在既有 `0955再巡檢planner與同步` 流程尾端，對「再巡檢後**仍為延遲**」者自動發 Planner 卡片催回填。第一次給的 `0955doublrcheck_…zip` 是 **0940_EXCELL 掃描寫 Excel** 那支（顯示名/Excel AddRow 為證），非此流程；正確匯出＝`workingfiles/automate_export/0955再巡檢planner與同步_20260630151753.zip`。
+  - **既有 0955 流程實況**（讀通）：週一~五 09:55；連 office365groups／planner／sharepointonline。**Phase1** 掃我所屬群組→Planner 列方案/工作→`逾期_篩選陣列`(due<now ∧ %<100)→仍逾期 taskId append 進陣列變數 `仍逾期TaskIds`（另有 `已完成_篩選陣列`/`選取_已完成id` 算了沒用到）。**Phase2** `取得清單項目`（站台 PLANNER_CK、清單 table `9bd1cdf3-4d38-49d3-ab8f-51c7448455bc`、`$filter=startswith(Title,'yyyyMMdd_')` 今日 via addHours+8、分頁5000）→`今日延遲列`(Title 不 endsWith `_TaskOnSchedule`)。**Phase3** `Apply_to_each_列`：用 `仍逾期TaskIds` 比對本列 Title 後綴 `_<taskId>` 判仍逾期，回寫 **field_7**。
+  - **field_7 狀態語彙**（流程字面）：`1.` / `2.`（=延遲已到公司加班，**須排除**）/ `3. 延遲（09:30沒到公司，請填寫假卡）` / `4.` / `原勾選「…」，同事已修改狀態`。**「仍為延遲」＝最終 field_7 startsWith `3.`**（自動排除 2./1./4./已修改）。
+  - **決策全由既有流程定案**（使用者交付 `1015_20260630153204.zip`＝既有 `1015工作延遲未回覆_發卡提醒回覆`，讀通）：發卡＝Planner **CreateTask_V3**；固定 groupId `279b64ef…`／planId `K9FFvDmC…`／bucket `pK3EQPex…`；**指派吃 email 字串 `;` 串接**（本人＋`wenyuhuang`＋`ihueychen`，免轉 userId）；標題 `<姓名> 本日 M/d 延遲未到，請回填line訊息表單`、到期今日；每人一張（`union` 去重）；另附帶寄彙整信到 domain.e。原 1015 **讀 Excel TaskDB、篩 `狀態`欄**。
+  - **方向定案（使用者更正）**：**不另作流程**，直接在 **0955 尾端新增一段發卡**（0955 本就連清單、已算出仍延遲）；1015 只當 **Planner 發放設定的參考**（CreateTask GUID/指派寫法）。先前「把 1015 改讀清單」的遷移版指南已刪。
+  - **產出建置指南**：`workingfiles/flows/Flow_0955_新增發卡提醒_建置指南.html`（照 0930 格式）。在 `Apply_to_each_列`（Phase3）之後 runAfter 接尾段：① `取得清單項目_發卡`**重讀**今日列（不可用 Phase2 舊值——PatchItem 寫回 SharePoint、記憶體陣列仍是更新前；且「未回覆」分支會把非逾期者也寫 3.，只能讀回最終狀態）② `仍延遲_篩選陣列` `startsWith(field_7,'3.')`（自動排除 2.加班/1./4./已修改/占位）③ Select field_3→`union`去重 ④ `Apply_to_Each_發卡`：篩本人延遲列→`CreateTask_V3`（groupId `279b64ef…`/planId `K9FFvDmC…`/bucket `pK3EQPex…`、標題 `<field_4> 本日 M/d 延遲未到，請回填line訊息表單`、指派 `join(union(createArray(email),createArray('wenyuhuang…','ihueychen…')),';')`、到期今日）⑤ 選配彙整信→domain.e + Wait15s。
+  - **待使用者**：Portal 就地在 0955 加尾段並手動測（指定 plan/bucket 出新卡、指派含本人+2人、2./1./4./已修改/占位不發卡、同人多筆只一張）。選配未確認：是否排除已請假者（§4 加 `not(startsWith(field_8,'請假'))`）。
+- **［0955 判定 bug·已寫修法］再巡檢「1/4/空白」都要查逾期**（使用者指出）：現況「未回覆(空白)」**無條件**寫 `3.延遲`、沒查 Planner；應改成 **1/4/空白 三者都先查 Planner 是否仍逾期**（2./3./已處理不動），仍逾期→`3.`、否→「已更新(非延遲)」。順帶發現隱藏 bug：現況 `條件_仍逾期` 用 `equals(body('filter_本列仍逾期'),true)`＝拿**陣列**比 true 恆 false（1/4 永遠走「已修改」、從不判逾期），須改布林 `not(empty(filter))`（未實測）。修法已寫進指南 §A（新 Compose `本列仍逾期`/`本列待查`、外層條件改 `or(原1或4,未回覆)`、刪 `條件_未回覆`、PatchItem 用 `if(原1或4,…)` 帶訊息）。**A 是發卡(B)的前提**——判定準了 `3.` 才準。指南更名：`Flow_0955_新增發卡提醒_建置指南.html`（含 A 修正＋B 發卡）。
+
+## 待辦（2026-07-01 新增）
+- **［資料模型問題·待決策］`實際出勤狀態` 的儲存粒度**：field_8（實際出勤狀態）本質是**每人每日**屬性，但 AttendanceHistory 是**每任務一列**（同事多個延遲任務＝多列）。現況：某人多列時 field_8 只被填到**一列**、其餘空白 → 儀表板/行政檢視不一致。與 0955 發卡（用 field_7 工作延遲回覆）無關，那支不受影響。
+  - **解法 A：單清單＋寫入 fan-out**：所有寫 field_8 者（1000 米米信 flow、行政頁簽 Patch）都改「更新該人今日**所有列**」。儀表板不變。需診斷「只填一列」成因（看 1000 flow 實作：可能迴圈跑去重 email 只寫一列，或 patch 只中一列）。缺點：資料冗餘、每個寫入路徑都要記得 fan-out、易漏。
+  - **解法 B：拆獨立「每日出勤狀態」清單**（Title＝`yyyymmdd_email`，每人每日一列）：field_8 存這裡；AttendanceHistory 只留每任務的 field_7。儀表板改**讀兩清單 join**（ScrToday＝`LookUp(每日狀態, Email＝本人 ∧ 今日)` 顯示一次於表頭；ScrAdmin 每人一列直接寫）。流程：1000 米米信改寫這張、0930 每人補一列每日狀態。優點：正規化、免 fan-out、行政一人填一次、員工端狀態只顯示一次。缺點：兩資料源＋join、流程多一寫入目標。
+  - **解法 C：備份時補（使用者提案）**：清單→TaskDB 備份流程寫 Excel 時，每人取已填的 field_8 補進他今日所有列。**只修 Excel 歷史、修不了即時儀表板**（儀表板讀即時清單，備份 EOD/手動才跑）。適用前提＝「每列要填」只為 Excel/報表完整。最省、不動 1000/行政/儀表板。
+  - **解法 D（中間解，Claude 補）**：清單維持只填一列，**ScrToday 改表頭顯示一次**（`LookUp(我今日列, field_8 非空)`），卡片不重複狀態；Excel 端用 C 補。→ 不加第二清單、不即時 fan-out，就拿到 B 的顯示好處。需注意寫入慣例（避免不同列填到不同值時 LookUp 取到哪格有歧義——建議固定寫某一列或仍在備份時對齊）。
+  - **決策關鍵（待使用者答）**：「每列都要填」是為了 **Excel 歷史完整** 還是 **員工/行政當天在儀表板即時看**？
+    - 只為 Excel → **C**（最省）或 C＋D。
+    - 要即時儀表板 → **B**（獨立清單顯示一次，Claude 傾向）或 A（即時 fan-out，須補所有寫入路徑＋修 1000 只填一列）。
+  - 選定後：B 要定新清單 schema 並改 ScrToday／ScrAdmin／1000 flow／0930；C/D 只改備份流程（＋ScrToday 表頭）。與 0955 發卡（field_7）無關。
+
+## 待辦（2026-07-01 新增·米米信回報提醒）
+- **［新需求·待對齊後建］1005／1030 出勤狀態(米米信)未回報提醒**：看 **field_8 出勤狀態**（非 field_7）。field_8 空白＝未回報。
+  - **1005 流程**：檢查今日清單 field_8，空白者 → 發第一次提醒。
+  - **1030 流程**：再查一次，仍空白 → 發 **Planner 卡片**提醒**補發米米信**（發卡沿用 1015 CreateTask_V3：groupId `279b64ef…`/plan `K9FFvDmC…`/bucket `pK3EQPex…`/指派本人+wenyuhuang+ihueychen）。
+  - 兩支獨立 Recurrence（1005、1030，週一~五）。
+  - **判定用 per-person**：「該人今日**任一列** field_8 非空即算已回報」（by email 去重），避開 field_8 粒度未決問題（見上「實際出勤狀態粒度」待決）。
+  - **1005 提醒＝email 確認**（使用者答）：主旨 `米米提醒_<姓名>` 開頭（per-person 信，比照 0945/1015；Planner2Line 可依前綴轉 LINE）。
+  - **已產出建置指南**：`workingfiles/flows/Flow_1005_1030_米米信未回報提醒_建置指南.html`。兩支獨立 Recurrence（1005/1030 週一~五），**前半段相同**：取得清單今日→今日延遲列(排占位)→已回報列(field_8 非空)→Select field_3+union 得 已回報Emails／延遲Emails→未回報Emails=延遲不在已回報（**per-person，任一列 field_8 有值即算已回報**）。1005 結尾＝逐人寄信 domain.e 主旨 `米米提醒_@{first(本人列)?['field_4']}`；1030 結尾＝逐人 CreateTask_V3（沿用 1015 GUID/指派）。
+  - **對象＝今日全體（使用者更正：米米信不是延遲）**：兩軸分明——延遲看 field_7（0955/1015 管）、米米信/出勤狀態看 field_8（本兩支管）。故**不濾占位**、對象＝清單今日全體 distinct 人（0930 段B 已把全體補進清單）。指南已改：來源用 `取得清單項目 value`、算 `全體Emails` − `已回報Emails(field_8非空)` = 未回報。
+  - **關鍵前提（待確認①）**：需有機制把**準時者**標成 `0930已到/1000已到`（行政 ScrAdmin 下拉？check-in？）；否則全體對象會誤提醒一票正常上班沒發米米信的人。② 1005 收件者 domain.e／Planner2Line 加 `米米提醒_` 前綴路由。③ 晚到米米信由 **1010 另一支再掃**補 field_8（1030 前反映）；1005/1030 只提醒不掃信。時序：1000 掃→1005 提醒→1010 再掃→1030 卡片。
+  - **2026-07-02 定稿覆核**：邏輯/引用/field_N 無誤；補 3 處——Select 的 field_3 加 `coalesce` 防 null 炸 Select、未回報Emails 篩選加 `not(empty(item()))` 排空值、主旨/本文標明 fx 與打字分段。指南可照建。
+
+## 2026-07-03 進度（Power Apps 委派警告 bug 修復）
+- **使用者回報**：Power App 成功運作兩週後，現在抓不到延遲工作內容；現象**只有委派警告**（無錯誤訊息）。
+- **讀碼定位**（`ScrToday_paste.pa.yaml`、`ScrAdmin_table.pa.yaml`）：5 處公式（ScrToday `galToday.Items` Filter 1 處；ScrAdmin `galPeople.Items` AddColumns 內 LookUp、`lblReply.Text` 內 Filter、`drpStatus.OnChange`／`txtNote.OnChange` 內 UpdateIf 共 4 處）皆在 Filter／LookUp／UpdateIf 的條件式內直接寫 `Text(Today(), "yyyy/m/d")`。
+- **根因**：`Text()` 函式不在 SharePoint 可委派清單內，包在條件式裡即整條件不可委派 → Power Apps 只在**App 非委派查詢列數上限**（預設 500，上限 2000，設定路徑 App → 進階設定 → Data row limit for non-delegable queries）內本機運算。清單保留策略是 **append 不清空累積**（見 06-22 決策），兩週下來總列數已超過該上限，今日新列（在預設抓取順序中落在窗口外）被排除 → Filter／LookUp／UpdateIf 都抓不到今日資料，畫面上唯一可見跡象就是公式列旁的委派警告三角形。
+- **修法（已改檔）**：兩畫面 `Screen.OnVisible` 各加 `Set(gToday, Text(Today(), "yyyy/m/d"))`（全域變數，開場算一次），5 處公式的 `Text(Today(), "yyyy/m/d")` 全改比對 `gToday`（純欄位=變數比較才可委派）。標題列顯示用的 `Text(Today(),...)`（ScrToday/ScrAdmin 各一處純顯示文字）不受影響、未改。
+- **待使用者（Studio 操作，不要整份重貼畫面）**：
+  1. ScrToday／ScrAdmin 的 `Screen.OnVisible` 各加上 `Set(gToday, Text(Today(), "yyyy/m/d"))`（ScrToday 需與既有 `UpdateContext({locShowPopup: false})` 用 `;` 併接）。
+  2. 逐一開啟以下 5 個控件的對應屬性，把 `Text(Today(), "yyyy/m/d")` 改成 `gToday`：ScrToday `galToday.Items`；ScrAdmin `galPeople.Items`、`lblReply.Text`、`drpStatus.OnChange`、`txtNote.OnChange`。
+  3. 改完確認這 5 處公式列旁的委派警告三角形消失。
+  4. 檢查 App → 進階設定 → Data row limit for non-delegable queries 現值（若曾手動調高過，此次修法後可視需要調回，因已不再依賴本機運算）。
+  5. 實測：對一個較早建立、任務仍在延遲中的同事，確認今日能在 ScrToday／ScrAdmin 正確看到。
+
+## 2026-07-05 進度（日期欄格式改零填補 + 回填）
+- **使用者回報**：清單裡「日期」欄（field_2）現在的格式在清單中太難排序（沿用 06-22 已知問題：單行文字 `yyyy/M/d` 非零填補，文字排序錯位）。
+- **確認影響範圍（先查再動手）**：全 repo 搜尋「日期」相關格式引用後確認——只有 **0930 流程**實際寫入 `日期` 欄（段A 延遲列、段B 占位列各一處）；0955／1000／1005-1030／TaskDB 備份都靠 **Title 前綴**判「今日」，不吃 `日期` 欄格式，不受影響。TaskDB 備份的「檢核日期」原樣複製 `日期` 欄，不用改流程。
+- **已改**（3 個檔）：
+  1. `workingfiles/flows/0930_Planner改寫_寫入清單_建置指南.html`：兩處 `日期` 欄運算式 `formatDateTime(addHours(utcNow(),8),'yyyy/M/d')` → `'yyyy/MM/dd'`（**Power Automate 用大寫 `MM`**，小寫 `mm` 是分鐘）；§8 排序章節新增「8-0 已採用」小節記錄本次決策，原 Title workaround（8-1）與另建日期欄（8-2）標為替代方案保留。
+  2. `workingfiles/canvas/ScrToday_paste.pa.yaml`、`ScrAdmin_table.pa.yaml`：`gToday = Text(Today(),"yyyy/m/d")` → `Text(Today(),"yyyy/mm/dd")`（**Power Fx 這裡 `mm` 才是月份**，跟 Automate 大小寫慣例相反，同一件事兩平台寫法互換）；標題列純顯示用的 `Text(Today(),...)` 一併同步，非功能性但求一致。此步驟**必須**跟 0930 流程同步套用，否則 `日期 = gToday` 逐字比對失準，07-03 剛修好的委派 bug 會以新格式不符的樣子復發。
+- **新增**：`workingfiles/flows/Flow_日期欄格式回填_建置指南.html`——一次性手動流程，把既有列「日期」欄依其 `Title` 前 8 碼（已是零填補 `yyyyMMdd`，不信任舊「日期」欄本身解析）重新推導寫回，回填後即可把清單檢視排序改回依「日期」欄遞減，不必再靠 Title workaround。用 **Update item**（非 Add row），可安全重跑不會產生重複列。
+- **決策**：使用者選擇回填既有列（非只改新寫入），避免新舊格式混雜期間排序仍錯位。
+
+## 2026-07-05（續）TaskDB_0705.xlsx 合併（清單.csv ∪ 歷史工作表 → 新分頁）
+- **來源**：使用者放入 `workingfiles/整理資料/清單.csv`（AttendanceHistory 即時匯出，497 列）與 `TaskDB_0705.xlsx`（既有 週紀錄／月紀錄／歷史紀錄_現場查核 等工作表）。目標：合併成 9 欄統一 schema 新分頁，供之後手動搬進 SharePoint──即下方「2026-07-06 進度」段落所稱、使用者已複製過去的「歷史紀錄_表單回覆＋實際出勤」工作表，本節即該表的產生過程。
+- **來源優先序（同 ID 衝突時）**：清單.csv（即時現況）＞週紀錄＞月紀錄＞歷史紀錄_現場查核（無任務歸屬，補占位格式 `yyyyMMdd_Email_TaskOnSchedule`）。排除 `下拉_狀態`（選項定義＋測試列，非出勤資料）、`歷史紀錄_每日1000現場查核)`（寬表，日期範圍被長表完整涵蓋且抽查發現同人同日內容矛盾，判定早期草稿）、空表（`歷史紀錄`、`週報表`）。
+- **踩坑：「取最高優先來源整列」的去重規則會讓空值蓋掉別處已有的真實值**——清單.csv 對某些日期已存在該 ID 的「佔位列」但 `實際出勤狀態` 欄還沒被 1000 流程填值（空白），而 `歷史紀錄_現場查核` 對同一人同一天早就有真實記錄（如「1000已到」）；因為清單.csv 優先序較高，整列蓋掉後這筆真實資料在合併結果裡消失。**修法：對 `實際出勤狀態` 這一欄改用「優先來源若空白，改採其他來源的非空版本」而非整列二選一**——欄位級的空值判斷要獨立於列級的來源優先序，不能假設「優先序高＝該列所有欄位都比較準」。
+- **踩坑：每人每日多任務列時，`實際出勤狀態`（米米信）常只填到其中一列，其餘列空白**——呼應本檔 07-01 待辦段落「實際出勤狀態粒度」問題，本次合併用同一人同一天內「任一列有值即抓來補其餘空白列」（fan-out）處理，非資料損毀。
+- **踩坑：合併過程使用者手動刪除了部分列（5/1、6/19 兩個國定假日的占位列，19人×2天＝38列）；第二階段補值時若照原演算法重新從來源生成整份分頁，會把已被使用者手動移除的假日列悄悄加回來**——改成只在「使用者留下的既有分頁」基礎上做欄位修補（姓名格式、狀態補值），不重新整份覆寫，才不會蓋掉人工判斷過的刪除結果。
+- **姓名欄空格統一**：依 Email 對照清單.csv 內含空格的版本（「姓 名」格式），覆蓋所有來源不一致的無空格版本（1183 列）。
+- **實際出勤狀態全數補值**（1842 列，原 15 列空白）：11 列從 `歷史紀錄_現場查核` 救回被上述去重規則蓋掉的真實值；4 列（陳怡惠 05/08、06/30，林軒 05/08，方旭 05/22）三個來源都查無資料，填入唯一非源自實際資料的佔位字串「未記錄」，供辨識。
+
+## 2026-07-06 進度（既有資料修復改路線＋HTML 撰寫規則修正）
+- **既有列修復路線改變**：使用者提供 `workingfiles/整理資料/TaskDB_0705.xlsx`「歷史紀錄_表單回覆＋實際出勤」工作表（自行彙整、1842 列，2026-03-02~07-03）。查證：全數已是零填補 `yyyy/MM/dd`、9 欄與清單 schema 一致、無空白/無重複 ID，07-03（週五）恰為查證當下（週日）前最後一個工作天，資料無缺口。**改用「刪除清單資料＋重新匯入」取代原訂的一次性回填流程**，`Flow_日期欄格式回填_建置指南.html` 已刪除（過時）。**風險提醒**：只能刪清單「資料列」，絕不可刪除重建「欄位」（06-22 教訓：欄位重建會使 `field_N` 內部名全變，所有流程寫死引用的運算式跟著壞掉）。
+- **範圍再縮小**：使用者說明只需匯報前一週狀況，不必回填全部 4 個月歷史，改抓 **06/29(一)~07/03(五)** 這個工作週重新匯入清單即可。
+- **新決策（待細節確認）**：往後**每週定期**（而非手動觸發）把清單資料搬到 SharePoint 上既有的 `TaskDB.xlsx`（使用者已手動把「歷史紀錄_表單回覆＋實際出勤」工作表複製過去，往後直接 append 這張表，不用原 11 欄 TaskDB 表）；清單本身最多只留一個月，超過的資料備份後從清單刪除。原「清單→TaskDB 備份」手動觸發流程（`Flow_清單轉TaskDB備份_建置指南.html`）將被取代。**待確認**：① 每週跑的星期/時段；② 「最多留一個月」的搬遷判定（推測＝以「日期」欄篩超過 30 天、備份成功後才刪、避開 0930~1030 尖峰）。
+- **HTML 建置指南撰寫規則（使用者糾正）**：**指南內文禁止用「本頁 §4-2」「已改為」這類回指先前內容的相對敘述**，會造成閱讀者要來回對照才懂現在該填什麼。任何一個要設定的欄位，該區塊必須直接寫出當下完整值，不寫「與 XX 相同」「較先前改成」這種差異式敘述。已依此修正 `0930_Planner改寫_寫入清單_建置指南.html` §8 章節（原文引用 §4-2/§5 的寫法已改成直接重寫完整運算式）。已記進 lessons-learned。
+
+## 待辦（2026-07-06 更新）
+1. **待使用者 Studio／Portal 操作**（累積 07-03 委派修復 + 07-05 格式修復，建議一次做完）：
+   - ScrToday／ScrAdmin 的 `Screen.OnVisible` 各加 `Set(gToday, Text(Today(), "yyyy/mm/dd"))`（含 07-03 的委派修復）。
+   - 5 個控件把 `Text(Today(),...)` 改成 `gToday`（見 07-03 進度段落清單）。
+   - 0930 流程兩處「日期」欄運算式改成 `formatDateTime(addHours(utcNow(),8),'yyyy/MM/dd')`。
+   - 清單檢視排序改回依「日期」欄遞減（既有資料重新匯入完成後）。
+   - 全部完成後：確認委派警告三角形消失、今日資料抓得到、日期欄新舊皆為零填補、排序正確。
+2. **既有清單資料處理（待建置）**：刪除清單現有資料列（保留欄位結構）→ 從 `TaskDB.xlsx`「歷史紀錄_表單回覆＋實際出勤」重新匯入 06/29~07/03 這一週。方法待選：Quick Edit 手動貼，或一次性流程逐列 Create item（維持既有 `field_N` 內部名不變）。
+3. **每週定期搬移＋清單留一個月機制（設計中，待確認排程與砍除判定後建置）**：取代原手動觸發的清單→TaskDB 備份流程。
+
+## 2026-07-06（續）使用者提供 Studio 最新匯出＋貼上後新錯誤修復
+- **使用者提供 Studio 最新匯出**（`workingfiles/0706_admin.txt`、`0706_today`）。比對發現：**live Studio 配色跟 repo 記錄的「06-24 雙頁淺色改版」不一致**（標頭仍是舊藍/灰配色，非白底），代表該次改版尚未真正貼上套用；本次改寫**不動配色**，只在 Studio 現況上套用委派修復（`gToday`）與日期零填補，兩支檔案已依此重寫並存回 `ScrToday_paste.pa.yaml`／`ScrAdmin_table.pa.yaml`。
+- **使用者貼上後 Studio 回報 4 個錯誤**（ScrAdmin）：
+  1. `galPeople.Items`／`drpStatus.OnChange`／`txtNote.OnChange` 三處「比較不相容的類型：Text、Error」——成因＝`gToday` 尚未初始化（`Screen.OnVisible` 的 `Set(gToday,...)` 是手動步驟，貼 YAML 貼不進去，需另外在 Studio 屬性面板手動加）。**待確認使用者是否已加上該行**；加上後型別應可解析、錯誤消失。
+  2. `lblReply.Text` 委派警告「此連接器不支援 'Not' 作業」——成因＝`!IsBlank(任務名稱)` 這種「Not 包 IsBlank」寫法 SharePoint 連接器不支援委派（獨立於 gToday 問題、原本就存在的舊寫法，非本次改動引入）。**已修正**：`!IsBlank(任務名稱)` → `任務名稱 <> Blank()`（比較運算子委派沒問題）。ScrToday `galToday.Items` 有同款寫法一併同步修正，避免同樣警告之後在該畫面出現。
+- 已記進 lessons-learned：SharePoint 委派不支援 `Not`/`!` 包函式的寫法。
+
+## 2026-07-06（續）本日／上週複製到 Excel — 兩支獨立流程
+- **使用者需求**：① 一鍵把「本日」清單資料複製進 TaskDB.xlsx 的 `TaskDB` 表；② 一鍵把「上週」清單資料複製進 `WeekDB` 表。**確認純複製，不刪除清單資料**（清單資料清除策略另外再談，非本次範圍）。
+- **① 本日→TaskDB**：既有 `Flow_清單轉TaskDB備份_建置指南.html` 規格已完全符合，直接沿用；只修正一處過時備註（清單「日期」欄格式已改零填補 `yyyy/MM/dd`，原文寫舊格式 `2026/3/2`）＋更新 WeekDB 備註指向新指南。
+- **② 上週→WeekDB（新建）**：`Flow_清單轉WeekDB複製_建置指南.html`。與①同架構、同 11 欄對應、同「手動觸發＋append」慣例，差異只在來源日期範圍與目標表：
+  - 「上週」定義＝不論哪天按執行，一律抓「距今最近一次已結束的週一~五」（用 `dayOfWeek()` 換算距本週一天數、往前推 7 天求得上週一，再列出上週一到五 5 個日期）。
+  - 沿用「日期範圍篩選靠 Title 前綴、不對 field_2 下 $filter」的既定原則：篩選查詢＝5 個 `startswith(Title,'yyyyMMdd_')` 用 `or` 串接（上週一到週五各一個），而非嘗試對 `日期` 欄位做範圍比較。
+  - 兩支流程互相獨立，可同一天各自手動執行，互不影響。
+
+## 2026-07-06（續）指南操作步驟禁止要求回捲對照
+- **使用者糾正**：TaskDB/WeekDB 指南「Add a row into a table」步驟原寫「逐欄貼上方對應表的運算式」，逼使用者操作時回捲畫面對照 11 欄清單——「必須要寫出來讓我可以在這步直接複製，不要往上翻，浪費時間也容易出錯」。
+- **已修正**：兩份指南的該步驟改成直接內嵌完整 11 欄對照表（欄位框 × fx 貼入值），操作步驟本身自帶完整資訊，不引用文件別處。
+- **與另一 session 同日拍板的 `rules/flow-guide-conventions.md` 精神一致但尚未完全對齊**：該規則檔（2026-07-07，另一 session 產出）明訂「禁止同上／完整重複貼值」「設定優先＋說明摺疊 `<details>`」「浮動🛠修改待辦清單」「運算式改帶 `@` 直接貼免點 fx」四項規格，比本次手動修正更完整成套。**待辦**：`Flow_清單轉TaskDB備份_建置指南.html`、`Flow_清單轉WeekDB複製_建置指南.html` 目前只做到「不回捲」，尚未套用 `@` 前綴直接貼慣例與浮動待辦清單套件，下次碰這兩份指南時一併補上，對齊 `rules/flow-guide-conventions.md`。
+
+## 關鍵檔
+- **1000 米米信主旨寫入清單指南：`workingfiles/flows/Flow_1000_米米信主旨寫入清單_建置指南.html`**
+- **本日清單→TaskDB 備份指南：`workingfiles/flows/Flow_清單轉TaskDB備份_建置指南.html`**
+- **上週清單→WeekDB 複製指南：`workingfiles/flows/Flow_清單轉WeekDB複製_建置指南.html`**
+- 架構計畫：`_context/Plan_2026-06-15_excel-list-bridge.html`
+- **端到端流程圖：`workingfiles/flows/出勤查核_端到端流程_v1.html`**
+- **0930 流程改造指南：`workingfiles/flows/0930_Planner改寫_寫入清單_建置指南.html`**
+- 清單 schema：`_context/AttendanceHistory.csv`
+- 既有流程匯出：`workingfiles/automate_export/0930_planner_exvel_20260616134822.zip`
+- 晨間流程規格（舊版，架構反轉前）：`workingfiles/flows/Flow_0940_晨間同步與通知_建置規格.html`
+- App 畫面：`workingfiles/canvas/ScrToday_paste.pa.yaml`、`ScrAdmin_paste.pa.yaml`、`儀表板v1_建置指南.html`
+- 長版考勤 CSV：`workingfiles/AttendanceHistory_長版_20260601-0618.csv`、`聯絡人_team_member_清單.csv`
+- 來源資料：`informaiton/TaskDB_0622.xlsx`（最新、員工編號已修正）
+- 發 Line 程式：`/Users/coma/Git_work/Planner2Line`

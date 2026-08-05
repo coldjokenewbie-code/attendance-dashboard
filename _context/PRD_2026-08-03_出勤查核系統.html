@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>出勤查核系統 PRD｜2026-08-03</title>
+<style>
+:root{
+  --bg:#f7f8fa; --card:#fff; --ink:#1c1f24; --muted:#6b7280; --line:#e3e6ea;
+  --accent:#2563eb; --ok:#15803d; --warn:#b45309; --bad:#b91c1c; --chip:#eef2f7;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#14171c; --card:#1c2027; --ink:#e6e8ea; --muted:#9aa2ad; --line:#2b313a;
+    --accent:#7aa5ff; --ok:#59c07b; --warn:#e0a44a; --bad:#f08a80; --chip:#232a33; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,"Helvetica Neue","PingFang TC","Noto Sans TC",sans-serif;
+  line-height:1.75;font-size:15px;}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 20px 80px}
+header{border-bottom:2px solid var(--line);padding-bottom:18px;margin-bottom:28px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:.5px}
+.sub{color:var(--muted);font-size:13px}
+h2{font-size:19px;margin:38px 0 12px;padding-left:10px;border-left:4px solid var(--accent)}
+h3{font-size:16px;margin:24px 0 8px;color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:12px 0}
+table{width:100%;border-collapse:collapse;font-size:14px;margin:10px 0}
+.scroll{overflow-x:auto}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:var(--chip);font-weight:600;white-space:nowrap}
+code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:13px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+pre{background:var(--chip);padding:12px 14px;border-radius:8px;overflow-x:auto;font-size:13px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;line-height:1.6}
+ul,ol{padding-left:22px;margin:8px 0}
+li{margin:4px 0}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:20px;border:1px solid var(--line);
+  background:var(--chip);color:var(--muted);white-space:nowrap}
+.ok{color:var(--ok);font-weight:600}
+.warn{color:var(--warn);font-weight:600}
+.bad{color:var(--bad);font-weight:600}
+.muted{color:var(--muted)}
+.pipe{font-family:ui-monospace,Menlo,monospace;font-size:13px;white-space:pre;overflow-x:auto;
+  background:var(--chip);padding:14px;border-radius:8px;line-height:1.8}
+.note{border-left:3px solid var(--warn);padding:8px 0 8px 12px;margin:12px 0;color:var(--muted);font-size:14px}
+a{color:var(--accent)}
+.toc{columns:2;column-gap:28px;font-size:14px}
+@media(max-width:640px){.toc{columns:1}h1{font-size:21px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>員工出勤查核系統 — 產品需求文件（PRD）</h1>
+  <div class="sub">
+    建立 2026-08-03｜[Claude@Mac]｜彙整自 2026-06-07～2026-07-31 的 10 份 TaskLog 與 lessons-learned<br>
+    待辦真相源＝<code>_context/TaskLog_2026-08-03_全案待決盤點.md</code>（本檔只寫需求與架構，不重複列待辦）
+  </div>
+</header>
+
+<h2>0. 本文件涵蓋什麼</h2>
+<div class="card toc">
+  <div>1. 專案目標與範圍</div>
+  <div>2. 角色與使用者</div>
+  <div>3. 每日作業時程（業務流程）</div>
+  <div>4. 系統架構與資料流</div>
+  <div>5. 資料模型</div>
+  <div>6. 功能模組規格</div>
+  <div>7. 自動化流程清冊</div>
+  <div>8. 權限設計</div>
+  <div>9. 平台限制與設計約束</div>
+  <div>10. 現況成熟度</div>
+  <div>11. 未決事項索引</div>
+</div>
+
+<h2>1. 專案目標與範圍</h2>
+<div class="card">
+  <p><strong>一句話</strong>：把「Planner 工作延遲 → 通知同事 → 同事回覆 → 行政查核出勤 → 歷史留存」這條每天早上跑的人工＋半自動流程，收攏成一個以 SharePoint 清單為單一真相源、Power Apps 為介面、Power Automate 為排程的系統。</p>
+  <table>
+    <tr><th>環境</th><td>MS365 Apps 商務版，10–50 人（實際名冊約 19 人）</td></tr>
+    <tr><th>上班制度</th><td>預設 10:00–19:00；<strong>有 Planner 延遲工作者須 09:30 到公司早加班</strong>（詳見下方出勤規定）</td></tr>
+    <tr><th>出勤事實來源</th><td>行政人員人工核對 ＋ 同事自行發「**信（米米信）」報備 ＋ Outlook 行事曆請假事件</td></tr>
+    <tr><th>核心價值</th><td>行政不必再手工維護寬格式 Excel；同事在手機上自助查看與回覆；歷史可查</td></tr>
+  </table>
+  <h3>公司出勤規定<span class="tag">2026-08-03 PO 口述，所有判定的依據</span></h3>
+  <div class="scroll"><table>
+    <tr><th>情境</th><th>規定</th><th>系統怎麼看</th></tr>
+    <tr>
+      <td>一般日</td>
+      <td>規定 <strong>10:00 到公司</strong>，但<strong>可以稍晚、也可以在其他地方工作</strong>。唯一義務是<strong>發米米信（主旨 <code>**</code> 開頭）通知公司</strong>。</td>
+      <td>「10:00 沒進辦公室」<strong>不是</strong>異常；<strong>「沒發米米信」才是</strong>。所以 1005／1030 提醒看的是 <code>field_8</code> 有沒有值，不是人有沒有到。</td>
+    </tr>
+    <tr>
+      <td>當天有 Planner 工作延遲</td>
+      <td><strong>必須提早於 09:30 到公司早加班，不可彈性遠端。</strong></td>
+      <td>此時彈性上班的權利被取消，<code>field_7</code> 只能是「已完成」「已到公司早加班」「延遲未早加班（請填假卡）」「當天已請假」四種結局。</td>
+    </tr>
+    <tr>
+      <td>例外</td>
+      <td>當天 09:30 已在參與公司其他<strong>正式公出事項</strong>者，不受 09:30 到公司限制。</td>
+      <td>目前系統無此欄位，靠行政人工判斷後在出勤狀態註記。</td>
+    </tr>
+  </table></div>
+  <div class="note"><strong>兩軸不可混為一談</strong>：<code>field_7 表單回覆</code>＝延遲工作的處置（09:30 早加班軸，0945／0955／1015 管）；<code>field_8 實際出勤狀態</code>＝米米信與請假（10:00 到勤軸，1000／1010／1005／1030 管）。</div>
+
+  <h3>範圍內</h3>
+  <ul>
+    <li>個人出勤查核頁（今日延遲工作查看＋回覆）</li>
+    <li>行政查核頁（全體當日一覽＋填實際出勤狀態）</li>
+    <li>09:30–10:30 之間的 7 支排程流程（見 §7）</li>
+    <li>清單 → Excel 的歷史備份</li>
+    <li>請假紀錄查詢（模組二）、假期餘額查詢（模組三）<span class="tag">未開工</span></li>
+  </ul>
+  <h3>範圍外</h3>
+  <ul>
+    <li><strong>請假申請</strong>：走公司既有外部表單，App 只放連結按鈕，不做申請邏輯。</li>
+    <li><strong>LINE 發送</strong>：由既有 Windows 桌機程式 <code>Planner2Line</code> 監聽 Outlook 信件轉發，不在 Power Automate 內重做。</li>
+    <li><strong>行政人工核對本身</strong>：這是本質工作，系統只提供輸入介面，不取代判斷。</li>
+  </ul>
+</div>
+
+<h2>2. 角色與使用者</h2>
+<div class="scroll"><table>
+  <tr><th>角色</th><th>判定方式</th><th>可做什麼</th></tr>
+  <tr>
+    <td>一般同事</td>
+    <td>預設；App 以 <code>User().Email</code> 自動只顯示本人資料</td>
+    <td>看自己今日延遲工作、填 <code>表單回覆</code>（10:00 後唯讀）、看自己的實際出勤狀態（唯讀）</td>
+  </tr>
+  <tr>
+    <td>行政人員</td>
+    <td><code>team_member</code> 名冊的 <code>出勤存取權限</code> 欄＝「行政管理」（目前 2 人：黃文郁、陳怡惠）</td>
+    <td>另可開行政 App、看全體當日一覽、填／改 <code>實際出勤狀態</code>、任何時間改回覆</td>
+  </tr>
+  <tr>
+    <td>系統帳號</td>
+    <td>流程 owner（現為 <code>真核域(開會用)</code>，疑為共用帳號）</td>
+    <td>排程流程寫入清單；中繼信箱 <code>domain.e@techartgroup.com</code> 收所有通知信供 Planner2Line 轉 LINE</td>
+  </tr>
+</table></div>
+
+<h2>3. 每日作業時程（業務流程）</h2>
+<p class="muted">真相源＝<code>informaiton/TaskDB_0803.xlsx</code>「流程」工作表（業主端維護，2026-08-03 版）。左欄時間依該表，與各流程檔名的舊命名（0930／0945…）不完全一致，<strong>以本表為準</strong>。</p>
+<div class="scroll"><table>
+  <tr><th>時間</th><th>做什麼</th><th>誰做</th><th>寫到哪</th></tr>
+  <tr><td>09:20</td><td>掃 Planner 找出逾期工作，寫入清單；未延遲者補一列占位</td><td>0930 flow<span class="tag">檔名沿用舊時間</span></td><td>AttendanceHistory</td></tr>
+  <tr><td>09:30</td><td>核對 09:30 已到公司的人（延遲者的早加班查核）</td><td>行政（人工）</td><td>行政 App <code>AttAdmin_v0</code></td></tr>
+  <tr><td>09:40</td><td>再檢查 Planner 延遲，記錄到 Excel【當日】工作表（TaskDB）</td><td>Automate</td><td>TaskDB.xlsx</td></tr>
+  <tr><td>09:45</td><td>逐人寄延遲通知信到 <code>domain.e</code>（主旨 <code>工作延遲_姓名 | MM/DD</code>）→ LINE 個別通知，附出勤儀表板連結</td><td>0945 flow → Planner2Line</td><td>—</td></tr>
+  <tr><td>09:45–10:00</td><td>同事在儀表板回填早加班狀況或更新 Planner 卡片</td><td>同事（App <code>AttDashboard_v0</code>）</td><td>field_7 表單回覆</td></tr>
+  <tr><td>09:55</td><td>第 2 次掃 Planner，更新清單，發 LINE 提醒尚未填的人。<strong>此時應只剩 2.／3.／4.；還是 1.／5. 就要提醒更新卡片狀態</strong></td><td>0955 flow</td><td>field_7</td></tr>
+  <tr><td>10:00</td><td>檢查 TaskDB 寄信 <code>domain.e</code> → LINE 通知天工 Planner CK 群組</td><td>Automate</td><td>—</td></tr>
+  <tr><td>10:00</td><td>把到公司的人輸入系統</td><td>行政（人工）</td><td>field_8</td></tr>
+  <tr><td>10:00</td><td>掃 <code>domain.e</code> 的「**信」與行事曆請假 → 更新清單</td><td>1000 flow</td><td>field_8 實際出勤狀態</td></tr>
+  <tr><td>10:05</td><td><strong>現況人工</strong>：行政在 App 看 field_8 空白者，用 LINE 請對方補發 <code>**</code>；10:30 未回應則發提醒卡</td><td>行政（人工）→ 待自動化</td><td>—</td></tr>
+  <tr><td>10:10</td><td>第 2 次掃米米信與行事曆，補寫 field_8（目前人工確認是否有帶入）</td><td>1010 flow</td><td>field_8</td></tr>
+  <tr><td>10:15</td><td>第 3 次掃 Planner；選出 <code>3.</code>（延遲未早加班）者，<strong>發 Planner 卡片提醒請假</strong></td><td>1015 flow</td><td>Planner</td></tr>
+  <tr><td>10:30</td><td>（每週一次）檢查 WeekDB 寄信 <code>domain.e</code> → LINE 通知天工開物工作群組</td><td>週報 flow</td><td>—</td></tr>
+  <tr><td>每週（排程）</td><td>把<strong>兩週前</strong>的清單紀錄搬到 TaskDB.xlsx 歷史工作表，<strong>清單最多留兩週</strong></td><td>備份 flow <span class="tag">待建</span></td><td>TaskDB.xlsx</td></tr>
+</table></div>
+<div class="note">「流程」表把 10:05 的補發提醒標為「待自動化發卡提醒發 ** 信」——即待建的 1005／1030 兩支流程。準時到的人在 09:30／10:00 由行政輸入時就已有 field_8 值，所以 10:05 仍空白＝真的沒回報，對象判定無誤。</div>
+<div class="note">「米米信」＝「**信」，同一種東西。主旨以 <code>**</code> 開頭＋短名＋狀態文字（例 <code>**Ed 今日異地辦公</code>）。短名不一定對得上全名，<strong>對應一律靠寄件者 Email，不解析主旨</strong>。</div>
+
+<h2>4. 系統架構與資料流</h2>
+<div class="card">
+<div class="pipe">┌─ 上游（產資料）────────────────────────────────────────┐
+│  Microsoft Planner ──09:30─▶ 0930 flow ─┐              │
+│  Outlook「**信」資料夾 ─10:00─▶ 1000 flow ┤              │
+│  Outlook 行事曆（請假） ──────────────────┘              │
+└──────────────────────────┬─────────────────────────────┘
+                           ▼
+              ┌────────────────────────────┐
+              │  SharePoint List            │   ◀── 單一真相源
+              │  AttendanceHistory          │       每人每任務一列
+              └──────┬──────────────┬───────┘
+                     │              │
+     ┌───────────────▼──┐        ┌──▼──────────────────┐
+     │ Power Apps       │        │ 排程流程            │
+     │ ・個人頁 ScrToday│        │ 0945／0955／1005    │
+     │ ・行政頁 ScrAdmin│        │ 1010／1030          │
+     └──────────────────┘        └──┬──────────────────┘
+                                    │ 寄信到 domain.e
+                                    ▼
+                        Planner2Line（Windows 桌機程式）
+                        監聽 Outlook → 依 contacts.json → LINE
+
+              清單 ──每週備份──▶ TaskDB.xlsx（歷史留存）</div>
+</div>
+
+<h3>架構關鍵決定（歷史沿革，避免走回頭路）</h3>
+<div class="card">
+<ul>
+  <li><strong>2026-06-16 架構反轉</strong>：原設計是「Excel 寬表為主檔 → 09:40 同步進清單」，已<strong>作廢</strong>。現行＝<strong>Planner 直接寫入清單，清單為工作區，Excel 只當歷史備份</strong>。<code>Flow_0940_晨間同步與通知_建置規格.html</code> 是反轉前的舊規格，不要照做。</li>
+  <li><strong>2026-06-08 決議重作 Canvas App</strong>，不修舊 App。舊 App 卡在 Popup 且已無人知道製作步驟。</li>
+  <li><strong>2026-07-06 個人／行政拆分（B 案）</strong>：行政查核獨立成另一支 Power App，解掉「行政要橫向表格、同事要手機直向」的版面衝突。ScrToday 已移除行政入口按鈕。</li>
+  <li><strong>儲存選型準則</strong>：唯讀、小量（&lt;2000 列）、低頻 → Excel 直連（<code>team_member</code>、請假表）；多人並發寫、需權限、會累積 → SharePoint 清單（<code>AttendanceHistory</code>）。</li>
+  <li><strong>清單不每天清空</strong>：清單上限是 3000 萬筆，「5000」是檢視門檻不是儲存上限。每天清空會逼歷史查詢改讀 Excel（不可委派＋2000 列上限）反而更糟。改用保留期裁切（留一個月，見待決 A3）。</li>
+</ul>
+</div>
+
+<h2>5. 資料模型</h2>
+
+<h3>5-1. SharePoint List：AttendanceHistory<span class="tag">單一真相源</span></h3>
+<div class="note"><strong>運算式一律用內部名 <code>field_N</code></strong>：中文欄位在 CSV 匯入時被改名，Power Automate 用顯示名會回 null。Power Apps（Power Fx）端則相反，用顯示名。</div>
+<div class="scroll"><table>
+  <tr><th>內部名</th><th>顯示名</th><th>格式／值域</th><th>誰寫</th></tr>
+  <tr><td><code>Title</code></td><td>ID</td><td><code>yyyyMMdd_Email_PlannerTaskId</code>（延遲列）／<code>yyyyMMdd_Email_TaskOnSchedule</code>（占位列）</td><td>0930 flow</td></tr>
+  <tr><td><code>field_1</code></td><td>員工編號</td><td>文字，0930 由 team_member join 補</td><td>0930 flow</td></tr>
+  <tr><td><code>field_2</code></td><td>日期</td><td>單行文字 <code>yyyy/MM/dd</code>（零填補）</td><td>0930 flow</td></tr>
+  <tr><td><code>field_3</code></td><td>Email</td><td><strong>單行文字</strong>（不可用「個人或群組」欄型，比對會失敗）</td><td>0930 flow</td></tr>
+  <tr><td><code>field_4</code></td><td>姓名</td><td>文字</td><td>0930 flow</td></tr>
+  <tr><td><code>field_5</code></td><td>方案名稱</td><td>Planner 方案名；無延遲則空</td><td>0930 flow</td></tr>
+  <tr><td><code>field_6</code></td><td>任務名稱</td><td>Planner 工作名；無延遲則空（＝占位列的辨識方式）</td><td>0930 flow</td></tr>
+  <tr><td><code>field_7</code></td><td>表單回覆</td><td>存完整標籤字串，比對用 <code>startsWith(...,'3.')</code></td><td><strong>同事</strong>（10:00 後唯讀）＋0955 收斂覆寫</td></tr>
+  <tr><td><code>field_8</code></td><td>實際出勤狀態</td><td>米米信主旨全文／請假事件主旨／行政下拉值</td><td><strong>僅行政＋1000／1010 flow</strong>，同事唯讀</td></tr>
+  <tr><td><code>field_9</code></td><td>DateString</td><td class="muted">樣本為空、<strong>不可靠</strong>；「今日」一律用 Title 前綴 <code>yyyyMMdd_</code> 篩</td><td>—</td></tr>
+</table></div>
+<p><strong><code>field_7</code> 狀態機</strong>（同事在儀表板單選，5 選項）：</p>
+<div class="scroll"><table>
+  <tr><th>值</th><th>語意</th><th>0955 再巡檢怎麼處理</th></tr>
+  <tr><td>1.</td><td>已完成（請自行勾掉卡片）</td><td>查 Planner：真的不逾期→標「原勾選『1.』，同事已修改狀態」；仍逾期→<strong>歸 3.</strong> 並註記「卡片仍延遲」</td></tr>
+  <tr><td>2.</td><td>延遲已到公司加班</td><td>不動（明確排除，不發催填卡）</td></tr>
+  <tr><td>3.</td><td>延遲（09:30 沒到公司，請填寫假卡）</td><td>不動；<strong>最終 field_7 開頭是「3.」＝仍延遲＝要發 Planner 催填卡片</strong></td></tr>
+  <tr><td>4.</td><td>延遲（09:30 沒到公司，當天已請假）</td><td>同 1.：查 Planner 實況</td></tr>
+  <tr><td>5.</td><td>其他（自填）</td><td>—</td></tr>
+  <tr><td>（空白）</td><td>沒回覆</td><td>應同樣查 Planner 是否仍逾期（此修法已寫、待套用）</td></tr>
+</table></div>
+<div class="note"><strong>Title 不可用 <code>Split(x,"_")</code> 解析</strong>：Planner task id 是 28 字元 base64url，<strong>結尾可能就是底線</strong>（實例 <code>…vXu-m6GEu0amsGMCTVsn5skAK6t_</code>），取最後一段會靜默拿到空字串。要取 task id 用 <code>Mid(Title, Len(Email) + 11)</code>，更好的做法是讓 0930 flow 多寫一欄 <code>PlannerTaskId</code>。</div>
+
+<h3>5-2. Excel：TaskDB.xlsx（SharePoint 站台 PLANNER_CK）</h3>
+<div class="scroll"><table>
+  <tr><th>工作表／表格</th><th>用途</th><th>狀態</th></tr>
+  <tr><td><code>team_member</code></td><td>人員名冊：員工編號／姓名／Email／Line 顯示名稱／<strong>出勤存取權限</strong>。App 判權限、0930 join 員工編號、0945 逐人迴圈都吃這張</td><td>使用中</td></tr>
+  <tr><td><code>TaskDB</code>（11 欄）</td><td>本日清單複製備份</td><td>使用中</td></tr>
+  <tr><td><code>WeekDB</code>／<code>MonthDB</code></td><td>上週／月累積備份</td><td>WeekDB 指南已寫</td></tr>
+  <tr><td>歷史紀錄_表單回覆＋實際出勤（9 欄）</td><td>與清單 schema 一致的長版歷史（1842 列，2026-03-02～07-03）</td><td>往後備份直接 append 這張，取代原 11 欄 TaskDB 表</td></tr>
+</table></div>
+<div class="note"><strong>絕對不可刪除重建清單「欄位」</strong>：欄位重建會讓 <code>field_N</code> 內部名全部改變，所有流程寫死的運算式會一起壞掉。要重整資料只能刪「資料列」。</div>
+
+<h3>5-3. 請假 Excel（獨立檔）<span class="tag">模組二／三前置</span></h3>
+<p class="muted">與 TaskDB.xlsx 是不同檔案，需另加 Excel 連線、範圍須格式化為 Table。欄位、站台、餘額算法皆未提供，是模組二／三的唯一卡點。</p>
+
+<h2>6. 功能模組規格</h2>
+
+<h3>模組一 A：個人出勤查核頁 ScrToday <span class="ok">已上線</span></h3>
+<div class="card">
+<ul>
+  <li><strong>資料</strong>：<code>Filter(Filter(AttendanceHistory, Email = User().Email, 日期 = gToday), 任務名稱 &lt;&gt; Blank())</code>——內層可委派條件下推伺服器、外層本機處理數筆。</li>
+  <li><strong>版面</strong>：手機優先、單欄直向、整頁可捲；Gallery 卡片顯示【專案】【工作】【回覆】【實際出勤狀態】。所有 Label 開 <code>AutoHeight</code>、Y 座標串接（引用上一個控件的 <code>Y + Height + 間距</code>）。</li>
+  <li><strong>回覆 Popup</strong>：點卡片按鈕開 Popup，5 選項單選，寫回 <code>表單回覆</code>。</li>
+  <li><strong>時間鎖</strong>：<code>radReply.DisplayMode</code>／<code>btnSubmit.DisplayMode</code>＝<code>If(locIsAdmin Or Hour(Now())&lt;10, Edit, View)</code>；<code>btnSubmit.OnSelect</code> 內再驗一次（DisplayMode 只擋畫面，Patch 要自衛）。</li>
+  <li><strong>已知代價</strong>：垂直 Gallery 列高無法逐列自動，<code>TemplateSize</code> 只能取最壞情況（現 420），短內容會留白。</li>
+</ul>
+</div>
+
+<h3>模組一 B：行政查核頁 ScrAdmin <span class="warn">修法待貼上</span></h3>
+<div class="card">
+<ul>
+  <li><strong>獨立 Power App</strong>（非同 App 的另一畫面），桌機橫向、關閉 Scale-to-fit。</li>
+  <li><strong>版面</strong>：一頁 25 列全覽的表格，<code>TemplateSize = (Parent.Height - 116) / 25</code>；4 欄＝員工編號｜姓名｜出勤狀態（已存＝粗體藍）｜行政輸入下拉＋自訂文字｜今日延遲工作與同事回覆。</li>
+  <li><strong>人員來源</strong>：<code>AddColumns(Sort(team_member, 員工編號) As tm, CurStatus, LookUp(...))</code> —— 在 Items 階段一次 join 現值，不在每個控件 Default 各自 LookUp。</li>
+  <li><strong>自動存（無儲存鈕，PO 硬需求）</strong>：下拉 <code>OnChange</code> 三重 guard 才寫入——非空白 ＆ 非「（待確認）」 ＆ 與現值不同。缺 guard 會無限迴圈洗版。</li>
+  <li><strong>長文字處理與 ScrToday 相反</strong>：本頁要一頁全覽，所以 <code>Wrap: =false</code> 單行截斷＋<code>Tooltip</code> 看全文（代價：只能桌機用，手機沒有 hover）。</li>
+  <li><strong>權限閘</strong>：<code>Screen.OnVisible</code> 算 <code>locIsAdmin</code>，內容容器逐個綁 <code>Visible = locIsAdmin</code>＋全螢幕遮罩雙保險。</li>
+</ul>
+<pre>// Screen.OnVisible（pa.yaml 帶不進畫面屬性，貼完必須手動補回）
+Set(gToday, Text(Today(), "yyyy/mm/dd"));
+UpdateContext({locIsAdmin:
+  Trim(Coalesce(LookUp(team_member, Lower(Email) = Lower(User().Email), '出勤存取權限'), "")) = "行政管理"});
+ClearCollect(colToday, Filter(AttendanceHistory, 日期 = gToday))</pre>
+<div class="note">權限判定<strong>不能</strong>用 <code>!IsBlank(LookUp(...))</code>：Excel 空欄回傳空字串 <code>""</code>，<code>IsBlank("")</code>＝false，會讓名冊裡每個人都被判成行政。必須改值比對。</div>
+</div>
+
+<h3>模組二：請假紀錄查詢 ScrLeave <span class="bad">未開工</span></h3>
+<p class="muted">Excel 直連唯讀，<code>Filter(請假表, Lower(Email)=Lower(User().Email))</code> 自動只顯示當事人；申請按鈕 <code>Launch(外部表單 URL)</code>。卡在請假 Excel 的站台／檔名／Table／欄位／鍵／餘額算法／表單 URL 全未提供。</p>
+
+<h3>模組三：假期餘額 <span class="bad">未開工</span></h3>
+<p class="muted">同一個請假 Excel，<code>LookUp(請假表, Lower(Email)=Lower(User().Email))</code> 顯示餘額。若餘額未預先算好，需改成「配額 − 已用」。</p>
+
+<h3>下一階段：儀表板帶入 Planner 卡片就地改狀態 <span class="tag">已裁定方向、做法未定</span></h3>
+<p class="muted">使用者 2026-07-31 提出。決策點與最小驗證步驟見待決 A4。</p>
+
+<h2>7. 自動化流程清冊</h2>
+<div class="scroll"><table>
+  <tr><th>流程</th><th>觸發</th><th>做什麼</th><th>建置指南</th><th>狀態</th></tr>
+  <tr><td>0930 巡檢</td><td>每日 09:30</td><td>掃 Planner 逾期工作寫入清單；未延遲者補占位列</td><td><code>0930_Planner改寫_寫入清單_建置指南.html</code></td><td class="ok">上線</td></tr>
+  <tr><td>0945 延遲通知</td><td>每日 09:45</td><td>讀清單延遲列，跑 team_member 名冊逐人寄信到 domain.e</td><td><code>Flow_0945_延遲通知信_改讀清單_建置指南.html</code></td><td class="ok">上線</td></tr>
+  <tr><td>0955 再巡檢</td><td>每日 09:55</td><td>重掃 Planner 校正 field_7；仍延遲者發 Planner 催填卡</td><td><code>Flow_0955_再巡檢與同步_建置指南.html</code>／<code>Flow_0955_新增發卡提醒_建置指南.html</code></td><td class="warn">部分修法待套用</td></tr>
+  <tr><td>1000 米米信</td><td>每日 10:00</td><td>掃「**信」資料夾＋行事曆請假 → 寫 field_8</td><td><code>Flow_1000_米米信主旨寫入清單_建置指南.html</code></td><td class="ok">上線（修法已套用）</td></tr>
+  <tr><td>1005／1030 未回報提醒</td><td>每日 10:05／10:30</td><td>field_8 空白者寄信提醒／發 Planner 卡片</td><td><code>Flow_1005_1030_米米信未回報提醒_建置指南.html</code></td><td class="bad">未建</td></tr>
+  <tr><td>1010 二次掃信</td><td>每日 10:10</td><td>補掃晚到的米米信與請假</td><td class="muted">既有流程，未取得匯出檔</td><td class="warn">待核對是否需同 1000 的修法</td></tr>
+  <tr><td>1015 發卡</td><td>每日 10:15</td><td>延遲未回覆者發 Planner 卡片</td><td class="muted">既有流程，僅當作 CreateTask 設定範本</td><td class="ok">既有</td></tr>
+  <tr><td>請假整合</td><td>橫跨 5 支流程</td><td>行事曆判請假 → 寫 field_7=4 → 各流程排除已請假者</td><td><code>Flow_請假整合_建置指南.html</code></td><td class="warn">部分待套用</td></tr>
+  <tr><td>清單→TaskDB／WeekDB</td><td>手動按鈕</td><td>本日／上週清單資料 append 進 Excel</td><td><code>Flow_清單轉TaskDB備份_建置指南.html</code>／<code>Flow_清單轉WeekDB複製_建置指南.html</code></td><td class="warn">將被每週定期版取代</td></tr>
+  <tr><td>週報</td><td>每週一次</td><td>彙整寄 domain.e → LINE 群組</td><td class="muted">流程 JSON 未取得</td><td class="warn">加請假待做</td></tr>
+</table></div>
+
+<h3>Planner2Line（外部程式，非 Power Automate）</h3>
+<div class="card">
+<p>Windows 桌機程式（本機 clone 於 <code>Planner2Line</code> repo）。監聽 Outlook 中繼信箱 <code>domain.e@techartgroup.com</code>，依主旨前綴路由：</p>
+<table>
+  <tr><th>主旨前綴</th><th>路由</th><th>對象</th></tr>
+  <tr><td><code>工作延遲_姓名 | MM/DD</code></td><td>personal</td><td>依 <code>contacts.json</code> 對 Email→LINE 聯絡人，個別發送</td></tr>
+  <tr><td><code>工作延遲彙整周報</code>／<code>早加班狀況</code></td><td>weekly_summary</td><td>LINE 群組「天工開物工作群組」，原文直送不套模板</td></tr>
+</table>
+<ul>
+  <li><strong>LINE 訊息裡的連結取自郵件正文</strong>，要改連結＝改寄信流程的正文 URL，不用改 Planner2Line。</li>
+  <li>App 已用 <code>User().Email</code> 自篩，<strong>全公司共用同一個 App 連結即可</strong>，不必逐人預填。</li>
+  <li>收件人必須維持 <code>domain.e</code>，不可改成個人 Email——路由靠主旨姓名，改了整條鏈路會斷。</li>
+  <li>新人上線要加進 <code>contacts.json</code>。</li>
+</ul>
+<div class="note">（推測，待同事回報）從 LINE 訊息直接點連結會開在 LINE 內建瀏覽器，Power Apps 需要 Microsoft 帳號多次重導向，LINE WebView 常擋掉，表徵是「無法開啟頁面。請確認網路連線狀態後，再試一次。」——分享連結時預先提醒用 Safari／Chrome 開。</div>
+</div>
+
+<h2>8. 權限設計（三層，互補非擇一）</h2>
+<div class="scroll"><table>
+  <tr><th>層</th><th>機制</th><th>能力</th><th>限制</th><th>現況</th></tr>
+  <tr>
+    <td>① App 分享面板</td><td>make.powerapps.com → Share</td>
+    <td>真正的硬界線，未分享者進不來</td>
+    <td>靜態、換人要手動改、無法讀 team_member</td>
+    <td class="warn">需放寬到全員（由第②層過濾），待確認</td>
+  </tr>
+  <tr>
+    <td>② 畫布 UI 閘</td><td><code>Screen.OnVisible</code> 讀 team_member 算 <code>locIsAdmin</code> → 遮罩／<code>Visible</code></td>
+    <td>動態換人，改名冊一格即生效</td>
+    <td><strong>非硬安全</strong>，懂技術者可繞畫面直接讀寫清單</td>
+    <td class="ok">已實測成功（07-23）</td>
+  </tr>
+  <tr>
+    <td>③ SharePoint 清單項目權限</td><td>清單層欄位／項目權限＋寫入導向 server-time flow</td>
+    <td>唯一能真正保證同事不能改 field_8</td>
+    <td>要白名單 1000／1010 flow 帳號，且不能擋同事寫自己的 field_7</td>
+    <td class="bad">從未實作＝已知安全缺口</td>
+  </tr>
+</table></div>
+
+<h2>9. 平台限制與設計約束</h2>
+<div class="card">
+<h3>Power Apps / Power Fx</h3>
+<ul>
+  <li><strong>委派</strong>：<code>Text()</code>、<code>Not()</code>／<code>!</code> 包函式對 SharePoint 不可委派。<code>!IsBlank(x)</code> 改 <code>x &lt;&gt; Blank()</code>；<code>Text(Today(),...)</code> 改在 OnVisible 算成 <code>gToday</code> 變數再比對。改不掉的條件用<strong>巢狀 Filter</strong>（外層放不可委派的、內層只留可委派的）。</li>
+  <li><strong>非委派查詢的資料列限制</strong>（App 設定→一般，預設 500、最大 2000）：本機模式只取清單前 N 列（依 ID 遞增＝最舊），症狀必然是「最新資料抓不到」而非「全部抓不到」——這個方向性是辨識此類 bug 的指紋。</li>
+  <li><strong>垂直 Gallery 列高固定</strong>，無法逐列依內容自動。</li>
+  <li><strong>Label 固定 Height 在手機上必裁長文字</strong>；長度不可控的 Label 一律 <code>AutoHeight: =true</code>，下方控件 Y 引用它的 Height。</li>
+  <li><strong><code>Screen.OnVisible</code> 是畫面屬性，pa.yaml 貼不進來</strong>，每次全選重貼都要手動補回。</li>
+  <li><strong>pa.yaml 貼上是控件層級、一次一畫面</strong>；兩個畫面塞同一檔會 PA1001。控件版本只用「使用者自己匯出裡出現過」的：<code>Label@2.5.1 / GroupContainer@1.5.0 / Classic/Button@2.2.0 / Classic/DropDown@2.3.1 / Gallery@2.15.0 / Rectangle@2.3.0</code>。</li>
+  <li><strong>Excel 空欄回傳 <code>""</code> 不是 <code>Blank()</code></strong>，判「有沒有填」不能用 IsBlank，要比對值。</li>
+  <li><code>Visible</code> 是畫面層、非安全邊界。</li>
+</ul>
+<h3>Power Automate</h3>
+<ul>
+  <li><strong>運算式必須是 token 不是字面文字</strong>：欄位裡灰字＝字面（錯）、彩色 chip＝運算式（對）。整段貼「已含 <code>@</code> 前綴」的運算式，失焦即自動變 chip，不必先點 fx。</li>
+  <li><strong>新版「條件」卡沒有進階模式</strong>：布林先用 Compose 算，條件只比 <code>= true</code>，且右值的 <code>true</code> 要用 fx 插成布林（直接打字會變字串 <code>'true'</code>，永遠不成立）。</li>
+  <li><strong>Set variable 禁止自我參照</strong>，累加陣列改用「附加至陣列變數」。</li>
+  <li><strong>OData <code>$filter</code> 用內部欄名</strong>；中文／改名欄會報「欄不存在」。<code>Title</code> 內部名固定，日期範圍一律用 <code>startswith(Title,'yyyyMMdd_')</code>，不對 <code>日期</code> 欄下 <code>$filter</code>。</li>
+  <li><strong>時區</strong>：某些環境 <code>convertFromUtc(...,'Taipei Standard Time')</code> 報無效，備案 <code>addHours(utcNow(),8)</code>。行事曆全天事件錨定 UTC 午夜，查詢視窗尾碼要用 <code>Z</code> 不是 <code>+08:00</code>，否則會撈到昨天的假。</li>
+  <li><strong>格式字元大小寫兩平台相反</strong>：Power Automate <code>MM</code>＝月、<code>mm</code>＝分鐘；Power Fx <code>mm</code>＝月、分鐘用 <code>n</code>。照抄會靜默寫錯。</li>
+  <li><strong>PatchItem 寫回後記憶體陣列仍是舊值</strong>，要拿更新後狀態做後續判斷必須重讀清單。</li>
+  <li><strong>接手既有流程先解壓匯出的 <code>definition.json</code></strong>，別靠 designer 表象或記憶猜 action 名稱。</li>
+</ul>
+<h3>SharePoint 清單</h3>
+<ul>
+  <li>比對鍵欄位（Email）必須是<strong>單行文字</strong>，不可用「個人或群組」。</li>
+  <li>排序／識別鍵一律用<strong>零填補固定寬度字串</strong>（<code>yyyyMMdd</code>），文字序才等於時間序。</li>
+  <li>破 5000 列後，未編索引的欄位即使查詢可委派也會失敗 → <code>Email</code>、<code>日期</code> 需加索引。</li>
+</ul>
+</div>
+
+<h2>10. 現況成熟度</h2>
+<div class="scroll"><table>
+  <tr><th>能力</th><th>狀態</th><th>備註</th></tr>
+  <tr><td>Planner 延遲 → 清單</td><td class="ok">上線</td><td>0930；偶發 Planner 429 節流（未加容錯）</td></tr>
+  <tr><td>延遲通知 → LINE</td><td class="ok">上線</td><td>0945＋Planner2Line；名冊漏人無告警</td></tr>
+  <tr><td>同事自助回覆</td><td class="ok">上線</td><td>手機實測通過；LINE 內建瀏覽器可能開不了</td></tr>
+  <tr><td>再巡檢校正＋催填卡</td><td class="warn">部分</td><td>指南已寫，Portal 套用狀態未回報</td></tr>
+  <tr><td>米米信／請假 → 出勤狀態</td><td class="ok">上線</td><td>1000 已套修法；粒度問題未解（待決 A1）</td></tr>
+  <tr><td>未回報提醒（1005／1030）</td><td class="bad">未建</td><td>前提條件未備齊（待決 A8）</td></tr>
+  <tr><td>行政查核介面</td><td class="warn">修法待貼</td><td>權限閘已上線，長文字截斷修法未貼</td></tr>
+  <tr><td>歷史備份與清單瘦身</td><td class="warn">設計中</td><td>手動版可用，定期版未定（待決 A3）</td></tr>
+  <tr><td>資料層硬權限</td><td class="bad">未做</td><td>已知安全缺口（待決 A2）</td></tr>
+  <tr><td>模組二／三（請假／餘額）</td><td class="bad">未開工</td><td>卡在資料源資訊（待決 A5）</td></tr>
+  <tr><td>SharePoint 頁面嵌入</td><td class="bad">未做</td><td>目前靠共用 App 連結</td></tr>
+</table></div>
+
+<h2>11. 未決事項索引</h2>
+<div class="card">
+<p>完整內容與決策依據在 <code>_context/TaskLog_2026-08-03_全案待決盤點.md</code>，此處只列標題：</p>
+<ol>
+  <li><strong>A1</strong> <code>field_8</code> 儲存粒度四案（A fan-out／B 獨立清單／C 備份補／D 表頭顯示一次）</li>
+  <li><strong>A2</strong> 清單層硬權限＋App Owner 共用帳號</li>
+  <li><strong>A3</strong> 清單保留期與每週搬移排程</li>
+  <li><strong>A4</strong> Planner 卡片就地改狀態的做法（App 直連 vs flow 代改）</li>
+  <li><strong>A5</strong> 模組二／三是否啟動（缺請假 Excel 資訊）</li>
+  <li><strong>A6</strong> 0945 名冊缺漏告警要不要做</li>
+  <li><strong>A7</strong> 「發信報告行程」標題登記需求（5 個缺口）</li>
+  <li><strong>A8</strong> 1005／1030 的前提：準時者如何被標記</li>
+  <li><strong>A9</strong> 0930 Planner 429 節流是否縮群組範圍</li>
+  <li><strong>A10</strong> 週報加請假（需匯出週報流程 JSON）</li>
+  <li><strong>A11</strong> ScrToday 卡片留白是否可接受</li>
+</ol>
+</div>
+
+<p class="muted" style="margin-top:40px;font-size:13px;border-top:1px solid var(--line);padding-top:14px">
+本檔由 <code>_context/archive/</code> 內 10 份 ClosedTaskLog、<code>lessons-learned.md</code>、<code>rules/</code> 彙整。內容標「（推測）」者為未經實測的推論。
+</p>
+
+</div>
+</body>
+</html>

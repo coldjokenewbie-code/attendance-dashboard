@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>維運 SOP｜出勤查核系統</title>
+<style>
+:root{--bg:#f8fafc;--card:#fff;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;
+      --red:#dc2626;--redbg:#fef2f2;--amber:#d97706;--amberbg:#fffbeb;--green:#16a34a;--greenbg:#f0fdf4;--indigo:#6366f1;--indigobg:#eef2ff}
+@media (prefers-color-scheme:dark){
+:root{--bg:#0b1120;--card:#111827;--ink:#e5e7eb;--muted:#94a3b8;--line:#1f2937;
+      --redbg:#2a1215;--amberbg:#2a1f10;--greenbg:#0f2417;--indigobg:#161c33}}
+*{box-sizing:border-box}
+body{margin:0;padding:32px 20px 80px;background:var(--bg);color:var(--ink);
+     font:16px/1.75 -apple-system,"PingFang TC","Noto Sans TC",sans-serif}
+.wrap{max-width:920px;margin:0 auto}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:14px;margin:0 0 28px}
+h2{font-size:19px;margin:36px 0 12px;padding-left:11px;border-left:4px solid var(--indigo)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:14px 0}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:13px;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+code{background:var(--indigobg);padding:1px 6px;border-radius:4px;font-size:13.5px;
+     font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.tag{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12.5px;font-weight:600}
+.t-red{background:var(--redbg);color:var(--red)} .t-amber{background:var(--amberbg);color:var(--amber)}
+.t-green{background:var(--greenbg);color:var(--green)}
+ol,ul{margin:10px 0;padding-left:22px} li{margin:5px 0}
+.note{background:var(--amberbg);border-left:4px solid var(--amber);padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;font-size:14.5px}
+.danger{background:var(--redbg);border-left:4px solid var(--red);padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;font-size:14.5px}
+.scroll{overflow-x:auto}
+.muted{color:var(--muted);font-size:13.5px}
+.ck{list-style:none;padding-left:0} .ck li{padding-left:26px;position:relative}
+.ck li::before{content:"☐";position:absolute;left:2px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>維運 SOP｜出勤查核系統</h1>
+<p class="sub">建立 2026-08-04　·　適用：MS365 Power Automate 流程群、Power Apps、Planner2Line</p>
+
+<h2>1. 何時要執行</h2>
+<div class="card">
+<p style="margin-top:0">下列任一情況發生後，<b>整套系統會停止運作</b>，必須依本文件修復：</p>
+<ul>
+<li><b>真核域帳號 <code>domain.e@techartgroup.com</code> 更新密碼</b>（最常見）</li>
+<li>該帳號重設 MFA、變更驗證方式</li>
+<li>該帳號被停用後重新啟用</li>
+<li>Power Platform 環境或授權變更</li>
+</ul>
+<div class="danger">
+<b>症狀</b>：流程執行失敗，錯誤訊息含 <code>Unauthorized</code>、<code>InvalidConnection</code>、<code>The credentials provided are invalid</code>；
+Portal 的「連線」頁面出現橘色驚嘆號或「需要注意」。<br>
+流程<b>不會自動停用</b>，但每次排程都會失敗，等於當天的巡檢、通知、備份全部沒跑。
+</div>
+</div>
+
+<h2>2. 影響範圍</h2>
+<div class="card">
+<p style="margin-top:0">所有流程都以 <code>domain.e@techartgroup.com</code> 建立連線。<b>連線是帳號層級的共用資源</b>——同一種連線修復一次，所有引用它的流程一起恢復，不必逐支流程處理。</p>
+<div class="scroll">
+<table>
+<tr><th>連線種類</th><th>Portal 顯示名稱</th><th>用途</th></tr>
+<tr><td><code>sharepointonline</code></td><td>SharePoint</td><td>讀寫 AttendanceHistory 清單</td></tr>
+<tr><td><code>excelonlinebusiness</code></td><td>Excel Online (商務)</td><td>讀寫 TaskDB.xlsx（AttDB／WeekDB／MonthDB）</td></tr>
+<tr><td><code>office365</code></td><td>Office 365 Outlook</td><td>寄通知信、讀米米信</td></tr>
+<tr><td><code>office365groups</code></td><td>Office 365 群組</td><td>取得群組成員與方案</td></tr>
+<tr><td><code>office365users</code></td><td>Office 365 使用者</td><td>取得使用者設定檔（姓名、Email）</td></tr>
+<tr><td><code>planner</code> / <code>planner-1</code></td><td>Planner</td><td>讀取逾期工作、卡片狀態<br><span class="muted">兩個不同連線 id，都要檢查</span></td></tr>
+</table>
+</div>
+</div>
+
+<h2>3. 修復步驟</h2>
+<div class="card">
+<ol>
+<li>用 <code>domain.e@techartgroup.com</code> 登入 <a href="https://make.powerautomate.com" target="_blank" rel="noopener">make.powerautomate.com</a></li>
+<li>左側選單 →「<b>資料</b>」→「<b>連線</b>」</li>
+<li>把狀態不是「已連線」的項目全部處理：點右側「⋯」→「<b>修復連線</b>」→ 重新登入</li>
+<li>依第 2 節的表格逐項核對，<b>七個連線都要是綠色「已連線」</b>（Planner 有兩個）</li>
+<li>回到「我的流程」，確認沒有流程被系統自動關閉；被關掉的手動打開</li>
+</ol>
+<div class="note">
+<b>修復不成功時</b>：直接刪掉該連線再重建，然後打開任一支用到它的流程，該動作會顯示連線遺失，重新指定新連線後儲存。同種連線只要在一支流程內重新指定，其他流程會一起沿用。
+</div>
+</div>
+
+<h2>4. 驗證</h2>
+<div class="card">
+<p style="margin-top:0">修完不算完成，要實際跑過才算。挑下列流程各手動執行一次，確認狀態為「成功」：</p>
+<div class="scroll">
+<table>
+<tr><th>驗證什麼</th><th>執行哪支流程</th><th>看什麼</th></tr>
+<tr><td>Planner + 群組 + 使用者</td><td><code>0930_清單_每日巡檢Planer進清單</code></td><td>清單有沒有新增當日項目</td></tr>
+<tr><td>SharePoint + 寄信</td><td><code>1000_清單_工作延遲彙整_通知行政email_v2</code></td><td>真核域信箱有沒有收到信</td></tr>
+<tr><td>Excel 讀寫</td><td><code>清單_全量複製到AttDB_手動</code><br><span class="muted">起訖填同一天，只複製一天</span></td><td>AttDB 有沒有新增列、欄位有沒有值</td></tr>
+</table>
+</div>
+<p class="muted" style="margin-bottom:0">三支都過，代表六種連線全部正常。</p>
+</div>
+
+<h2>5. Planner2Line（Windows 端）</h2>
+<div class="card">
+<p style="margin-top:0">這支程式獨立於 Power Automate，<b>用自己的憑證讀真核域信箱</b>，密碼變更後<b>同樣要更新</b>，否則信收得到但 LINE 發不出去。</p>
+<ul>
+<li>更新程式設定檔中的信箱帳密／應用程式密碼</li>
+<li>重啟服務後，檢查 log 有沒有 <code>authentication failed</code></li>
+<li>驗證：手動執行 <code>0955_清單_再巡檢planner_v2</code>，確認對應同事有收到 LINE</li>
+</ul>
+<p class="muted" style="margin-bottom:0">（設定檔位置與參數名稱由 Planner2Line 端維護，本文件不重複記載。）</p>
+</div>
+
+<h2>6. Power Apps</h2>
+<div class="card">
+<p style="margin-top:0">個人儀表板（AttDashboard）與出勤查核（AttAdmin）的 SharePoint 連線是<b>各使用者自己的</b>，不受真核域密碼影響，通常不用處理。</p>
+<p class="muted" style="margin-bottom:0">若同事回報 App 讀不到資料，先確認是不是清單權限問題，而非連線問題。</p>
+</div>
+
+<h2>7. 完成檢查表</h2>
+<div class="card">
+<ul class="ck">
+<li>Portal「連線」頁面七個連線都是「已連線」</li>
+<li>沒有流程處於「已關閉」狀態</li>
+<li>0930 手動執行成功，清單有新項目</li>
+<li>1000_v2 手動執行成功，真核域收到信</li>
+<li>全量複製手動執行成功，AttDB 有新列且欄位有值</li>
+<li>Planner2Line 憑證已更新，LINE 實際收到訊息</li>
+<li>隔日 09:20 起的排程確認全部成功</li>
+</ul>
+</div>
+
+<p class="muted" style="margin-top:40px">
+文件位置：<code>workingfiles/outputs/維運SOP_出勤查核系統_2026-08-04.html</code>　·
+流程連線清單來源：<code>workingfiles/automate_import/</code>、<code>automate_export/</code> 各套件的 <code>connectionReferences</code>
+</p>
+
+</div>
+</body>
+</html>

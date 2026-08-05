@@ -1,21 +1,3 @@
-# 基準：2026-08-03 使用者從 Studio 匯出的現用版本（ScrToday_0803bak.yml），控件結構未動。
-# 手動畫面屬性（Studio 內手動設，此檔貼不出這段，貼上後須確認仍在）：
-#   Screen.OnVisible = UpdateContext({locShowPopup: false}); Set(gToday, Text(Today(), "yyyy/mm/dd"))
-#   （gToday 為全域變數：Filter 內直接寫 Text(Today()...) 不可委派。日期格式零填補 yyyy/mm/dd，須與清單「日期」欄一致。）
-# 用法：畫布全選現有控件 → 刪除 → 貼上本檔（Cmd/Ctrl+V）→ 確認 OnVisible 仍在。
-#
-# 2026-08-03／08-04 選項文字修訂（radReply.Items）：
-#   選項 3：「…，請填寫假卡」→「…，待填寫假卡」
-#   選項 2：「…09:30已到公司在補進度」→「…09:30已到公司/場館/會議早加班」（08-04 使用者在 Studio 直接改，此檔同步）
-#   全流程與行政頁的判別一律用前綴（1./3./5. 或空白），不比對全文，故改文字不影響任何判定。
-#   已知副作用：radReply.Default 綁 locSelected.表單回覆，清單內既有的舊文字不在新 Items 中，
-#   重開 Popup 時該筆會顯示未選取（資料仍在，僅圓鈕不亮）。舊值隨每日新資料自然淘汰，不處理。
-#
-# 既有改動（2026-07-28 / 07-31，已上線）：
-#   ① galToday.Items 巢狀 Filter ── 內層只留可委派條件（Email／日期），外層本機篩 任務名稱 <> Blank()。
-#   ② Popup 與卡片內所有 Label 改 AutoHeight，Y 串接上一個控件的 Y + Height + 間距；
-#      TemplateSize 280→420（垂直 Gallery 列高無法逐列自動，取最壞情況固定值）。
-
 - conHeader:
     Control: GroupContainer@1.5.0
     Variant: ManualLayout
@@ -219,7 +201,7 @@
                   Color: =RGBA(31, 41, 55, 1)
                   Default: =locSelected.表單回覆
                   Height: =Parent.Height - Self.Y - 72
-                  Items: =["1. 已完成（請自行勾掉卡片）", "2. 延遲（09:30已到公司/場館/會議早加班）", "3. 延遲（09:30沒到公司，待填寫假卡）", "4. 延遲（09:30沒到公司，當天已請假）", "5. 如為其他狀況，請於5分鐘內更新卡片"]
+                  Items: =["1. 已完成（請自行勾掉卡片）", "2. 延遲（09:30已到公司在補進度）", "3. 延遲（09:30沒到公司，請填寫假卡）", "4. 延遲（09:30沒到公司，當天已請假）", "5. 如為其他狀況，請於5分鐘內更新卡片"]
                   Items.Value: =Value
                   Size: =15
                   Width: =Parent.Width - 40

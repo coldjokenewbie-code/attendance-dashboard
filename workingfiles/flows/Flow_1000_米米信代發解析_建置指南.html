@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1000 米米信 — 代發解析改造 建置指南</title>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--warn:#b45309;--ok:#15803d;--del:#b91c1c;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Helvetica Neue",Arial,"Microsoft JhengHei",sans-serif;line-height:1.7;}
+  .wrap{max-width:980px;margin:0 auto;padding:34px 24px 90px;}
+  h1{font-size:23px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:22px;}
+  h2{font-size:18px;margin:30px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--accent);}
+  h3{font-size:15px;margin:18px 0 6px;color:#111827;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  code{background:#eef2ff;color:#3730a3;padding:1px 5px;border-radius:4px;font-size:12.5px;word-break:break-all;}
+  pre{background:#0f172a;color:#e2e8f0;padding:13px;border-radius:8px;overflow:auto;font-size:12.5px;line-height:1.5;}
+  pre code{background:none;color:inherit;padding:0;}
+  ol,ul{margin:6px 0;padding-left:22px;} li{margin:6px 0;}
+  table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13px;}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f5f9;}
+  .warn{border-left:4px solid var(--warn);background:#fffbeb;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .ok{border-left:4px solid var(--ok);background:#f0fdf4;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .del{border-left:4px solid var(--del);background:#fef2f2;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .tag{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;background:#dbeafe;color:#1e40af;font-weight:600;}
+  .tag.new{background:#dcfce7;color:#166534;}
+  .tag.edit{background:#fef3c7;color:#92400e;}
+  details{margin:8px 0;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:6px 12px;}
+  details summary{cursor:pointer;font-size:13px;color:var(--muted);font-weight:600;}
+  details p,details ul{font-size:13px;color:#374151;}
+  .scroll{overflow-x:auto;}
+  /* 浮動修改待辦 */
+  #todo{position:fixed;top:16px;right:16px;width:272px;z-index:9999;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.16);font-size:13px;overflow:hidden;}
+  #todo .hd{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#0f172a;color:#fff;cursor:pointer;user-select:none;}
+  #todo .hd b{font-size:13px;}
+  #todo .hd .pg{margin-left:auto;font-size:12px;background:#1e293b;padding:2px 9px;border-radius:99px;}
+  #todo .hd .pg.alldone{background:#15803d;}
+  #todo .hd .cv{font-size:11px;opacity:.85;width:14px;text-align:center;}
+  #todo .bd{padding:6px;max-height:62vh;overflow:auto;}
+  #todo.collapsed .bd,#todo.collapsed .ft{display:none;}
+  #todo .it{display:flex;gap:8px;align-items:flex-start;padding:8px;border-radius:8px;}
+  #todo .it:hover{background:#f1f5f9;}
+  #todo .it input{margin-top:2px;width:16px;height:16px;flex:none;cursor:pointer;}
+  #todo .it .tx{cursor:pointer;line-height:1.45;}
+  #todo .it .tx .n{font-weight:700;color:var(--accent);}
+  #todo .it .tx small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px;}
+  #todo .it.done .tx,#todo .it.done .tx .n{text-decoration:line-through;color:var(--muted);}
+  #todo .ft{display:flex;justify-content:flex-end;padding:4px 10px 10px;}
+  #todo .ft button{font-size:11.5px;color:var(--muted);background:none;border:1px solid var(--line);border-radius:6px;padding:3px 9px;cursor:pointer;}
+  #todo .ft button:hover{background:#f1f5f9;}
+  @keyframes flashbg{0%{background:#fde68a;}100%{background:transparent;}}
+  .flash{animation:flashbg 1.7s ease-out;border-radius:6px;}
+  @media(max-width:860px){
+    #todo{top:auto;bottom:0;left:0;right:0;width:auto;border-radius:12px 12px 0 0;}
+    #todo .bd{max-height:44vh;}
+    .wrap{padding-bottom:280px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="todo">
+  <div class="hd" onclick="todoToggle()"><b>🛠 修改待辦</b><span class="pg" id="todoPg">0/6</span><span class="cv" id="todoCv">▼</span></div>
+  <div class="bd">
+    <div class="it" data-k="a">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('fix-excel')"><span class="n">① team_member 表格新增三個暱稱欄並填值</span><small>18 列，流程靠這三欄才知道主旨裡的暱稱是誰 → §1</small></span>
+    </div>
+    <div class="it" data-k="b">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('secA1')"><span class="n">② 匯入套件建成新流程</span><small>1000_米米信代發解析_v2_匯入用_20260803.zip → §A-1</small></span>
+    </div>
+    <div class="it" data-k="c">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('secA1')"><span class="n">③ 匯入後開 列出資料列_名冊 確認四個欄位有值</span><small>檔案與表格識別碼已寫死，正常應直接顯示 → §A-1</small></span>
+    </div>
+    <div class="it" data-k="d">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('secA1')"><span class="n">④ 測試期間先關新流程排程，只手動執行</span><small>新舊兩支都 10:00 觸發、都寫 field_8，會互相覆蓋 → §A-1</small></span>
+    </div>
+    <div class="it" data-k="e">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('sec2')"><span class="n">⑤ 測通後關掉舊的 1000 流程</span><small>確認新流程正常後才關 → §A-1</small></span>
+    </div>
+    <div class="it" data-k="f">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('fix-test')"><span class="n">⑥ 手動執行測 4 個案例</span><small>自報／代發多人／無人名／請假優先 → §6</small></span>
+    </div>
+  </div>
+  <div class="ft"><button onclick="todoReset()">重設打勾</button></div>
+</div>
+
+<div class="wrap">
+
+<h1>1000 米米信 — 代發解析改造</h1>
+<div class="sub">
+  對象流程：<code>1000_清單__米米信行程通知寫入清單</code>　｜　兩條路線：<strong>匯入成新流程</strong>（§A，建議）或在現有流程上就地改（§2～§5）<br>
+  基準＝2026-08-03 匯出的 <code>informaiton/1000_清單__米米信行程通知寫入清單_20260803084351.zip</code>，動作名稱皆取自該檔的 <code>definition.json</code>。<br>
+  2026-08-03 ｜ Claude@Mac
+</div>
+
+<h2 id="sec0">§0　這次要解決什麼</h2>
+
+<div class="card">
+<p><strong>現況的問題</strong>：一封米米信只會寫進<strong>寄件者本人</strong>的清單列。有人代發時，主旨裡提到的其他同事拿不到出勤狀態，會被後續流程誤判成「未回報」。</p>
+<p>歷史語料實測：19 種代發主旨中有 <strong>6 種確實漏人</strong>——例如 <code>**建興 宏旗 Ray Ed去新竹拍攝</code> 漏掉楊睿謙、<code>**昱丞、怡惠、儀蘋上午在存保</code> 漏掉林昱丞。</p>
+
+<h3>新規則（2026-08-03 PO 定案）</h3>
+<table>
+  <tr><th>#</th><th>規則</th><th>例</th></tr>
+  <tr>
+    <td>1</td>
+    <td><strong>主旨中出現的人名，就更新那些人的「實際出勤狀態」</strong>，值＝這封信的完整主旨。當天那人有多筆清單列的話，<strong>全部一併更新</strong>。</td>
+    <td><code>**小六慧修怡惠去新竹開會</code> → 更新林慧修、陳怡惠</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td><strong>寄件者若沒出現在主旨裡，就不更新寄件者自己。</strong></td>
+    <td>上例是黃文郁（小六）代發，主旨有寫「小六」所以她也更新；若主旨只寫別人，她自己就不填</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td><strong>主旨完全沒有人名時，退回原本做法：填寄件者本人。</strong></td>
+    <td><code>**去陽明山定檢</code>（林昱丞省略自稱）→ 填林昱丞</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td><strong>常見錯字也算命中</strong>，寫進對照表當一筆。</td>
+    <td><code>宏旗</code> → 陳宏錡</td>
+  </tr>
+</table>
+
+<div class="ok"><strong>請假優先的既有規則不變</strong>：當天行事曆有涵蓋 10:00 的請假事件時，實際出勤狀態寫請假事件主旨，米米信不覆蓋。</div>
+
+<details>
+<summary>為什麼改成「先建今日狀態表，再逐清單列查表」</summary>
+<p>現行流程是逐清單列去信件堆裡找「寄件者＝本人」的信。要支援代發，就得反過來：先逐封信解析出「這封信要寫給誰」，把結果收成一張 <code>email → 主旨</code> 的對照表，再逐清單列查表寫入。</p>
+<p>這樣做的附帶好處是<strong>天然 fan-out</strong>：清單迴圈本來就是一列一列跑，同一人當天有幾列就會被寫幾次，不必另外處理「多列都要填」。</p>
+</details>
+</div>
+
+<h2 id="secA">§A　兩條路線：匯入現成套件（建議）或手動改</h2>
+
+<div class="card">
+<table>
+  <tr><th>路線</th><th>做什麼</th><th>要讀哪幾節</th></tr>
+  <tr>
+    <td><strong>匯入（建議）</strong></td>
+    <td>用已經改好的套件匯入成<strong>一支新流程</strong>，舊的 1000 原封不動留著當備援</td>
+    <td>§1（先建 Excel 表）→ §A-1（匯入步驟）→ §6（測試）→ §7（風險）</td>
+  </tr>
+  <tr>
+    <td>手動改</td>
+    <td>在現有 1000 流程上就地改</td>
+    <td>§1 → §2～§5 逐步做 → §6 → §7</td>
+  </tr>
+</table>
+
+<h3 id="secA1">A-1　匯入步驟</h3>
+<table>
+  <tr><th>#</th><th>步驟</th></tr>
+  <tr><td>0</td><td><strong>先做完 §1</strong>（<code>team_member</code> 表格加好三個暱稱欄並填值）。<strong>順序不能顛倒</strong>——欄位還沒加就匯入，流程不會報錯，但每封信都會走「沒命中」的 fallback，代發完全失效。</td></tr>
+  <tr><td>1</td><td>檔案：<code>workingfiles/automate_import/1000_米米信代發解析_v2_匯入用_20260803.zip</code></td></tr>
+  <tr><td>2</td><td>make.powerautomate.com →左側<strong>我的流程</strong>→上方<strong>匯入</strong>→<strong>匯入套件（舊版）</strong>→上傳這個 zip</td></tr>
+  <tr><td>3</td><td>「檢閱套件內容」裡，流程那一列的<strong>匯入設定</strong>要是<strong>建立成新的</strong>（套件已預設成這個，確認一下就好）。流程名稱＝<code>1000_清單__米米信代發解析_v2</code></td></tr>
+  <tr><td>4</td><td>下面三個連線各點「選取期間建立」，選現有的連線：<br>・Office 365 Outlook → <code>domain.e@techartgroup.com</code><br>・SharePoint → <code>domain.e@techartgroup.com</code><br>・Excel Online (商務) → <code>domain.e@techartgroup.com</code></td></tr>
+  <tr><td>5</td><td>按<strong>匯入</strong>。</td></tr>
+</table>
+
+<div class="ok"><strong>Excel 的位置／文件庫／檔案／表格四個欄位都不用手動選</strong>：套件裡填的是 <code>TaskDB.xlsx</code> 與 <code>team_member</code> 的真實識別碼（<code>{67870985-434E-4538-AC8D-3C6A5B409136}</code>），取自 0920／0945 兩支現行流程的匯出檔，不是猜的。匯入後打開 <code>列出資料列_名冊</code> 確認四個欄位有正常顯示即可。</div>
+
+<div class="ok"><strong>套件裡已經內建的改動</strong>（＝§2 總表的全部 15 項）：新增 4 個動作與 2 個附加動作、兩個新迴圈的並行已關成 1、清單迴圈內 <code>FilterEmails</code> 已換成 <code>篩選_本列狀態</code>、分支 B／C 條件與寫入值已改、行事曆視窗尾碼已改成 <code>Z</code>。<strong>走匯入路線就不必再做 §3～§5。</strong></div>
+
+<div class="warn"><strong>新舊兩支流程不要同時開著跑</strong>：都是 10:00 觸發、都寫同一個 field_8，會互相覆蓋。新流程測通之後，把舊的 <code>1000_清單__米米信行程通知寫入清單</code> 關掉。測試期間反過來——先把新流程的排程關掉，只用手動執行測。</div>
+
+<details>
+<summary>套件是怎麼做出來的</summary>
+<p>直接拿 2026-08-03 匯出的 <code>1000_清單__米米信行程通知寫入清單_20260803084351.zip</code> 解開，改 <code>definition.json</code> 後重新打包：換了流程 GUID 與顯示名稱（避免蓋掉舊流程）、<code>manifest.json</code> 補上 Excel Online (商務) 的連線相依（照 0945 套件的寫法）、連線本身沿用同一組。</p>
+<p>驗證過的項目：所有 <code>body()</code>／<code>outputs()</code>／<code>items()</code> 引用的動作名稱都存在、<code>FilterEmails</code> 已無殘留引用、runAfter 串接完整無斷點。<strong>沒有驗證的是實際匯入與實跑</strong>——那要在你的租戶上才能確認。</p>
+</details>
+</div>
+
+<h2 id="fix-excel">§1　前置：team_member 表格新增三個暱稱欄 <span class="tag new">新增欄位</span></h2>
+
+<div class="card">
+<h3>名冊在哪（2026-08-03 讀 12 支流程匯出檔查證）</h3>
+<table>
+  <tr><th>項目</th><th>值</th></tr>
+  <tr><td>檔案</td><td>SharePoint 站台 <code>PLANNER_CK</code> 內的 <code>TaskDB.xlsx</code></td></tr>
+  <tr><td>工作表</td><td><code>聯絡人</code></td></tr>
+  <tr><td>表格名稱</td><td><code>team_member</code>（範圍 A1:E19，18 人）</td></tr>
+  <tr><td>表格 GUID</td><td><code>{67870985-434E-4538-AC8D-3C6A5B409136}</code></td></tr>
+  <tr><td>現有欄位</td><td><code>員工編號</code>　<code>姓名</code>　<code>Email</code>　<code>Line 顯示名稱</code>　<code>出勤存取權限</code></td></tr>
+  <tr><td>誰在讀它</td><td>0920（補員工編號）、0945（逐人寄信）、Power Apps 兩個畫面（判行政權限）</td></tr>
+</table>
+<div class="ok"><strong>聯絡人是 Excel 表格，不是 SharePoint 清單。</strong>全部 12 支流程掃過，沒有任何一支用清單當名冊。</div>
+
+<h3>要加的三欄</h3>
+<p>在 <code>team_member</code> 表格的最右邊（<code>出勤存取權限</code> 之後）新增三欄，欄名一字不差：</p>
+<table>
+  <tr><th>欄名</th><th>說明</th></tr>
+  <tr><td><code>米米信暱稱1</code></td><td>主要暱稱，每個人都要有</td></tr>
+  <tr><td><code>米米信暱稱2</code></td><td>別名／錯字／英文全寫，沒有就留空</td></tr>
+  <tr><td><code>米米信暱稱3</code></td><td>預留，目前全部留空</td></tr>
+</table>
+<div class="warn">新增欄位時要讓它<strong>成為表格的一部分</strong>（在表格右邊緊鄰的儲存格直接打欄名，Excel 會自動把欄併進表格）。如果打在隔一格的地方，欄位不會進表格，流程讀不到——症狀是不報錯、但每封信都走「沒命中」的 fallback。</div>
+<div class="warn"><strong>三欄請設成「文字」格式</strong>：吳怡萱的暱稱是數字 <code>51</code>，存成數字型態時流程拿到的是數值不是字串。（流程裡已用 <code>string()</code> 包一層防這件事，但設成文字比較保險。）</div>
+
+<h3>可直接貼入的內容（18 列，順序＝表格現有列序）</h3>
+<p>檔案：<code>workingfiles/整理資料/team_member_米米信暱稱欄_2026-08-03.csv</code>（BOM UTF-8）。前三欄只是給你對齊用，實際只要貼<strong>後面三欄</strong>。</p>
+<div class="scroll">
+<table>
+  <tr><th>員工編號</th><th>姓名</th><th>米米信暱稱1</th><th>米米信暱稱2</th><th>米米信暱稱3</th><th>備註</th></tr>
+  <tr><td>MI-001</td><td>林慧修</td><td>慧修</td><td></td><td></td><td></td></tr>
+  <tr><td>MI-005</td><td>蔡宇翔</td><td>宇翔</td><td></td><td></td><td>常與動作黏寫無空格</td></tr>
+  <tr><td>MI-007</td><td>杜建興</td><td>建興</td><td></td><td></td><td></td></tr>
+  <tr><td>MI-098</td><td>郭冠妤</td><td>sunny</td><td></td><td></td><td>大小寫混用，流程已轉小寫比對</td></tr>
+  <tr><td>MI-099</td><td>高儀蘋</td><td>儀蘋</td><td></td><td></td><td></td></tr>
+  <tr><td>MI-126</td><td>林軒</td><td>林軒</td><td></td><td></td><td>唯一用全名者，格式常為 **HHMM林軒</td></tr>
+  <tr><td>MI-138</td><td>黃文郁</td><td>小六</td><td>小6</td><td></td><td>待確認（無單獨自報樣本）</td></tr>
+  <tr><td>MI-146</td><td>塗文鳳</td><td>文鳳</td><td>ivy</td><td></td><td>ivy 待確認</td></tr>
+  <tr><td>MI-150</td><td>林昱丞</td><td>昱丞</td><td></td><td></td><td>常省略自稱直接寫行程，靠寄件者 fallback 接住</td></tr>
+  <tr><td>MI-153</td><td>林寬祐</td><td>阿寬</td><td></td><td></td><td>常用全形冒號</td></tr>
+  <tr><td>MI-156</td><td>林子硯</td><td>布魯克</td><td></td><td></td><td></td></tr>
+  <tr><td>MI-159</td><td>陳宏錡</td><td>宏錡</td><td>宏旗</td><td></td><td>宏旗＝常見錯字</td></tr>
+  <tr><td>MI-163</td><td>吳怡萱</td><td>51</td><td></td><td></td><td>數字暱稱，可能誤中時間字串（10:51、1051），上線後觀察</td></tr>
+  <tr><td>MI-168</td><td>方旭</td><td>ed</td><td>edward</td><td></td><td>涵蓋 Ed／ED／ed；edward 待確認</td></tr>
+  <tr><td>MI-173</td><td>張耀中</td><td>耀中</td><td></td><td></td><td></td></tr>
+  <tr><td>MI-175</td><td>楊睿謙</td><td>ray</td><td></td><td></td><td></td></tr>
+  <tr><td>MI-177</td><td>陳怡惠</td><td>怡惠</td><td></td><td></td><td>常見數字黏寫「怡惠1020到」</td></tr>
+  <tr><td>MI-178</td><td>曾鈺涵</td><td>阿涵</td><td></td><td></td><td></td></tr>
+</table>
+</div>
+
+<p><strong>盛浩偉（浩偉）未列入</strong>：2026-07-03 離職，本來就不在 <code>team_member</code> 裡，之後不會再有他的米米信與清單列。歷史語料的 54 筆不受影響。</p>
+
+<details>
+<summary>為什麼是三個欄，不是一格用分隔符塞多個暱稱</summary>
+<p>Power Automate 的「篩選陣列」條件式裡沒辦法對 <code>split()</code> 出來的陣列做迴圈判斷。一格塞 <code>ed|edward</code> 的話，得再多包一層迴圈逐個暱稱比對——每天約 20 封信 × 18 人再乘暱稱數，迴圈次數會膨脹好幾倍。</p>
+<p>拆成固定三欄就能用單層 <code>or(...)</code> 一次判完，速度跟原本一樣。目前最多的人只用到 2 欄，第 3 欄是餘裕。</p>
+<p>之後有人要加第四個別名，就得多加一欄並改流程的比對式——那時再說。</p>
+</details>
+</div>
+
+<h2 id="sec2">§2　流程改動總表</h2>
+
+<div class="card">
+<div class="ok"><strong>走匯入路線的話，這張表的 15 項套件裡都做好了</strong>，看過就可以直接跳到 §6 測試。以下 §3～§5 是手動改的逐步版。</div>
+<div class="scroll">
+<table>
+  <tr><th>順序</th><th>動作</th><th>狀態</th></tr>
+  <tr><td>1</td><td><code>Compose_清單篩選</code></td><td>不動</td></tr>
+  <tr><td>2</td><td><code>Compose_下界0001</code></td><td>不動</td></tr>
+  <tr><td>3</td><td><code>Compose_上界10</code></td><td>不動</td></tr>
+  <tr><td>4</td><td><code>取得電子郵件_(V3)</code></td><td>不動</td></tr>
+  <tr><td>5</td><td><code>取得事件的行事曆檢視_(V3)</code></td><td><span class="tag edit">改參數</span>（§5 時間尾碼）</td></tr>
+  <tr><td>6</td><td><code>列出資料列_名冊</code>（讀 team_member）</td><td><span class="tag new">新增</span></td></tr>
+  <tr><td>7</td><td><code>初始化_今日狀態表</code></td><td><span class="tag new">新增</span></td></tr>
+  <tr><td>8</td><td><code>篩選_今日米米信</code></td><td><span class="tag new">新增</span></td></tr>
+  <tr><td>9</td><td><code>Apply_to_each_米米信</code>（內含 <code>篩選_本信命中</code>／<code>條件_本信有命中</code>／<code>Apply_to_each_命中人</code>／兩個附加動作）</td><td><span class="tag new">新增</span></td></tr>
+  <tr><td>10</td><td><code>取得清單項目</code></td><td>不動</td></tr>
+  <tr><td>11</td><td><code>套用至每一個</code> → <code>FilterEmails</code></td><td><span class="tag edit">整個換掉</span>，改成 <code>篩選_本列狀態</code></td></tr>
+  <tr><td>12</td><td><code>套用至每一個</code> → <code>FilterEvents</code></td><td>不動</td></tr>
+  <tr><td>13</td><td><code>分支A（請假</code></td><td>不動</td></tr>
+  <tr><td>14</td><td><code>分支B（米米信，需無請假）</code></td><td><span class="tag edit">改條件＋改寫入值</span></td></tr>
+  <tr><td>15</td><td><code>分支C（都沒有，不動）</code></td><td><span class="tag edit">改條件</span></td></tr>
+</table>
+</div>
+<div class="warn"><strong>動作名稱要和你流程裡的實際名稱一字不差</strong>。本指南的運算式引用的名稱取自 2026-08-03 匯出檔；如果你在 Portal 裡把某個動作改過名，運算式裡對應的名字也要一起改。Power Automate 會把動作名稱中的<strong>空格轉成底線</strong>再放進運算式。</div>
+</div>
+
+<h2 id="fix-newactions">§3　新增動作：先建「今日狀態表」</h2>
+
+<h3>3-1　列出資料列_名冊 <span class="tag new">新增</span></h3>
+<div class="card">
+<p>加在 <code>取得事件的行事曆檢視_(V3)</code> 之後。動作＝<strong>Excel Online (Business) → 列出表格中的資料列</strong>。</p>
+<table>
+  <tr><th>欄位</th><th>值</th></tr>
+  <tr><td>動作重新命名為</td><td><code>列出資料列_名冊</code></td></tr>
+  <tr><td>位置</td><td>SharePoint 網站 → <code>PLANNER_CK</code></td></tr>
+  <tr><td>文件庫</td><td>存放 <code>TaskDB.xlsx</code> 的那個文件庫（下拉選）</td></tr>
+  <tr><td>檔案</td><td><code>TaskDB.xlsx</code></td></tr>
+  <tr><td>表格</td><td><code>team_member</code>（GUID <code>{67870985-434E-4538-AC8D-3C6A5B409136}</code>）</td></tr>
+</table>
+<div class="ok">這四個值跟 0945 的 <code>列出表格中的列_名冊</code> 完全一樣，下拉選不到時直接開 0945 對照著選。</div>
+</div>
+
+<h3>3-2　初始化_今日狀態表 <span class="tag new">新增</span></h3>
+<div class="card">
+<p>加在 <code>列出資料列_名冊</code> 之後。動作＝<strong>變數 → 初始化變數</strong>。</p>
+<table>
+  <tr><th>欄位</th><th>值</th></tr>
+  <tr><td>動作重新命名為</td><td><code>初始化_今日狀態表</code></td></tr>
+  <tr><td>名稱</td><td><code>varStatusMap</code></td></tr>
+  <tr><td>類型</td><td><code>陣列</code></td></tr>
+  <tr><td>值</td><td>（留空）</td></tr>
+</table>
+<div class="warn">「初始化變數」<strong>只能放在流程最上層</strong>，不能放進任何迴圈裡，否則存檔會失敗。</div>
+</div>
+
+<h3>3-3　篩選_今日米米信 <span class="tag new">新增</span></h3>
+<div class="card">
+<p>加在 <code>初始化_今日狀態表</code> 之後。動作＝<strong>資料作業 → 篩選陣列</strong>。</p>
+<table>
+  <tr><th>欄位</th><th>值（整段直接貼，已含 <code>@</code>，免點 fx）</th></tr>
+  <tr><td>動作重新命名為</td><td><code>篩選_今日米米信</code></td></tr>
+  <tr><td>來源</td><td><code>@outputs('取得電子郵件_(V3)')?['body/value']</code></td></tr>
+</table>
+<p><strong>where（切到「進階模式」，整段貼）</strong></p>
+<pre><code>@and(
+  startsWith(item()?['subject'], '**'),
+  less(item()?['receivedDateTime'], outputs('Compose_上界10'))
+)</code></pre>
+<details>
+<summary>為什麼要先篩一次</summary>
+<p>原本這兩個條件寫在迴圈裡的 <code>FilterEmails</code> 中，每一列清單都要重算一次。改成解析階段只算一次，後面逐信迴圈拿到的就已經是「今天 10:00 前的米米信」。</p>
+<p><code>Compose_上界10</code> 是既有動作，算的是台北時間今天 10:00 換成 UTC，用來排除 10 點以後才寄的信。</p>
+</details>
+</div>
+
+<h3>3-4　Apply_to_each_米米信 <span class="tag new">新增</span></h3>
+<div class="card">
+<p>加在 <code>篩選_今日米米信</code> 之後。動作＝<strong>控制 → 套用至每一個</strong>。</p>
+<table>
+  <tr><th>欄位</th><th>值（整段直接貼）</th></tr>
+  <tr><td>動作重新命名為</td><td><code>Apply_to_each_米米信</code></td></tr>
+  <tr><td>選取先前步驟的輸出</td><td><code>@body('篩選_今日米米信')</code></td></tr>
+</table>
+
+<h4>迴圈內第 1 個動作：篩選_本信命中</h4>
+<p>動作＝<strong>資料作業 → 篩選陣列</strong>。</p>
+<table>
+  <tr><th>欄位</th><th>值（整段直接貼）</th></tr>
+  <tr><td>動作重新命名為</td><td><code>篩選_本信命中</code></td></tr>
+  <tr><td>來源</td><td><code>@outputs('列出資料列_名冊')?['body/value']</code></td></tr>
+</table>
+<p><strong>where（進階模式，整段貼）</strong></p>
+<pre><code>@or(
+    and(
+      not(empty(trim(string(coalesce(item()?['米米信暱稱1'], ''))))),
+      contains(toLower(items('Apply_to_each_米米信')?['subject']), toLower(trim(string(coalesce(item()?['米米信暱稱1'], '')))))
+    ),
+    and(
+      not(empty(trim(string(coalesce(item()?['米米信暱稱2'], ''))))),
+      contains(toLower(items('Apply_to_each_米米信')?['subject']), toLower(trim(string(coalesce(item()?['米米信暱稱2'], '')))))
+    ),
+    and(
+      not(empty(trim(string(coalesce(item()?['米米信暱稱3'], ''))))),
+      contains(toLower(items('Apply_to_each_米米信')?['subject']), toLower(trim(string(coalesce(item()?['米米信暱稱3'], '')))))
+    )
+)</code></pre>
+<details>
+<summary>這一段在做什麼，以及為什麼那麼多層括號</summary>
+<p>拿這封信的主旨，去名冊 18 列逐列比對「主旨有沒有含這個人的任一暱稱」。結果就是「這封信提到了哪些人」。</p>
+<ul>
+  <li><code>toLower</code>：吃掉 Ed／ED／ed、Sunny／sunny、Ivy／ivy 這類大小寫混用。</li>
+  <li><code>not(empty(...))</code>：<strong>缺這層會全毀</strong>——<code>contains(任何字串, '')</code> 永遠是 true，暱稱 2／3 留空的人會被每一封信都判成命中。</li>
+  <li><code>string(...)</code>：吳怡萱的暱稱 <code>51</code> 若在 Excel 存成數字，<code>toLower</code> 吃數字會出錯。</li>
+  <li><code>coalesce(..., '')</code>：Excel 空儲存格可能回 null，先轉成空字串再判。</li>
+  <li><code>trim(...)</code>：擋掉欄位裡不小心多打的空白。</li>
+</ul>
+<p><code>item()</code> 指的是名冊的當前列，<code>items('Apply_to_each_米米信')</code> 指的是外層迴圈的當前信件——巢狀時外層一定要用迴圈名稱取值，不能用 <code>item()</code>。</p>
+</details>
+
+<h4>迴圈內第 2 個動作：條件_本信有命中</h4>
+<p>動作＝<strong>控制 → 條件</strong>。</p>
+<table>
+  <tr><th>欄位</th><th>值</th></tr>
+  <tr><td>動作重新命名為</td><td><code>條件_本信有命中</code></td></tr>
+  <tr><td>左值（整段直接貼）</td><td><code>@length(body('篩選_本信命中'))</code></td></tr>
+  <tr><td>運算子</td><td>大於</td></tr>
+  <tr><td>右值</td><td><code>0</code></td></tr>
+</table>
+
+<h4>「如果是」分支：Apply_to_each_命中人 → 附加_命中者狀態</h4>
+<p>先加一個 <strong>控制 → 套用至每一個</strong>：</p>
+<table>
+  <tr><th>欄位</th><th>值（整段直接貼）</th></tr>
+  <tr><td>動作重新命名為</td><td><code>Apply_to_each_命中人</code></td></tr>
+  <tr><td>選取先前步驟的輸出</td><td><code>@body('篩選_本信命中')</code></td></tr>
+</table>
+<p>它裡面放 <strong>變數 → 附加至陣列變數</strong>：</p>
+<table>
+  <tr><th>欄位</th><th>值</th></tr>
+  <tr><td>動作重新命名為</td><td><code>附加_命中者狀態</code></td></tr>
+  <tr><td>名稱</td><td><code>varStatusMap</code></td></tr>
+</table>
+<p><strong>值（整段直接貼，已含 <code>@</code>）</strong></p>
+<pre><code>@setProperty(
+  setProperty(json('{}'), 'email', toLower(items('Apply_to_each_命中人')?['Email'])),
+  'subject', items('Apply_to_each_米米信')?['subject']
+)</code></pre>
+
+<h4>「如果否」分支：附加_寄件者狀態</h4>
+<p>動作＝<strong>變數 → 附加至陣列變數</strong>。</p>
+<table>
+  <tr><th>欄位</th><th>值</th></tr>
+  <tr><td>動作重新命名為</td><td><code>附加_寄件者狀態</code></td></tr>
+  <tr><td>名稱</td><td><code>varStatusMap</code></td></tr>
+</table>
+<p><strong>值（整段直接貼，已含 <code>@</code>）</strong></p>
+<pre><code>@setProperty(
+  setProperty(json('{}'), 'email', toLower(items('Apply_to_each_米米信')?['from'])),
+  'subject', items('Apply_to_each_米米信')?['subject']
+)</code></pre>
+
+<div class="warn"><strong>（未驗證）</strong> <code>setProperty</code> 是標準運算式函式，但尚未在這個租戶實跑過。若存檔時報函式不存在，改用下面這個備援寫法（先把主旨裡的雙引號清掉再拼 JSON）：
+<pre><code>@json(concat('{"email":"', toLower(items('Apply_to_each_命中人')?['Email']), '","subject":"', replace(items('Apply_to_each_米米信')?['subject'], '"', ''), '"}'))</code></pre>
+備援版的「附加_寄件者狀態」把第一個 <code>toLower(...)</code> 換成 <code>toLower(items('Apply_to_each_米米信')?['from'])</code>。</div>
+
+<details>
+<summary>為什麼寄件者要放在「否」分支，而不是每次都加</summary>
+<p>PO 定的規則二：寄件者沒被寫在主旨裡就不填他自己。黃文郁代發、主旨只寫「慧修」時，只更新林慧修，黃文郁那列維持空白。</p>
+<p>如果主旨有寫到寄件者自己（例如 <code>**小六慧修怡惠去新竹開會</code>），他會在「是」分支被對照表比中，一樣會拿到狀態，不會漏。</p>
+</details>
+</div>
+
+<h3 id="fix-parallel">3-5　兩個新迴圈都要關閉並行 <span class="tag edit">必做</span></h3>
+<div class="card">
+<table>
+  <tr><th>動作</th><th>設定</th></tr>
+  <tr><td><code>Apply_to_each_米米信</code></td><td>右上「⋯」→ 設定 → <strong>並行控制：開啟</strong> → 平行處理degree <code>1</code></td></tr>
+  <tr><td><code>Apply_to_each_命中人</code></td><td>右上「⋯」→ 設定 → <strong>並行控制：開啟</strong> → 平行處理degree <code>1</code></td></tr>
+</table>
+<div class="del"><strong>不關並行會靜默掉資料</strong>：兩個迴圈都在對同一個陣列變數 <code>varStatusMap</code> 附加值，並行執行時多個分支同時寫，後寫的會蓋掉先寫的，症狀是「有些人有拿到狀態、有些人沒有，而且每次跑結果不一樣」——最難查的那種 bug。</div>
+</div>
+
+<h2 id="fix-loop">§4　清單迴圈內的改動</h2>
+
+<h3>4-1　FilterEmails 整個換成 篩選_本列狀態 <span class="tag edit">取代</span></h3>
+<div class="card">
+<p>在 <code>套用至每一個</code> 裡刪掉 <code>FilterEmails</code>，改新增一個 <strong>資料作業 → 篩選陣列</strong>，放在 <code>FilterEvents</code> 之前。</p>
+<table>
+  <tr><th>欄位</th><th>值（整段直接貼）</th></tr>
+  <tr><td>動作重新命名為</td><td><code>篩選_本列狀態</code></td></tr>
+  <tr><td>來源</td><td><code>@variables('varStatusMap')</code></td></tr>
+</table>
+<p><strong>where（進階模式，整段貼）</strong></p>
+<pre><code>@equals(
+  item()?['email'],
+  toLower(items('套用至每一個')?['field_3'])
+)</code></pre>
+<div class="warn">刪掉 <code>FilterEmails</code> 之後，<code>FilterEvents</code> 的「執行後」設定可能會斷。刪完先確認 <code>FilterEvents</code> 接在 <code>篩選_本列狀態</code> 之後（右上「⋯」→ 設定執行後 → 勾 <code>篩選_本列狀態</code> 成功）。</div>
+</div>
+
+<h3>4-2　分支B（米米信，需無請假）<span class="tag edit">改條件＋改值</span></h3>
+<div class="card">
+<p><strong>條件（兩列，用「且」）</strong></p>
+<table>
+  <tr><th>列</th><th>左值（整段直接貼）</th><th>運算子</th><th>右值</th></tr>
+  <tr><td>1</td><td><code>@length(body('FilterEvents'))</code></td><td>等於</td><td><code>0</code></td></tr>
+  <tr><td>2</td><td><code>@length(body('篩選_本列狀態'))</code></td><td>大於</td><td><code>0</code></td></tr>
+</table>
+<p><strong>「如果是」分支裡的 <code>更新項目_1</code>（SharePoint → 更新項目）</strong></p>
+<table>
+  <tr><th>欄位</th><th>值（整段直接貼）</th></tr>
+  <tr><td>網站位址</td><td><code>https://techartgroup.sharepoint.com/sites/PLANNER_CK</code></td></tr>
+  <tr><td>清單名稱</td><td>AttendanceHistory（表格 GUID <code>9bd1cdf3-4d38-49d3-ab8f-51c7448455bc</code>）</td></tr>
+  <tr><td>識別碼</td><td><code>@items('套用至每一個')?['ID']</code></td></tr>
+  <tr><td>Title</td><td><code>@items('套用至每一個')?['Title']</code></td></tr>
+  <tr><td><strong>實際出勤狀態（field_8）</strong></td><td><code>@first(body('篩選_本列狀態'))?['subject']</code></td></tr>
+</table>
+<details>
+<summary>同一人當天有兩封米米信時會用哪一封</summary>
+<p><code>first()</code> 取陣列第一筆。<code>取得電子郵件_(V3)</code> 預設回傳順序是<strong>收信時間由新到舊</strong>，所以第一筆＝最新的一封。這點<strong>（未驗證）</strong>，測試時如果發現寫進去的是早上第一封而不是最後一封，把 <code>first</code> 改成 <code>last</code> 即可。</p>
+</details>
+</div>
+
+<h3>4-3　分支C（都沒有，不動）<span class="tag edit">改條件</span></h3>
+<div class="card">
+<p><strong>條件（兩列，用「且」）</strong></p>
+<table>
+  <tr><th>列</th><th>左值（整段直接貼）</th><th>運算子</th><th>右值</th></tr>
+  <tr><td>1</td><td><code>@length(body('FilterEvents'))</code></td><td>等於</td><td><code>0</code></td></tr>
+  <tr><td>2</td><td><code>@length(body('篩選_本列狀態'))</code></td><td>等於</td><td><code>0</code></td></tr>
+</table>
+<p>分支內不放動作（保留位，未來要寫「未回報」預設值放這裡）。</p>
+</div>
+
+<h3>4-4　分支A（請假）不動</h3>
+<div class="card">
+<p>條件維持 <code>@length(body('FilterEvents'))</code> 大於 <code>0</code>，寫入值維持 <code>@first(body('FilterEvents'))?['subject']</code>。請假優先於米米信的規則不變。</p>
+</div>
+
+<h2 id="fix-calendar">§5　順帶必改：行事曆視窗尾碼 +08:00 → Z <span class="tag edit">改參數</span></h2>
+
+<div class="card">
+<p>動作＝<code>取得事件的行事曆檢視_(V3)</code>。</p>
+<table>
+  <tr><th>欄位</th><th>改成（整段直接貼）</th></tr>
+  <tr><td>開始時間</td><td><code>@concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T00:00:00Z')</code></td></tr>
+  <tr><td>結束時間</td><td><code>@concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T23:59:59Z')</code></td></tr>
+</table>
+<div class="warn"><strong>這是 2026-08-03 讀匯出檔才發現的</strong>：現況兩個參數的尾碼是 <code>+08:00</code>（<code>T00:01:00+08:00</code>／<code>T23:59:59+08:00</code>），與 2026-07-07 記錄「已改成 <code>Z</code>」不符。可能後來被改回，或當時只改到別支流程。<strong>請先確認一次現況再改。</strong></div>
+<details>
+<summary>為什麼尾碼會影響到抓錯天</summary>
+<p>這個行事曆的全天事件（請假）一律用 <strong>UTC 午夜</strong>當邊界：昨天的單日全天假在系統裡是「昨天 00:00Z 到今天 00:00Z」。</p>
+<p>用 <code>+08:00</code> 尾碼時，查詢視窗是「台北今天 00:01 到 23:59」換算成 UTC＝「昨天 16:01Z 到今天 15:59Z」，跟昨天那筆假重疊了 8 小時，於是查今天卻撈到昨天的假。</p>
+<p>改成 <code>Z</code> 之後，視窗是「今天 00:00Z 到 23:59Z」，跟昨天那筆假（結束於今天 00:00Z）剛好不重疊；跨日的長假因為 UTC 邊界本來就橫跨好幾天，一樣抓得到。</p>
+<p><strong>這是這個行事曆專屬的修法</strong>，不是「時區一律用 Z」的通則——換一個全天事件錨定當地時區的行事曆，照抄會錯。</p>
+</details>
+</div>
+
+<h2 id="fix-test">§6　測試與驗收</h2>
+
+<div class="card">
+<p>存檔後用<strong>手動執行</strong>（測試 → 手動 → 執行流程），挑一個有代發米米信的日子驗。四個案例都要過：</p>
+<table>
+  <tr><th>#</th><th>案例</th><th>驗收條件</th></tr>
+  <tr>
+    <td>1</td><td><strong>一般自報</strong><br><code>**Ed 今日異地辦公</code></td>
+    <td>方旭當天<strong>所有</strong>清單列的實際出勤狀態都＝完整主旨</td>
+  </tr>
+  <tr>
+    <td>2</td><td><strong>代發多人</strong><br><code>**建興 宏旗 Ray Ed去新竹拍攝</code></td>
+    <td>杜建興、陳宏錡（靠錯字「宏旗」命中）、楊睿謙、方旭<strong>四個人</strong>當天所有列都寫進同一句主旨</td>
+  </tr>
+  <tr>
+    <td>3</td><td><strong>代發但寄件者沒寫自己</strong><br>黃文郁寄 <code>**慧修10:30進公司，後補假卡</code></td>
+    <td>只有林慧修被寫入；<strong>黃文郁自己那幾列維持原樣</strong></td>
+  </tr>
+  <tr>
+    <td>4</td><td><strong>主旨沒有人名</strong><br>林昱丞寄 <code>**去陽明山定檢</code></td>
+    <td>退回用寄件者對應，林昱丞當天所有列被寫入</td>
+  </tr>
+  <tr>
+    <td>5</td><td><strong>請假優先</strong></td>
+    <td>當天有請假事件的人，實際出勤狀態＝<strong>請假事件主旨</strong>，不會被米米信蓋掉</td>
+  </tr>
+</table>
+
+<h3>執行後怎麼看是不是對的</h3>
+<ol>
+  <li>展開 <code>Apply_to_each_米米信</code> 最後一輪 → 看 <code>varStatusMap</code> 的輸出，應該是一串 <code>{"email":"...","subject":"..."}</code>，人數對得上主旨裡提到的人。</li>
+  <li>展開任一輪 <code>篩選_本信命中</code> 的輸出，確認命中的列是預期的那幾個人（代發那封應該有 2 筆以上）。</li>
+  <li>回 SharePoint 清單，用檢視依 Title 遞減排序看當天的列，逐一核對實際出勤狀態欄。</li>
+</ol>
+</div>
+
+<h2 id="sec7">§7　已知風險與限制</h2>
+
+<div class="card">
+<table>
+  <tr><th>風險</th><th>說明</th><th>怎麼辦</th></tr>
+  <tr>
+    <td><strong>暱稱「51」可能誤中時間字串</strong></td>
+    <td>吳怡萱的暱稱是數字 <code>51</code>，主旨若出現 <code>10:51</code>／<code>1051</code> 會被誤判成提到她。<code>contains</code> 做不到「前後不可接數字」這種邊界判斷。</td>
+    <td>上線後觀察一週；真的誤中就把她的 <code>米米信暱稱1</code> 改成 <code>**51</code>（限定出現在主旨開頭），代價是別人代發寫「… 51 …」時會漏掉她。或請她改用非數字暱稱。</td>
+  </tr>
+  <tr>
+    <td><strong>短英文暱稱 <code>ed</code> 可能誤中</strong></td>
+    <td>轉小寫比對後，主旨若含英文單字帶 <code>ed</code>（如 Wednesday、Red）會誤中方旭。米米信主旨以中文為主，機率低但不是零。</td>
+    <td>同上，上線後觀察。誤中的話把方旭的 <code>米米信暱稱1</code> 清空、只留 <code>edward</code>，並請他固定寫 <code>Edward</code>。</td>
+  </tr>
+  <tr>
+    <td><strong>4 個暱稱屬推測</strong></td>
+    <td><code>ivy</code>→塗文鳳、<code>小六</code>→黃文郁、<code>宏旗</code>→陳宏錡、<code>edward</code>→方旭，都沒有本人單獨自報的樣本，是從代發主旨的共現關係推出來的。</td>
+    <td>請當事人確認。錯了就改 team_member 那一格，流程不用動。</td>
+  </tr>
+  <tr>
+    <td><strong>1010 流程沒有一起改</strong></td>
+    <td>1010 是第二次掃米米信，架構與 1000 相同。<strong>如果它仍是舊的「只認寄件者」邏輯，會把 1000 剛 fan-out 出去的結果覆蓋掉一部分</strong>。</td>
+    <td>1000 驗收通過後，用同一套改法改 1010（匯出檔已在 <code>informaiton/1010_清單__第二次米米信行程通知寫入清單_20260803084034.zip</code>）。</td>
+  </tr>
+  <tr>
+    <td><strong>新同事沒填暱稱欄就沒人會發現</strong></td>
+    <td>名冊有這個人但三個暱稱欄都空白時，他的米米信只會靠 fallback 寫給寄件者本人；別人代發提到他就完全漏掉，流程照樣顯示成功。名冊完全沒這個人時，0945 也會一起漏寄他的延遲通知。</td>
+    <td>與 0945「名冊缺漏告警」現在是<strong>同一張表</strong>的問題，一起設計告警：清單有列但名冊查無此人 → 寄告警信。</td>
+  </tr>
+</table>
+</div>
+
+<h2 id="sec8">§8　這次沒有動的部分</h2>
+<div class="card">
+<ul>
+  <li><code>取得電子郵件_(V3)</code> 的資料夾（<code>**信</code>）、<code>searchQuery</code>、<code>top: 100</code> 都不變。</li>
+  <li><code>FilterEvents</code> 的請假判定條件不變（姓名比對＋「含 10:00 或全天或跨日超過 1 天」三選一）。</li>
+  <li><code>取得清單項目</code> 的篩選（<code>startswith(Title,'yyyyMMdd_')</code>）、<code>$top: 5000</code>、分頁 5000 都不變。</li>
+  <li>觸發器 Recurrence（週一~五 10:00，台北時區）不變。</li>
+</ul>
+</div>
+
+</div>
+
+<script>
+(function(){
+  var KEY='todo1000nickname_v1';
+  var items=[].slice.call(document.querySelectorAll('#todo .it'));
+  function save(){var s={};items.forEach(function(it){s[it.dataset.k]=it.querySelector('input').checked;});try{localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}}
+  function load(){var s={};try{s=JSON.parse(localStorage.getItem(KEY)||'{}');}catch(e){}items.forEach(function(it){var on=!!s[it.dataset.k];it.querySelector('input').checked=on;it.classList.toggle('done',on);});}
+  function prog(){var done=items.filter(function(it){return it.querySelector('input').checked;}).length;var pg=document.getElementById('todoPg');pg.textContent=(done===items.length?'✅ ':'')+done+'/'+items.length;pg.classList.toggle('alldone',done===items.length);}
+  window.todoCheck=function(cb){cb.closest('.it').classList.toggle('done',cb.checked);save();prog();};
+  window.todoGo=function(id){var el=document.getElementById(id);if(!el)return;el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');};
+  window.todoToggle=function(){var t=document.getElementById('todo');t.classList.toggle('collapsed');document.getElementById('todoCv').textContent=t.classList.contains('collapsed')?'▲':'▼';};
+  window.todoReset=function(){items.forEach(function(it){it.querySelector('input').checked=false;it.classList.remove('done');});save();prog();};
+  load();prog();
+})();
+</script>
+</body>
+</html>

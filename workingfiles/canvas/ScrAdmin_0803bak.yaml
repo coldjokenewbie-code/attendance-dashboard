@@ -1,40 +1,3 @@
-# 基準：2026-08-03 使用者從 Studio 匯出的現用版本（ScrAdmin_0803bak.yaml），已含 07-31 的 Wrap/Tooltip 截斷修法。
-#
-# 手動畫面屬性（Studio 內手動設，此檔貼不出這段，貼上後必補）：
-#   Screen.OnVisible =
-#     Set(gToday, Text(Today(), "yyyy/mm/dd"));
-#     UpdateContext({locIsAdmin: Trim(Coalesce(LookUp(team_member, Lower(Email) = Lower(User().Email), '出勤存取權限'), "")) = "行政管理"});
-#     ClearCollect(colToday, Filter(AttendanceHistory, 日期 = gToday))
-# 用法：畫布全選現有控件 → 刪除 → 貼上本檔（Cmd/Ctrl+V）→ 補回 OnVisible。
-#
-# ── 2026-08-03 本次改動：新增「Planner 狀態」欄 + 需追蹤列紅字 ──────────────
-# ① galPeople.Items 的 AddColumns 新增四個計算欄：
-#      HasTask      今天是否有延遲工作列
-#      HasPlanStat  Planner 狀態欄是否已被巡檢流程寫入（用來區分「已更新」與「還沒巡檢」——
-#                   欄位剛建立時值全空，若不判斷會整頁誤顯示「已更新」）
-#      PlanDelay    今天任一延遲工作列的 Planner 狀態為「延遲」
-#      NeedFollow   ★需人工追蹤★＝PlanDelay 為真，且該筆回覆為 1./5./未回覆
-#    NeedLeaveCard 的比對由全文改為前綴 "3."（選項文字 08-03 由「請填寫假卡」改為「待填寫假卡」，
-#    全文比對會靜默失效；前綴比對日後再改字也不會壞）。
-# ② 表頭與資料列各加一欄「Planner狀態」，「今日延遲工作｜同事回覆」欄寬 0.465 → 0.375 讓出位置。
-# ③ 整列（編號／同事／出勤狀態／回覆內容）文字色改由 NeedFollow 驅動：需追蹤＝紅字。
-#    原本由 NeedLeaveCard（勾 3 待填假卡）驅動的紅字已移除，避免兩種紅字並存無法區分；
-#    NeedLeaveCard 欄位保留在資料層供日後使用。
-# ④ Planner狀態欄自身配色：需追蹤＝紅／延遲但已說明（勾 2、3、4）＝橘／已更新＝綠／今日無延遲工作＝灰。
-# ⑤ txtNote（行政自訂輸入框）提示文字：HintText「自訂」→「自訂／未早加班打 @@」，
-#    並加 Tooltip 說明完整規則。@@ 是少數事件（至 2026-08-04 尚未發生過），不做下拉選項，只做提示。
-#    背景：1030 週報的「未早加班」件數只採計 field_8 以 @@ 開頭的列（PO 2026-08-04 定案，口徑 1），
-#    行政沒填就不會計入。流程端的判定已含全形／半形／空格容錯，行政打 ＠＠ 或中間有空格都認得。
-#
-# ⚠ 欄位名稱：App 端的 SharePoint 欄位用「顯示名」，流程端用「內部名」（PlannerStatus），兩者不同層。
-#    本檔公式一律寫 'Planner狀態'（顯示名）。若 Studio 報「名稱無效」，代表該欄顯示名仍是英文，
-#    把本檔中全部 'Planner狀態' 換成 PlannerStatus（不加單引號）即可。
-#
-# 2026-07-31 既有改動（長文字跨列重疊，已上線）：
-#   列高寫死 (Parent.Height - 116) / 25、Label 的 Height 等於列高，文字換行即溢出到相鄰列。
-#   修法＝lblReply 分隔符改全形「／」串成一行 + Wrap: =false + Tooltip 保留多行全文；
-#   lblStatusView 同樣 Wrap: =false + Tooltip。代價：行政頁只能桌機用（手機沒有滑鼠停留）。
-
 - conHeaderA:
     Control: GroupContainer@1.5.0
     Variant: ManualLayout
@@ -61,7 +24,7 @@
             Color: =RGBA(156, 163, 175, 1)
             Height: =33
             Size: =12
-            Text: ="出勤狀態欄藍字＝已確認存檔；整列紅字＝卡片仍延遲且同事回覆 1／5／未回覆，需人工追蹤；資料未更新按右上重新整理"
+            Text: ="出勤狀態欄藍字＝已確認存檔；在右側行政人員輸入選下拉或打字即寫入；資料未更新按右上重新整理"
             Width: =902
             X: =16
             Y: =50
@@ -148,19 +111,8 @@
             Height: =20
             Size: =11
             Text: ="今日延遲工作｜同事回覆"
-            Width: =Parent.Width * 0.375
+            Width: =Parent.Width * 0.465
             X: =Parent.Width * 0.525
-            Y: =7
-      - lblColPlan:
-          Control: Label@2.5.1
-          Properties:
-            Color: =RGBA(107, 114, 128, 1)
-            FontWeight: =FontWeight.Semibold
-            Height: =20
-            Size: =11
-            Text: ="Planner狀態"
-            Width: =Parent.Width * 0.09
-            X: =Parent.Width * 0.905
             Y: =7
       - recColLine:
           Control: Rectangle@2.3.0
@@ -194,31 +146,7 @@
                     CurStatus,
                     LookUp(colToday, Email = tm.Email).實際出勤狀態,
                     NeedLeaveCard,
-                    CountRows(Filter(colToday, Email = tm.Email && StartsWith(表單回覆, "3."))) > 0,
-                    HasTask,
-                    CountRows(Filter(colToday, Email = tm.Email && 任務名稱 <> Blank())) > 0,
-                    HasPlanStat,
-                    CountRows(
-                        Filter(
-                            colToday,
-                            Email = tm.Email && 任務名稱 <> Blank() && !IsBlank('Planner狀態')
-                        )
-                    ) > 0,
-                    PlanDelay,
-                    CountRows(
-                        Filter(
-                            colToday,
-                            Email = tm.Email && 任務名稱 <> Blank() && 'Planner狀態' = "延遲"
-                        )
-                    ) > 0,
-                    NeedFollow,
-                    CountRows(
-                        Filter(
-                            colToday,
-                            Email = tm.Email && 任務名稱 <> Blank() && 'Planner狀態' = "延遲"
-                                && (StartsWith(表單回覆, "1.") || StartsWith(表單回覆, "5.") || IsBlank(表單回覆))
-                        )
-                    ) > 0
+                    CountRows(Filter(colToday, Email = tm.Email && StartsWith(表單回覆, "3. 延遲（09:30沒到公司，請填寫假卡）"))) > 0
                 )
             },
             ForAll(
@@ -248,7 +176,7 @@
       - lblNo:
           Control: Label@2.5.1
           Properties:
-            Color: =If(ThisItem.NeedFollow, RGBA(220, 38, 38, 1), RGBA(107, 114, 128, 1))
+            Color: =RGBA(107, 114, 128, 1)
             Height: =Parent.TemplateHeight
             Size: =6
             Text: =ThisItem.員工編號
@@ -257,7 +185,7 @@
       - lblName:
           Control: Label@2.5.1
           Properties:
-            Color: =If(ThisItem.NeedFollow, RGBA(220, 38, 38, 1), RGBA(31, 41, 55, 1))
+            Color: =If(ThisItem.NeedLeaveCard, RGBA(220, 38, 38, 1), RGBA(31, 41, 55, 1))
             FontWeight: =FontWeight.Semibold
             Height: =Parent.TemplateHeight
             Size: =10
@@ -267,12 +195,7 @@
       - lblStatusView:
           Control: Label@2.5.1
           Properties:
-            Color: |-
-              =If(
-                  ThisItem.NeedFollow,
-                  RGBA(220, 38, 38, 1),
-                  If(!IsBlank(ThisItem.CurStatus) && ThisItem.CurStatus <> "（待確認）", RGBA(37, 99, 235, 1), RGBA(203, 213, 225, 1))
-              )
+            Color: =If(!IsBlank(ThisItem.CurStatus) && ThisItem.CurStatus <> "（待確認）", RGBA(37, 99, 235, 1), RGBA(203, 213, 225, 1))
             FontWeight: =If(!IsBlank(ThisItem.CurStatus) && ThisItem.CurStatus <> "（待確認）", FontWeight.Bold, FontWeight.Normal)
             Height: =Parent.TemplateHeight
             Size: =10
@@ -323,7 +246,7 @@
                   ""
               )
             Height: =Max(Parent.TemplateHeight - 6, 18)
-            HintText: ="自訂／未早加班打 @@"
+            HintText: ="自訂"
             OnChange: |-
               =If(
                   !IsBlank(Self.Text)
@@ -340,18 +263,13 @@
                   )
               )
             Size: =10
-            Tooltip: |-
-              ="一般狀況直接打字即可。" & Char(10) &
-               "若為「工作延遲、且未於 09:30 到公司早加班」，請以 @@ 開頭，例：" & Char(10) &
-               "　@@未早加班，已補請假" & Char(10) &
-               "（週報的未早加班件數只採計 @@ 註記，沒填就不會計入）"
             Width: =Parent.TemplateWidth * 0.10
             X: =Parent.TemplateWidth * 0.415
             Y: =3
       - lblReply:
           Control: Label@2.5.1
           Properties:
-            Color: =If(ThisItem.NeedFollow, RGBA(220, 38, 38, 1), RGBA(75, 85, 99, 1))
+            Color: =If(ThisItem.NeedLeaveCard, RGBA(220, 38, 38, 1), RGBA(75, 85, 99, 1))
             Height: =Parent.TemplateHeight
             Size: =10
             Text: |-
@@ -372,51 +290,9 @@
                       Concat(d, "・" & If(IsBlank(方案名稱), "", 方案名稱 & "｜") & 任務名稱 & "：" & If(IsBlank(表單回覆), "（未回覆）", 表單回覆), Char(10))
                   )
               )
-            Width: =Parent.TemplateWidth * 0.375
+            Width: =Parent.TemplateWidth * 0.465
             Wrap: =false
             X: =Parent.TemplateWidth * 0.525
-      - lblPlanStat:
-          Control: Label@2.5.1
-          Properties:
-            Color: |-
-              =If(
-                  ThisItem.NeedFollow,
-                  RGBA(220, 38, 38, 1),
-                  If(
-                      ThisItem.PlanDelay,
-                      RGBA(217, 119, 6, 1),
-                      If(
-                          ThisItem.HasTask && ThisItem.HasPlanStat,
-                          RGBA(22, 101, 52, 1),
-                          RGBA(203, 213, 225, 1)
-                      )
-                  )
-              )
-            FontWeight: =If(ThisItem.NeedFollow, FontWeight.Bold, FontWeight.Normal)
-            Height: =Parent.TemplateHeight
-            Size: =10
-            Text: |-
-              =If(
-                  !ThisItem.HasTask,
-                  "—",
-                  If(
-                      ThisItem.PlanDelay,
-                      "延遲",
-                      If(ThisItem.HasPlanStat, "已更新", "未巡檢")
-                  )
-              )
-            Tooltip: |-
-              =With(
-                  {d: Filter(colToday, Email = ThisItem.Email && 任務名稱 <> Blank())},
-                  If(
-                      CountRows(d) = 0,
-                      "（今日無延遲工作）",
-                      Concat(d, "・" & 任務名稱 & "：" & If(IsBlank('Planner狀態'), "（尚未巡檢）", 'Planner狀態'), Char(10))
-                  )
-              )
-            Width: =Parent.TemplateWidth * 0.09
-            Wrap: =false
-            X: =Parent.TemplateWidth * 0.905
 - conNoAccess:
     Control: GroupContainer@1.5.0
     Variant: ManualLayout

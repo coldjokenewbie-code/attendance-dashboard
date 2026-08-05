@@ -1,0 +1,24 @@
+# TaskLog 2026-07-08｜行政頁標題日期凍結排查＋延遲工作欄位擴充
+
+> todo 真相源。當日主題：ScrAdmin `lblTitleA` 日期卡死排查、欄位「工作時程狀態｜同事回覆」改「今日延遲工作｜同事回覆」並補方案名稱。
+
+## 今日完成
+- **排查「行政查核標題日期卡在 7/6 不會動」**：使用者貼出 Studio 目前 `lblTitleA.Text` 為寫死字串 `="出勤查核　2026/07/06"`。比對 repo 內 `workingfiles/canvas/ScrAdmin_table.pa.yaml` 該控件本來就是動態公式 `="行政出勤查核　" & Text(Today(), "yyyy/mm/dd")`，確認 repo 檔案本身無誤，是 Studio 端該屬性被人手動貼成純文字覆蓋掉公式，不是程式邏輯 bug。已指示使用者回 Studio 選取該控件、把 `Text` 屬性換回公式即可修復。
+- **使用者回貼修過的匯出檔 `workingfiles/canvas/scradmin0708_原始匯出.yml`**：發現該匯出檔內實際存在**兩組完全重複的控件樹**（`conHeaderA/conColHead/galPeople` 與 `conHeaderA_1/conColHead_1/galPeople_1`），座標完全重疊（皆從 Y=0 起）；舊的一組標題仍是寫死 `2026/07/06`，新的一組（`_1`）才是已修好的動態公式版本，與使用者截圖顯示的畫面（標題 `2026/07/08`）相符。已提醒使用者這代表 Studio 畫布上可能疊了一份沒用到的舊控件，建議確認後刪除舊的一組，避免日後誤編輯到底下這份死掉的控件。
+- **欄位需求變更（於 `scradmin0708_原始匯出.yml` 兩組控件同步套用）**：
+  - 欄位標題 `lblColReply`/`lblColReply_1`：`"工作時程狀態｜同事回覆"` → `"今日延遲工作｜同事回覆"`。
+  - 內容公式 `lblReply`/`lblReply_1`：原本只串 `任務名稱 & 表單回覆` 兩者，新增 `方案名稱`（AttendanceHistory 既有欄位，語意見 handover 第53行），格式改為 `方案名稱｜任務名稱：回覆內容`，`方案名稱` 為空時自動略過不留空段，不影響既有 `任務名稱 <> Blank()` 的過濾條件與「（今日無延遲工作）」/「（未回覆）」占位邏輯。
+
+## 待辦
+- [ ] 使用者需在 Power Apps Studio 內實際套用 `scradmin0708_原始匯出.yml` 的新欄位標題與內容公式（貼入現有控件或整段覆蓋皆可）。
+- [ ] 確認並清除 Studio 畫布上重複的舊控件組（不帶 `_1` 後綴、標題仍寫死 `2026/07/06` 的那一組）。
+- [ ] 沿用 `TaskLog_2026-07-06_個人行政拆分與請假整合.md` 既有未結待辦：ScrToday／ScrAdmin 兩份 yaml 實測、A 案暫緩等，尚未在本次 session 內處理。
+
+## 未提交
+- 新增未追蹤檔 `workingfiles/canvas/scradmin0708_原始匯出.yml`（本 session 內編輯過），待 merge-main 一併提交。
+
+## 📥 語音待辦
+- [ ] 清單內容備份到excel（語音 2026-07-08・來源 Clippings/工作 雜項.md）
+- [ ] 10點傳line到小工群組（語音 2026-07-08・來源 Clippings/工作 雜項.md）
+- [ ] 移除聯絡人line通知（語音 2026-07-08・來源 Clippings/工作 雜項.md）
+- [ ] 做一個管理後台（語音 2026-07-08・來源 Clippings/工作 雜項.md）

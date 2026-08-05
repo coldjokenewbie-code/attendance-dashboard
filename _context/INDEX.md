@@ -1,63 +1,46 @@
 # 出勤專案 — 現況總覽 (INDEX)
-> 進場先讀。最後更新：2026-07-31
-
-## ✅ 跨機接續：Windows 端 worktree 已重建（2026-06-24 [Claude@Win] 完成）
-> 三資料夾並列佈局已在 DESKTOP-7SF21LR 重建完成，與 Mac 一致：
-> - `E:\Git_work\attendance-dashboard` → `main`
-> - `E:\Git_work\attendance-0945` → `flow-0945`
-> - `E:\Git_work\attendance-0955` → `flow-0955`
->
-> 跨機紀律：每次換機前先在當前機 `commit + push`；worktree 資料夾本身不會同步，只有已提交的 commit 會過去。
+> 進場先讀。最後更新：2026-08-03 [Claude@Mac]
 
 ## 一句話目標
-MS365 Power Apps 員工出勤儀表板；先重作模組一 Popup MVP，讓員工查看今日出勤查核並回寫 `表單回覆`。
+MS365 Power Apps 員工出勤查核系統：Planner 延遲工作 → SharePoint 清單 → 同事自助回覆 ＋ 行政查核 → 歷史備份。
 
-## 系統資料流（端到端）
-```
-① Power Automate 每日 09:30：查 Planner 延遲工作 → 通知行政 → Line 通知員工   ［自動］
-② 行政人工核對 → 填寬格式 Excel（橫向：每人一列／每日一欄）                  ［人工，本質工作］
-③ Office Scripts 寬轉長 → 寫入 SharePoint List AttendanceHistory            ［⚠ 自動化未完成，行政人工暫代］
-④ SharePoint List：AttendanceHistory（單一真相源，每任務一列）
-⑤ Power Apps Canvas App（模組一：今日查核 Gallery + Popup + Patch 回寫 表單回覆）
-⑥ 嵌入 SharePoint 頁面，員工瀏覽器自助查看／填寫                            ［未做］
-```
-- ①②③＝上游（產資料塞進 List）；④中樞；⑤⑥下游（員工自助介面）。
-- ①「09:30 / Planner / Line」為 2026-06-14 使用者口述補錄，先前文件未記；其餘與 handover 第二節一致。
+## 公司出勤規定（2026-08-03 使用者口述，系統所有判定的依據）
+- **一般日**：規定 **10:00 到公司**，但**可以稍晚、也可以在其他地方工作**——唯一義務是**發米米信（主旨以 `**` 開頭的信件）通知公司**。所以「10:00 沒進辦公室」本身不是異常，「沒發米米信」才是。
+- **有 Planner 工作延遲時**：該同事**必須提早於 09:30 到公司早加班，不可彈性遠端**。
+  - 唯一例外：當天 09:30 已在參與公司其他**正式公出事項**。
+- 兩軸不可混為一談：`field_7 表單回覆`＝延遲工作的處置（09:30 早加班軸）；`field_8 實際出勤狀態`＝米米信／請假（10:00 到勤軸）。
 
-## 目前狀態 / 進度
-- 三方討論後決議：重作 Canvas App，不修舊 App。
-- **✅ 模組一 MVP 完成**（2026-06-15 使用者確認）：響應式（手機優先）＋回覆改 4 選項單選，Gallery／Popup／回寫 `表單回覆` 實機驗證通過。已結案歸檔。
-  - `workingfiles/canvas/ScrToday_paste.pa.yaml`（畫面原始碼）
-  - `workingfiles/canvas/匯入指南.html`、`變更_回覆改單選.html`
-  - 結案紀錄：`_context/archive/ClosedTaskLog_2026-06-13_module1-canvas-yaml.md`
-- **模組一介面更新（2026-06-24 [Claude@Win]）**：行政頁重作成表格版＋自動存（`workingfiles/canvas/ScrAdmin_table.pa.yaml`）；ScrAdmin／ScrToday 統一簡約淺色風格。**待 PO 實機驗收**。
-- **最新工作紀錄**：`_context/TaskLog_2026-07-28_ScrToday委派上限.md`（含 07-31 交接段）。五個症狀：①ScrToday 抓不到今日資料＝`任務名稱 <> Blank()` 不可委派→退回本機只取前 500 列（**✅ 巢狀 Filter 治本已上線**）；②同事手機打不開＝LINE 內建瀏覽器（推測，待回報）；③Popup 文字被裁、④Gallery 卡片文字被裁＝Label 固定 Height（**✅ 改 AutoHeight 串接已上線**）；⑤ScrAdmin 長文字跨列重疊＝列高寫死＋`Char(10)` 多行溢出（改 `Wrap:=false`＋`Tooltip`）。**⚠ 下一步（最優先）：`ScrAdmin_權限閘_paste.pa.yaml` 已含⑤修法但尚未貼進 Studio；貼上前先確認基準檔、貼上後補回 `Screen.OnVisible`，驗收四條列在 TaskLog 交接段**。下一階段（使用者已裁定）：儀表板帶入 Planner 卡片就地改狀態。前一份：`_context/TaskLog_2026-07-23_行政儀表板權限.md`（行政 App 加 team_member 驅動 UI 權限閘＝只有「行政管理」者可看可改，已實測成功；`ScrAdmin_權限閘_paste.pa.yaml`＋OnVisible 判定式；⚠ 待辦：**清單層硬鎖稍晚做**、App 分享放寬全員、Owner 共用帳號漏洞）。前一份：`_context/TaskLog_2026-07-06_個人行政拆分與請假整合.md`（個人/行政拆分＝行政獨立新 app、回覆 5 選項、請假整合流程指南 `Flow_請假整合_建置指南.html`；⚠ 待辦：**1000 有誤，待使用者修**；各流程待 Portal 套用）。前一份：`_context/TaskLog_2026-06-16_架構落實與晨間流程.md`（06-30~07-02 追記：0955 修判定＋發卡、1005/1030 米米信提醒指南、1000 視窗修單日、field_8 粒度待決策；07-03：ScrToday/ScrAdmin 委派警告 bug 修復，5 處公式改用 gToday 變數；**07-05 新增：日期欄格式改零填補 yyyy/MM/dd（0930 流程＋App gToday 同步）＋既有列回填指南**，以上皆**待使用者 Studio／Portal 套用**）。另一份：`_context/TaskLog_2026-06-24_儀表板表格化與淺色改版.md`（表格化＋自動存 bug 鏈＋雙頁淺色，待 PO 實機驗收）。
-- 欄位已從 `_context/AttendanceHistory.csv` 確認（九欄顯示名稱）。
+## 讀取指引（三檔制，不要掃全部 `_context/`）
+1. **需求與架構全貌** → `PRD_2026-08-03_出勤查核系統.html`（用瀏覽器開）
+2. **待辦與待決真相源** → `TaskLog_2026-08-03_全案待決盤點.md`
+3. **教訓** → `lessons-learned.md`（永遠讀）
+- 清單 schema 對照 → `AttendanceHistory.csv`
+- **維運 SOP（密碼變更／連線失效）** → `workingfiles/outputs/維運SOP_出勤查核系統_2026-08-04.html`
+- ai-team CLI 參考 → `ai-team-agent-cli-reference.html`
+- `archive/` 一律跳過，除非要查某項決定的原始脈絡（10 份 ClosedTaskLog 依日期命名）。
 
-## 待辦 / 下一步
-- **架構落實（待動工，已寫計畫）**：`_context/Plan_2026-06-15_excel-list-bridge.html` — Excel 主檔＋小清單介面＋Power Automate 橋接，含模組二（請假紀錄查詢）。
-- 上游 ③ Office Scripts 寬轉長自動化（目前人工暫代）；RowKey 需在此步驟產生（橋接前置）。
-- 模組三（假期餘額）、角色權限、⑥ SharePoint 嵌入。
-- 請 Claude 補上它的 ai-team CLI 協作版本：登入、短 prompt、卡住處理、避免直接讀寫檔案。
-- 請 Antigravity 補上它的 ai-team CLI 協作版本：權限需求、寫檔限制、編碼風險、signal 寫入慣例。
-- Claude / Antigravity 版本補齊後，推回 WTF repo，系統化成共用流程。
-- 整理完成後分享給同事，讓 ai-team CLI 協作可被團隊複用。
+## 現況快照
+- **已上線**：0930 巡檢寫清單、0945 延遲通知（→Planner2Line→LINE）、1000 米米信／請假寫 field_8、模組一個人頁 ScrToday（含委派巢狀 Filter 與 AutoHeight 修法）、行政頁 UI 權限閘。
+- **已產出待實跑**（2026-08-04，TaskLog B0／B12）：巡檢改造五支（`PlannerStatus` 欄、不再改寫同事回覆）；清單保留兩週機制五支（每日 20:00 備份到 AttDB、週五 20:30 清理＋刪前備份查核）。全部在 `workingfiles/automate_import/`。
+- **卡在最後一哩**：ScrAdmin 長文字截斷修法（`workingfiles/canvas/ScrAdmin_權限閘_paste.pa.yaml`）**尚未貼進 Studio** ← 最優先。
+- **未建**：1005／1030 未回報提醒、國定假日不計入（B11，排定 08-12）、模組二（請假查詢）、模組三（假期餘額）、SharePoint 頁面嵌入、清單層硬權限。
+- **下一階段（PO 已裁定方向）**：儀表板帶入 Planner 卡片、同事就地改狀態。
 
-## AttendanceHistory 清單欄位對照（內部名 field_N ↔ 顯示名）
-> 由「取得項目」原始輸出證實。Power Automate 運算式一律用內部名（顯示名回 null）。
+## 待決現況（2026-08-03 PO 裁示後，詳見 TaskLog A 段）
+| 編號 | 決策 | 裁示 |
+|---|---|---|
+| A1 | field_8 儲存粒度 | 說明中，待答 |
+| A2 | 清單層硬權限 | **下一階段** |
+| A3 | 清單保留期與搬移 | ✅ **已定＋已產出**（B12）：每日 20:00 備份到 AttDB、週五 20:30 清除兩週前，刪前先查核備份。待實跑 |
+| A4 | Planner 卡片就地改狀態 | **下一階段** |
+| A5 | 模組二／三 | **下一階段** |
+| A6 | 0945 名冊缺漏告警 | 說明中，待答 |
+| A7 | 米米信代發解析 | 進行中：先整理姓名↔暱稱對照表 |
+| A8 | 1005/1030 前提 | ✅ 已解：行政 09:30／10:00 在 App 輸入已到者，見 `informaiton/TaskDB_0803.xlsx`「流程」表 |
+| A9 | 0930 Planner 429 | 說明中，待答 |
+| A10 | 週報加請假 | 稍後處理 |
+| A11 | 卡片留白 | 說明中，待答 |
 
-| 內部名 | 顯示名 |
-|---|---|
-| Title | ID（yyyyMMdd_Email，唯一鍵） |
-| field_1 | 員工編號 |
-| field_2 | 日期 |
-| field_3 | Email |
-| field_4 | 姓名 |
-| field_5 | 方案名稱 |
-| field_6 | 任務名稱 |
-| field_7 | 表單回覆（延遲回覆；0955 再巡檢寫回） |
-| field_8 | 實際出勤狀態（米米信；1000/1010 寫入） |
-| field_9 | DateString（樣本為空，不可靠；「今日」用 Title 前綴 yyyyMMdd_ 篩） |
-
-## 備註
-- `_context/AI_TEAM_DISCUSSION_2026-06-08_dashboard-rebuild.md` 是原始 ai-team 討論檔，包含 Codex、Antigravity、Claude 意見。
+## 版控
+- Drive 為唯一真相源，工作在 Drive 做；`/Users/coma/git_mirror/attendance-dashboard/` 只是版控出口。
+- 舊 `Git_work/` 三 worktree 佈局（main／flow-0945／flow-0955）已隨全域版控鐵律改制作廢，不再使用。
