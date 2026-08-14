@@ -1,0 +1,207 @@
+0945問題
+1. 抓錯請假的人(或時段)
+2. 沒有寫入清單
+--
+程式
+---
+{
+  "type": "OpenApiConnection",
+  "inputs": {
+    "parameters": {
+      "calendarId": "AAMkADM0N2NjZjcxLTIwNjItNGQ0NC04OTkyLWM0ZDBkNTUxMGNiYwBGAAAAAADOorK1N1EKQpa5w7XkCcDOBwCdSYVBDQDBTJ73bHjSVry-AAAAAAEGAACdSYVBDQDBTJ73bHjSVry-AAAAAJcuAAA=",
+      "startDateTimeUtc": "@concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T00:00:00+08:00')",
+      "endDateTimeUtc": "@concat(formatDateTime(convertFromUtc(utcNow(),'Taipei Standard Time'),'yyyy-MM-dd'),'T23:59:59+08:00')"
+    },
+    "host": {
+      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+      "connection": "shared_office365",
+      "operationId": "GetEventsCalendarViewV3"
+    }
+  },
+  "runAfter": {
+    "列出表格中的列_名冊": [
+      "Succeeded"
+    ]
+  }
+}
+----
+輸入
+----
+{
+    "host": {
+        "connectionReferenceName": "shared_office365",
+        "operationId": "GetEventsCalendarViewV3"
+    },
+    "parameters": {
+        "calendarId": "AAMkADM0N2NjZjcxLTIwNjItNGQ0NC04OTkyLWM0ZDBkNTUxMGNiYwBGAAAAAADOorK1N1EKQpa5w7XkCcDOBwCdSYVBDQDBTJ73bHjSVry-AAAAAAEGAACdSYVBDQDBTJ73bHjSVry-AAAAAJcuAAA=",
+        "startDateTimeUtc": "2026-07-07T00:00:00+08:00",
+        "endDateTimeUtc": "2026-07-07T23:59:59+08:00"
+    }
+}
+
+--
+輸出
+---
+
+{
+    "statusCode": 200,
+    "headers": {
+        "Cache-Control": "no-store, no-cache",
+        "Pragma": "no-cache",
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+        "x-ms-islandgateway": "_prdil103easgb0_8",
+        "x-ms-igw-tracking-id": "d5efc6b9-f74f-48cb-acf2-a7492d63171c20260707042631_prdil103easgb0_8",
+        "mise-correlation-id": "9a594f34-5515-4dd6-a35e-77504cd6a0be",
+        "x-ms-request-id": "c39d3c74-1695-4c7e-9bd5-8e3024914b48",
+        "x-ms-correlation-id": "f7e4e48b-9d8c-4f05-a2de-1c25dc59336e",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Server-Timing": "x-ms-igw-upstream-headers;dur=151.1,x-ms-igw-req-overhead;dur=1.3",
+        "x-ms-service-request-id": "d5efc6b9-f74f-48cb-acf2-a7492d63171c",
+        "x-ms-activity-vector": "00.00.IN.0F.IN.09.00",
+        "x-ms-environment-id": "default-41b8ec6e-6a43-4dcc-87e3-8f73d38bf5df",
+        "x-ms-tenant-id": "41b8ec6e-6a43-4dcc-87e3-8f73d38bf5df",
+        "x-ms-subscription-id": "Default-41b8ec6e-6a43-4dcc-87e3-8f73d38bf5df",
+        "x-ms-dlp-re": "-|-|-",
+        "x-ms-dlp-gu": "-|-",
+        "x-ms-dlp-ef": "-|-/-|-|-|-|-",
+        "x-ms-mip-sl": "-|-|-|-",
+        "x-ms-au-creator-id": "8b8e8f6d-ae56-4360-8015-000ec64bc9e6",
+        "Timing-Allow-Origin": "*",
+        "x-ms-apihub-cached-response": "false",
+        "x-ms-apihub-obo": "false",
+        "x-ms-plex-failed": "false",
+        "Date": "Tue, 07 Jul 2026 04:26:31 GMT",
+        "Content-Length": "12764",
+        "Content-Type": "application/json; charset=utf-8",
+        "Expires": "-1"
+    },
+    "body": {
+        "value": [
+            {
+                "subject": "張耀中請年假，2026-07-06(全天)，共8時，代理人:客家：線上處理",
+                "start": "2026-07-06T00:00:00.0000000",
+                "end": "2026-07-07T00:00:00.0000000",
+                "startWithTimeZone": "2026-07-06T00:00:00+00:00",
+                "endWithTimeZone": "2026-07-07T00:00:00+00:00",
+                "body": "<html>\r\n<head>\r\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\r\n<meta name=\"Generator\" content=\"Microsoft Word 15 (filtered medium)\">\r\n<style>\r\n<!--\r\n@font-face\r\n\t{font-family:新細明體}\r\n@font-face\r\n\t{font-family:\"Cambria Math\"}\r\n@font-face\r\n\t{font-family:Aptos}\r\n@font-face\r\n\t{}\r\np.MsoNormal, li.MsoNormal, div.MsoNormal\r\n\t{margin:0cm;\r\n\tfont-size:12.0pt;\r\n\tfont-family:\"Aptos\",sans-serif}\r\nspan.EmailStyle18\r\n\t{}\r\n.MsoChpDefault\r\n\t{font-size:10.0pt}\r\n@page WordSection1\r\n\t{margin:72.0pt 90.0pt 72.0pt 90.0pt}\r\ndiv.WordSection1\r\n\t{}\r\n-->\r\n</style>\r\n</head>\r\n<body lang=\"ZH-TW\" link=\"#467886\" vlink=\"#96607D\" style=\"word-wrap:break-word\">\r\n<div class=\"WordSection1\">\r\n<p class=\"MsoNormal\"><span lang=\"EN-US\" style=\"\">&nbsp;</span></p>\r\n</div>\r\n</body>\r\n</html>\r\n",
+                "isHtml": true,
+                "responseType": "notResponded",
+                "responseTime": "0001-01-01T00:00:00+00:00",
+                "id": "AAMkADM0N2NjZjcxLTIwNjItNGQ0NC04OTkyLWM0ZDBkNTUxMGNiYwBGAAAAAADOorK1N1EKQpa5w7XkCcDOBwCdSYVBDQDBTJ73bHjSVry-AAAAAAENAACdSYVBDQDBTJ73bHjSVry-AAXELukIAAA=",
+                "createdDateTime": "2026-06-12T09:12:57.3296581+00:00",
+                "lastModifiedDateTime": "2026-06-28T18:19:32.4770065+00:00",
+                "organizer": "wenyuhuang@techartgroup.com",
+                "timeZone": "UTC",
+                "iCalUId": "040000008200E00074C5B7101A82E0080000000097FF564C47FADC010000000000000000100000009512BC093575AB4AAAFBFC09CAFE21E5",
+                "categories": [],
+                "webLink": "https://outlook.office365.com/owa/?itemid=AAMkADM0N2NjZjcxLTIwNjItNGQ0NC04OTkyLWM0ZDBkNTUxMGNiYwBGAAAAAADOorK1N1EKQpa5w7XkCcDOBwCdSYVBDQDBTJ73bHjSVry%2FAAAAAAENAACdSYVBDQDBTJ73bHjSVry%2FAAXELukIAAA%3D&exvsurl=1&path=/calendar/item",
+                "requiredAttendees": "wenyuhuang@techartgroup.com;att@techartgroup.com;",
+                "optionalAttendees": "torry@techartgroup.com;lin@techartgroup.com;yolanda@techartgroup.com;",
+                "resourceAttendees": "",
+                "location": "",
+                "importance": "low",
+                "isAllDay": true,
+                "recurrence": "none",
+                "reminderMinutesBeforeStart": 1080,
+                "isReminderOn": false,
+                "showAs": "free",
+                "responseRequested": true,
+                "sensitivity": "normal"
+            },
+            {
+                "subject": "蔡宇翔請年假，2026-07-06(09:30-10:00)  ，代理人:補假單",
+                "start": "2026-07-06T00:00:00.0000000",
+                "end": "2026-07-07T00:00:00.0000000",
+                "startWithTimeZone": "2026-07-06T00:00:00+00:00",
+                "endWithTimeZone": "2026-07-07T00:00:00+00:00",
+                "body": "<html>\r\n<head>\r\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\r\n<meta name=\"Generator\" content=\"Microsoft Word 15 (filtered medium)\">\r\n<style>\r\n<!--\r\n@font-face\r\n\t{font-family:新細明體}\r\n@font-face\r\n\t{font-family:\"Cambria Math\"}\r\n@font-face\r\n\t{font-family:Aptos}\r\n@font-face\r\n\t{}\r\np.MsoNormal, li.MsoNormal, div.MsoNormal\r\n\t{margin:0cm;\r\n\tfont-size:12.0pt;\r\n\tfont-family:\"Aptos\",sans-serif}\r\nspan.EmailStyle18\r\n\t{}\r\n.MsoChpDefault\r\n\t{font-size:10.0pt}\r\n@page WordSection1\r\n\t{margin:72.0pt 90.0pt 72.0pt 90.0pt}\r\ndiv.WordSection1\r\n\t{}\r\n-->\r\n</style>\r\n</head>\r\n<body lang=\"ZH-TW\" link=\"#467886\" vlink=\"#96607D\" style=\"word-wrap:break-word\">\r\n<div class=\"WordSection1\">\r\n<p class=\"MsoNormal\"><span lang=\"EN-US\" style=\"\">&nbsp;</span></p>\r\n</div>\r\n</body>\r\n</html>\r\n",
+                "isHtml": true,
+                "responseType": "notResponded",
+                "responseTime": "0001-01-01T00:00:00+00:00",
+                "id": "AAMkADM0N2NjZjcxLTIwNjItNGQ0NC04OTkyLWM0ZDBkNTUxMGNiYwBGAAAAAADOorK1N1EKQpa5w7XkCcDOBwCdSYVBDQDBTJ73bHjSVry-AAAAAAENAACdSYVBDQDBTJ73bHjSVry-AAXVGQKqAAA=",
+                "createdDateTime": "2026-07-06T06:31:36.7803552+00:00",
+                "lastModifiedDateTime": "2026-07-06T07:28:24.2766079+00:00",
+                "organizer": "wenyuhuang@techartgroup.com",
+                "timeZone": "UTC",
+                "iCalUId": "040000008200E00074C5B7101A82E00800000000013807420D0DDD010000000000000000100000002338ABCFBEF91741938B49794CADD22B",
+                "categories": [],
+                "webLink": "https://outlook.office365.com/owa/?itemid=AAMkADM0N2NjZjcxLTIwNjItNGQ0NC04OTkyLWM0ZDBkNTUxMGNiYwBGAAAAAADOorK1N1EKQpa5w7XkCcDOBwCdSYVBDQDBTJ73bHjSVry%2FAAAAAAENAACdSYVBDQDBTJ73bHjSVry%2FAAXVGQKqAAA%3D&exvsurl=1&path=/calendar/item",
+                "requiredAttendees": "wenyuhuang@techartgroup.com;att@techartgroup.com;",
+                "optionalAttendees": "lin@techartgroup.com;torry@techartgroup.com;",
+                "resourceAttendees": "",
+                "location": "",
+                "importance": "low",
+                "isAllDay": true,
+                "recurrence": "none",
+                "reminderMinutesBeforeStart": 1080,
+                "isReminderOn": false,
+                "showAs": "free",
+                "responseRequested": true,
+                "sensitivity": "normal"
+            },
+            {
+                "subject": "郭冠妤請年假，2026-07-06 至2026-07-10，共40時，代理人:自理",
+                "start": "2026-07-06T00:00:00.0000000",
+                "end": "2026-07-10T00:00:00.0000000",
+                "startWithTimeZone": "2026-07-06T00:00:00+00:00",
+                "endWithTimeZone": "2026-07-10T00:00:00+00:00",
+                "body": "<html>\r\n<head>\r\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\r\n<meta name=\"Generator\" content=\"Microsoft Word 15 (filtered medium)\">\r\n<style>\r\n<!--\r\n@font-face\r\n\t{font-family:新細明體}\r\n@font-face\r\n\t{font-family:\"Cambria Math\"}\r\n@font-face\r\n\t{font-family:Aptos}\r\n@font-face\r\n\t{}\r\np.MsoNormal, li.MsoNormal, div.MsoNormal\r\n\t{margin:0cm;\r\n\tfont-size:12.0pt;\r\n\tfont-family:\"Aptos\",sans-serif}\r\nspan.EmailStyle18\r\n\t{}\r\n.MsoChpDefault\r\n\t{font-size:10.0pt}\r\n@page WordSection1\r\n\t{margin:72.0pt 90.0pt 72.0pt 90.0pt}\r\ndiv.WordSection1\r\n\t{}\r\n-->\r\n</style>\r\n</head>\r\n<body lang=\"ZH-TW\" link=\"#467886\" vlink=\"#96607D\" style=\"word-wrap:break-word\">\r\n<div class=\"WordSection1\">\r\n<p class=\"MsoNormal\"><span lang=\"EN-US\">&nbsp;</span></p>\r\n</div>\r\n</body>\r\n</html>\r\n",
+                "isHtml": true,
+                "responseType": "notResponded",
+                "responseTime": "0001-01-01T00:00:00+00:00",
+                "id": "AAMkADM0N2NjZjcxLTIwNjItNGQ0NC04OTkyLWM0ZDBkNTUxMGNiYwBGAAAAAADOorK1N1EKQpa5w7XkCcDOBwCdSYVBDQDBTJ73bHjSVry-AAAAAAENAACdSYVBDQDBTJ73bHjSVry-AAW-bk_bAAA=",
+                "createdDateTime": "2026-06-03T03:40:52.9516243+00:00",
+                "lastModifiedDateTime": "2026-06-28T18:19:32.8361715+00:00",
+                "organizer": "wenyuhuang@techartgroup.com",
+                "timeZone": "UTC",
+                "iCalUId": "040000008200E00074C5B7101A82E008000000007319B88B0AF3DC01000000000000000010000000442A254E0039934F945113450E6E87D8",
+                "categories": [],
+                "webLink": "https://outlook.office365.com/owa/?itemid=AAMkADM0N2NjZjcxLTIwNjItNGQ0NC04OTkyLWM0ZDBkNTUxMGNiYwBGAAAAAADOorK1N1EKQpa5w7XkCcDOBwCdSYVBDQDBTJ73bHjSVry%2FAAAAAAENAACdSYVBDQDBTJ73bHjSVry%2FAAW%2Fbk%2BbAAA%3D&exvsurl=1&path=/calendar/item",
+                "requiredAttendees": "wenyuhuang@techartgroup.com;att@techartgroup.com;",
+                "optionalAttendees": "torry@techartgroup.com;kuanyoulin@techartgroup.com;lin@techartgroup.com;yolanda@techartgroup.com;",
+                "resourceAttendees": "",
+                "location": "",
+                "importance": "low",
+                "isAllDay": true,
+                "recurrence": "none",
+                "reminderMinutesBeforeStart": 1080,
+                "isReminderOn": true,
+                "showAs": "free",
+                "responseRequested": true,
+                "sensitivity": "normal"
+            },
+            {
+                "subject": "高儀蘋請年假，2026-07-07 至2026-07-10，共32時，代理人:P514再生水廠：匯元溝通/Ed、業主設計討論/阿寬。P532存保：業主溝通/怡惠(審稿進度)。Q552台北市願景館：阿寬。標案查詢：文鳳  。其他:自理  ",
+                "start": "2026-07-07T00:00:00.0000000",
+                "end": "2026-07-11T00:00:00.0000000",
+                "startWithTimeZone": "2026-07-07T00:00:00+00:00",
+                "endWithTimeZone": "2026-07-11T00:00:00+00:00",
+                "body": "<html>\r\n<head>\r\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\r\n<meta name=\"Generator\" content=\"Microsoft Word 15 (filtered medium)\">\r\n<style>\r\n<!--\r\n@font-face\r\n\t{font-family:新細明體}\r\n@font-face\r\n\t{font-family:\"Cambria Math\"}\r\n@font-face\r\n\t{font-family:Aptos}\r\n@font-face\r\n\t{font-family:微軟正黑體}\r\n@font-face\r\n\t{}\r\np.MsoListParagraph, li.MsoListParagraph, div.MsoListParagraph\r\n\t{margin-top:0cm;\r\n\tmargin-right:0cm;\r\n\tmargin-bottom:0cm;\r\n\tmargin-left:36.0pt;\r\n\tfont-size:12.0pt;\r\n\tfont-family:\"Aptos\",sans-serif}\r\nspan.EmailStyle19\r\n\t{}\r\n.MsoChpDefault\r\n\t{font-size:10.0pt}\r\n@page WordSection1\r\n\t{margin:72.0pt 90.0pt 72.0pt 90.0pt}\r\ndiv.WordSection1\r\n\t{}\r\nol\r\n\t{margin-bottom:0cm}\r\nul\r\n\t{margin-bottom:0cm}\r\n-->\r\n</style>\r\n</head>\r\n<body lang=\"ZH-TW\" link=\"#467886\" vlink=\"#96607D\" style=\"word-wrap:break-word\">\r\n<div class=\"WordSection1\">\r\n<p class=\"MsoListParagraph\" style=\"margin-left:24.0pt; text-indent:-24.0pt\"><span lang=\"EN-US\"><span style=\"mso-list:Ignore\">1.<span style=\"font:7.0pt &quot;Times New Roman&quot;\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\r\n</span></span></span><span lang=\"EN-US\">P514</span><span style=\"font-family:&quot;微軟正黑體&quot;,sans-serif\">再生水廠：匯元溝通</span><span lang=\"EN-US\">/Ed</span><span style=\"font-family:&quot;微軟正黑體&quot;,sans-serif\">、業主設計討論</span><span lang=\"EN-US\">/</span><span style=\"font-family:&quot;微軟正黑體&quot;,sans-serif\">阿寬、</span><span lang=\"EN-US\"></span></p>\r\n<p class=\"MsoListParagraph\" style=\"margin-left:24.0pt; text-indent:-24.0pt\"><span lang=\"EN-US\"><span style=\"mso-list:Ignore\">2.<span style=\"font:7.0pt &quot;Times New Roman&quot;\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\r\n</span></span></span><span lang=\"EN-US\">P532</span><span style=\"font-family:&quot;微軟正黑體&quot;,sans-serif\">存保：業主溝通</span><span lang=\"EN-US\">/</span><span style=\"font-family:&quot;微軟正黑體&quot;,sans-serif\">怡惠</span><span lang=\"EN-US\">(</span><span style=\"font-family:&quot;微軟正黑體&quot;,sans-serif\">審稿進度</span><span lang=\"EN-US\">)</span></p>\r\n<p class=\"MsoListParagraph\" style=\"margin-left:24.0pt; text-indent:-24.0pt\"><span lang=\"EN-US\"><span style=\"mso-list:Ignore\">3.<span style=\"font:7.0pt &quot;Times New Roman&quot;\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\r\n</span></span></span><span lang=\"EN-US\">Q552</span><span style=\"font-family:&quot;微軟正黑體&quot;,sans-serif\">台北市願景館：阿寬</span><span lang=\"EN-US\"></span></p>\r\n<p class=\"MsoListParagraph\" style=\"margin-left:24.0pt; text-indent:-24.0pt\"><span lang=\"EN-US\"><span style=\"mso-list:Ignore\">4.<span style=\"font:7.0pt &quot;Times New Roman&quot;\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\r\n</span></span></span><span style=\"font-family:&quot;微軟正黑體&quot;,sans-serif\">標案查詢：文鳳</span><span lang=\"EN-US\"></span></p>\r\n<p class=\"MsoListParagraph\" style=\"margin-left:24.0pt; text-indent:-24.0pt\"><span lang=\"EN-US\"><span style=\"mso-list:Ignore\">5.<span style=\"font:7.0pt &quot;Times New Roman&quot;\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\r\n</span></span></span><span style=\"font-family:&quot;新細明體&quot;,serif\">其他</span><span lang=\"EN-US\">:</span><span style=\"font-family:&quot;新細明體&quot;,serif\">自理</span><span lang=\"EN-US\"></span></p>\r\n</div>\r\n</body>\r\n</html>\r\n",
+                "isHtml": true,
+                "responseType": "notResponded",
+                "responseTime": "0001-01-01T00:00:00+00:00",
+                "id": "AAMkADM0N2NjZjcxLTIwNjItNGQ0NC04OTkyLWM0ZDBkNTUxMGNiYwBGAAAAAADOorK1N1EKQpa5w7XkCcDOBwCdSYVBDQDBTJ73bHjSVry-AAAAAAENAACdSYVBDQDBTJ73bHjSVry-AAXJe9iHAAA=",
+                "createdDateTime": "2026-06-18T02:27:23.3103128+00:00",
+                "lastModifiedDateTime": "2026-07-03T03:23:40.2281424+00:00",
+                "organizer": "wenyuhuang@techartgroup.com",
+                "timeZone": "UTC",
+                "iCalUId": "040000008200E00074C5B7101A82E00800000000FD7DA5E322FEDC01000000000000000010000000FCE30C5F17B5DF4DBDBEA2C5F39485FA",
+                "categories": [],
+                "webLink": "https://outlook.office365.com/owa/?itemid=AAMkADM0N2NjZjcxLTIwNjItNGQ0NC04OTkyLWM0ZDBkNTUxMGNiYwBGAAAAAADOorK1N1EKQpa5w7XkCcDOBwCdSYVBDQDBTJ73bHjSVry%2FAAAAAAENAACdSYVBDQDBTJ73bHjSVry%2FAAXJe9iHAAA%3D&exvsurl=1&path=/calendar/item",
+                "requiredAttendees": "wenyuhuang@techartgroup.com;att@techartgroup.com;",
+                "optionalAttendees": "torry@techartgroup.com;lin@techartgroup.com;yolanda@techartgroup.com;",
+                "resourceAttendees": "",
+                "location": "",
+                "importance": "low",
+                "isAllDay": true,
+                "recurrence": "none",
+                "reminderMinutesBeforeStart": 15,
+                "isReminderOn": false,
+                "showAs": "free",
+                "responseRequested": true,
+                "sensitivity": "normal"
+            }
+        ]
+    }
+}

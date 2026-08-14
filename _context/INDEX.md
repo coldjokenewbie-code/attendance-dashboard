@@ -23,6 +23,7 @@ MS365 Power Apps 員工出勤查核系統：Planner 延遲工作 → SharePoint 
 - **已上線**：0930 巡檢寫清單、0945 延遲通知（→Planner2Line→LINE）、1000 米米信／請假寫 field_8、模組一個人頁 ScrToday（含委派巢狀 Filter 與 AutoHeight 修法）、行政頁 UI 權限閘。
 - **已產出待實跑**（2026-08-04，TaskLog B0／B12）：巡檢改造五支（`PlannerStatus` 欄、不再改寫同事回覆）；清單保留兩週機制五支（每日 20:00 備份到 AttDB、週五 20:30 清理＋刪前備份查核）。全部在 `workingfiles/automate_import/`。
 - **卡在最後一哩**：ScrAdmin 長文字截斷修法（`workingfiles/canvas/ScrAdmin_權限閘_paste.pa.yaml`）**尚未貼進 Studio** ← 最優先。
+- **2026-08-14 新發現（TaskLog B14）**：1000／0945 的請假判定漏接 `(09:00-18:00)` 這類時數範圍主旨（只認字面 `10:00`／`全天`），林軒 08-14 請假沒寫進清單。修正包已產出待匯入；1010 未查、極可能同病。
 - **未建**：1005／1030 未回報提醒、國定假日不計入（B11，排定 08-12）、模組二（請假查詢）、模組三（假期餘額）、SharePoint 頁面嵌入、清單層硬權限。
 - **下一階段（PO 已裁定方向）**：儀表板帶入 Planner 卡片、同事就地改狀態。
 
