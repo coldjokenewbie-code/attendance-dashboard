@@ -11,6 +11,13 @@
 #   已知副作用：radReply.Default 綁 locSelected.表單回覆，清單內既有的舊文字不在新 Items 中，
 #   重開 Popup 時該筆會顯示未選取（資料仍在，僅圓鈕不亮）。舊值隨每日新資料自然淘汰，不處理。
 #
+# 2026-08-27 新增（[Claude@Mac]，回應手機端「送出後無法結束程式」）：
+#   conHeader 右上角加 btnExit（OnSelect: =Exit()）── 本畫面原本沒有任何 Exit/Back/Navigate，
+#   手機播放器只能靠邊緣滑動手勢離開，同事找不到。
+#   ※ btnExit 放 Children 最後＝z-order 最上層，Label 擋不住它的點擊，
+#     故 lblTitle 寬度「不必」讓位。曾試 -132，手機實測導致標題換兩行、被 Height:=32 裁掉，已還原 -32。
+#   ※ 只加單一控件，不要整頁重貼（Studio 端 TemplateSize 可能已被手改，見 TaskLog A11）。
+#
 # 既有改動（2026-07-28 / 07-31，已上線）：
 #   ① galToday.Items 巢狀 Filter ── 內層只留可委派條件（Email／日期），外層本機篩 任務名稱 <> Blank()。
 #   ② Popup 與卡片內所有 Label 改 AutoHeight，Y 串接上一個控件的 Y + Height + 間距；
@@ -61,6 +68,22 @@
             Height: =1
             Width: =Parent.Width
             Y: =99
+      - btnExit:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =RGBA(148, 163, 184, 1)
+            BorderThickness: =1
+            Color: =RGBA(51, 65, 85, 1)
+            Fill: =RGBA(255, 255, 255, 1)
+            Height: =32
+            HoverFill: =RGBA(226, 232, 240, 1)
+            OnSelect: =Exit()
+            Size: =13
+            Text: ="離開 App"
+            Tooltip: ="關閉出勤回覆 App，回到 Power Apps 的 app 清單"
+            Width: =92
+            X: =Parent.Width - 108
+            Y: =14
 - lblEmpty:
     Control: Label@2.5.1
     Properties:

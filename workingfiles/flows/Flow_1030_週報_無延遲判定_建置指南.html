@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1030 週報 v4 — 無延遲判定＋均早加班文案 建置指南</title>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--warn:#b45309;--ok:#15803d;--del:#b91c1c;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Helvetica Neue",Arial,"Microsoft JhengHei",sans-serif;line-height:1.7;}
+  .wrap{max-width:980px;margin:0 auto;padding:34px 24px 90px;}
+  h1{font-size:23px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:22px;}
+  h2{font-size:18px;margin:30px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--accent);}
+  h3{font-size:15px;margin:16px 0 6px;color:#111827;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  code{background:#eef2ff;color:#3730a3;padding:1px 5px;border-radius:4px;font-size:12.5px;word-break:break-all;}
+  pre{background:#0f172a;color:#e2e8f0;padding:13px;border-radius:8px;overflow:auto;font-size:12.5px;line-height:1.5;}
+  pre code{background:none;color:inherit;padding:0;}
+  ol,ul{margin:6px 0;padding-left:22px;} li{margin:6px 0;}
+  table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13px;}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#f1f5f9;}
+  .warn{border-left:4px solid var(--warn);background:#fffbeb;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .ok{border-left:4px solid var(--ok);background:#f0fdf4;padding:12px 16px;border-radius:8px;margin:10px 0;}
+  .tag{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;background:#dbeafe;color:#1e40af;font-weight:600;}
+  details{background:#fafafa;border:1px solid var(--line);border-radius:8px;padding:9px 13px;margin:9px 0;}
+  summary{cursor:pointer;font-size:13px;color:var(--muted);font-weight:600;}
+  details p{font-size:13px;margin:9px 0 2px;}
+  #todo{position:fixed;top:16px;right:16px;width:272px;z-index:9999;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.16);font-size:13px;overflow:hidden;}
+  #todo .hd{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#0f172a;color:#fff;cursor:pointer;user-select:none;}
+  #todo .hd b{font-size:13px;}
+  #todo .hd .pg{margin-left:auto;font-size:12px;background:#1e293b;padding:2px 9px;border-radius:99px;}
+  #todo .hd .pg.alldone{background:#15803d;}
+  #todo .hd .cv{font-size:11px;opacity:.85;width:14px;text-align:center;}
+  #todo .bd{padding:6px;max-height:62vh;overflow:auto;}
+  #todo.collapsed .bd,#todo.collapsed .ft{display:none;}
+  #todo .it{display:flex;gap:8px;align-items:flex-start;padding:8px;border-radius:8px;}
+  #todo .it:hover{background:#f1f5f9;}
+  #todo .it input{margin-top:2px;width:16px;height:16px;flex:none;cursor:pointer;}
+  #todo .it .tx{cursor:pointer;line-height:1.45;}
+  #todo .it .tx .n{font-weight:700;color:var(--accent);}
+  #todo .it .tx small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px;}
+  #todo .it.done .tx,#todo .it.done .tx .n{text-decoration:line-through;color:var(--muted);}
+  #todo .ft{display:flex;justify-content:flex-end;padding:4px 10px 10px;}
+  #todo .ft button{font-size:11.5px;color:var(--muted);background:none;border:1px solid var(--line);border-radius:6px;padding:3px 9px;cursor:pointer;}
+  #todo .ft button:hover{background:#f1f5f9;}
+  @keyframes flashbg{0%{background:#fde68a;}100%{background:transparent;}}
+  .flash{animation:flashbg 1.7s ease-out;border-radius:6px;}
+  @media(max-width:780px){
+    #todo{top:auto;bottom:0;left:0;right:0;width:auto;border-radius:12px 12px 0 0;}
+    #todo .bd{max-height:44vh;}
+    .wrap{padding-bottom:240px;}
+  }
+</style>
+</head>
+<body>
+<div id="todo">
+  <div class="hd" onclick="todoToggle()"><b>🛠 修改待辦</b><span class="pg" id="todoPg">0/4</span><span class="cv" id="todoCv">▼</span></div>
+  <div class="bd">
+    <div class="it" data-k="import">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('sec2')"><span class="n">① 匯入 v4 包，選「建立為新的」</span><small>兩個連線都選既有，不要建新連線 → §2</small></span>
+    </div>
+    <div class="it" data-k="kill">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('sec3')"><span class="n">② 立刻停用舊的 v3</span><small>兩支都開著＝週一 10:30 各寄一份，行政收到重複信 → §3</small></span>
+    </div>
+    <div class="it" data-k="check">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('sec4')"><span class="n">③ 確認 v4 排程週一 10:30、連線有效</span><small>另確認頂層動作 15 個 → §4</small></span>
+    </div>
+    <div class="it" data-k="run">
+      <input type="checkbox" onclick="todoCheck(this)">
+      <span class="tx" onclick="todoGo('sec5')"><span class="n">④ 手動執行一次驗信件</span><small>驗完再刪 v3 → §5</small></span>
+    </div>
+  </div>
+  <div class="ft"><button onclick="todoReset()">重設打勾</button></div>
+</div>
+<div class="wrap">
+
+<h1>1030 週報 v4 — 無延遲判定 ＋ 均早加班文案</h1>
+<div class="sub">2026-08-28 ｜ Claude@Mac ｜ 基準＝<b>2026-08-28 Portal 匯出的線上版</b> <code>automate_export/1030_工作延遲週報表_v3_20260828042519.zip</code></div>
+
+<h2 id="sec1">§1　這次改了什麼</h2>
+<div class="card">
+<table>
+<tr><th style="width:150px">情境</th><th>改前</th><th>改後</th></tr>
+<tr><td><b>上週無人延遲</b></td><td>信一照寄，內容是標題句＋<b>空的 <code>&lt;ul&gt;&lt;/ul&gt;</code></b>；信二也照寄</td><td>信一內文改為「<b>上週查無工作延遲紀錄。</b>」，寄完<b>直接結束流程</b>，信二不寄</td></tr>
+<tr><td><b>有人延遲、但都有早加班</b></td><td>信二內文：「上週早加班狀況：查無行政標記之未早加班紀錄。」</td><td>信二內文：「<b>上週工作延遲同事均已早加班。</b>」</td></tr>
+<tr><td>有人延遲、有人未早加班</td><td colspan="2" style="color:var(--muted)">完全不變</td></tr>
+</table>
+<div class="warn"><b>⚠ 一個口徑差異，先知道再上線。</b>週報的「未早加班」只認行政填的 <code>@@</code> 註記（PO 2026-08-04 定案：行政沒填，該筆就不會出現在週報上）。所以 <code>未加班總數 = 0</code> 有兩種可能：<b>真的都早加班了</b>，或<b>行政漏填 <code>@@</code></b>。舊文案「查無行政標記之未早加班紀錄」是把這件事講白；新文案「上週工作延遲同事均早加班」是直接斷言。<b>照你指定的文字做了</b>，若之後想補一句「（依行政 @@ 註記統計）」之類的但書，跟我說，改一個字串就好。</div>
+<details><summary>技術上怎麼實作的</summary>
+<p>在 <code>上週延遲列</code> 之後插入條件 <code>條件_上週無延遲</code>：<code>@empty(body('上週延遲列'))</code> 等於 boolean <code>true</code>。「如果是」分支放 <code>傳送電子郵件_無延遲</code> ＋ <code>終止_無延遲</code>（狀態 <b>Succeeded</b>，零延遲是正常結果、不該留下失敗紀錄）；「如果否」留空。<code>初始化_ReportBody</code> 的執行後來源由 <code>上週延遲列</code> 改為該條件。其餘 14 個動作一字未動。</p>
+<p>無延遲信的主旨是程式從 <code>傳送電子郵件_彙整</code> 直接取出的，與信一<b>逐字相同</b>——週報主旨後續由 Planner2Line 解析轉發 LINE，列為不可更動項（TaskLog B10）。</p>
+<p>條件用 <code>empty()</code> 包起來而不是拿陣列直接比 <code>true</code>：<code>equals(陣列, true)</code> 永遠不成立，0955 舊版中過這個 bug。</p>
+</details>
+</div>
+
+<h2 id="sec2">§2　匯入（建立為新的）</h2>
+<div class="card">
+<table>
+<tr><th style="width:170px">檔案</th><td><code>workingfiles/automate_import/1030_週報_v4_無延遲與均早加班_新建_20260828.zip</code>（4,650 bytes）</td></tr>
+<tr><th>路徑</th><td>Power Automate → <b>我的流程</b> → <b>匯入</b> → <b>匯入套件（舊版）</b></td></tr>
+<tr><th>流程資源</th><td>點該列 <b>選取匯入設定</b> → <b>建立為新的</b> → 名稱維持 <code>1030_工作延遲週報表_v4</code> → 儲存</td></tr>
+<tr><th>連線資源（2 個）</th><td>Office 365 Outlook、SharePoint → 都選 <b>既有連線</b>（<code>domain.e@techartgroup.com</code>），<b>不要建新連線</b></td></tr>
+<tr><th>最後</th><td>按 <b>匯入</b></td></tr>
+</table>
+<div class="ok"><b>這個包是用你 2026-08-28 從 Portal 匯出的線上版做的</b>，不是 08-10 那個舊包。兩者確實有差：線上版的信一註腳已被清空（<code>&lt;p …&gt;&lt;/p&gt;</code>），08-10 包裡還留著「※ 統計單位為『人日次』…」整段。用舊包做會把那段<b>改回來</b>，所以改用匯出檔當基準。</div>
+<details><summary>包內改了什麼（已逐項複驗）</summary>
+<p>5 個檔案中只有 <code>definition.json</code> 與 <code>manifest.json</code> 與你的匯出檔不同，其餘 SHA-256 完全相同。<code>definition.json</code> 把三處改動（插入條件段、<code>初始化_ReportBody</code> 的 runAfter、信二文案、顯示名）遮蔽後與匯出檔<b>位元完全相同</b>；<code>manifest.json</code> 只差建立方式 <code>Update</code>→<code>New</code> 與顯示名 <code>_v3</code>→<code>_v4</code>。無 BOM、JSON 可解析。</p>
+<p>連線宣告三處（<code>connectionReferences</code> ＝ <code>connectionsMap</code> ＝ <code>apisMap</code>）一致，均為 <code>shared_office365</code>、<code>shared_sharepointonline</code>，<b>沒有新增連線</b>。觸發器仍是每週一 10:30（Taipei Standard Time）。</p>
+</details>
+</div>
+
+<h2 id="sec3">§3　⚠ 匯入後立刻停用舊的 v3</h2>
+<div class="card">
+<div class="warn"><b>兩支都開著，週一 10:30 會各寄一份週報</b>，行政收到重複信，而且舊那支用的還是舊邏輯（零延遲寄空信）。</div>
+<ol>
+<li>Power Automate → 我的流程 → 找到 <code>1030_工作延遲週報表_v3</code>。</li>
+<li>右側 <b>⋯</b> → <b>關閉</b>（先停用，<b>不要馬上刪</b>）。</li>
+<li>等 §5 驗收通過之後，再回來刪掉它。</li>
+</ol>
+<p style="font-size:13.5px;margin:8px 0 0">線上 v3 的匯出檔已存在 <code>workingfiles/automate_export/1030_工作延遲週報表_v3_20260828042519.zip</code>，就算刪掉也還原得回來。</p>
+</div>
+
+<h2 id="sec4">§4　匯入後檢查</h2>
+<div class="card">
+<ul>
+<li>「我的流程」裡 1030 開頭有<b>兩支</b>：<code>_v4</code> <b>開啟</b>、<code>_v3</code> <b>關閉</b>。</li>
+<li>v4 的排程是 <b>每週一 10:30（Taipei Standard Time）</b>。</li>
+<li>兩個連線都是有效狀態，沒有需要重新授權的驚嘆號。</li>
+<li>頂層動作 <b>15 個</b>（原 14 ＋ 條件 1；條件內的寄信與終止不計在頂層）。</li>
+</ul>
+</div>
+
+<h2 id="sec5">§5　驗收</h2>
+<div class="card">
+<h3>現在就能驗：上週有人延遲</h3>
+<ul>
+<li>手動執行 v4 → 收到<b>信一</b>，內容與過去相同（各人件數清單）。</li>
+<li>接著收到<b>信二</b>其中一封：全部有早加班 → 「<b>上週工作延遲同事均已早加班。</b>」；有人未早加班 → 未早加班清單（不變）。</li>
+<li>條件 <code>條件_上週無延遲</code> 走「如果否」，分支內沒有動作，流程往下跑完。</li>
+</ul>
+<h3>驗不到：上週零延遲</h3>
+<div class="warn"><b>要在不改流程的前提下逼出「上週零延遲」做不到</b>——那取決於清單資料。目前這條只有<b>本機邏輯驗證</b>：<code>empty([])</code> ＝ true → 走「如果是」→ 寄無延遲信 → Terminate 結束。第一次真的遇到零延遲的週一，看那次執行紀錄是否<b>只寄一封、狀態成功</b>，就算驗完。</div>
+<p style="font-size:13.5px;margin:10px 0 0">若你希望現在就驗，我可以另做一支<b>手動觸發的測試流程</b>（強制走無延遲分支），驗完直接刪掉，不影響線上這支。要的話跟我說。</p>
+</div>
+
+</div>
+<script>
+(function(){
+  var KEY='todo1030nodelay_v1';
+  var items=[].slice.call(document.querySelectorAll('#todo .it'));
+  function save(){var s={};items.forEach(function(it){s[it.dataset.k]=it.querySelector('input').checked;});try{localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}}
+  function load(){var s={};try{s=JSON.parse(localStorage.getItem(KEY)||'{}');}catch(e){}items.forEach(function(it){var on=!!s[it.dataset.k];it.querySelector('input').checked=on;it.classList.toggle('done',on);});}
+  function prog(){var done=items.filter(function(it){return it.querySelector('input').checked;}).length;var pg=document.getElementById('todoPg');pg.textContent=(done===items.length?'✅ ':'')+done+'/'+items.length;pg.classList.toggle('alldone',done===items.length);}
+  window.todoCheck=function(cb){cb.closest('.it').classList.toggle('done',cb.checked);save();prog();};
+  window.todoGo=function(id){var el=document.getElementById(id);if(!el)return;el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');};
+  window.todoToggle=function(){var t=document.getElementById('todo');t.classList.toggle('collapsed');document.getElementById('todoCv').textContent=t.classList.contains('collapsed')?'▲':'▼';};
+  window.todoReset=function(){items.forEach(function(it){it.querySelector('input').checked=false;it.classList.remove('done');});save();prog();};
+  load();prog();
+})();
+</script>
+</body>
+</html>

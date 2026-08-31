@@ -1,0 +1,664 @@
+# 基準：2026-08-28 使用者從 Studio 匯出的現行版本（ScrAdmin_0828bak.yaml），控件結構未動。
+# 手動畫面屬性（Studio 內手動設，此檔貼不出這段，貼上後須確認仍在）：
+#   Screen.OnVisible = Set(gToday, Text(Today(), "yyyy/mm/dd"));
+#     UpdateContext({locIsAdmin: Trim(Coalesce(LookUp(team_member, Lower(Email) = Lower(User().Email), '出勤存取權限'), "")) = "行政管理"});
+#     ClearCollect(colToday, Filter(AttendanceHistory, 日期 = gToday))
+# 用法：畫布全選現有控件 → 刪除 → 貼上本檔（Cmd/Ctrl+V）→ 確認 OnVisible 仍在。
+#
+# 2026-08-28 本次改動（[Claude@Mac]，共三處，其餘與匯出檔位元完全相同）：
+#   ① drpStatus.Items 加兩個選項：「未早加班，已補請假」「未早加班，通知補請假」（共 13 項）。
+#   ② txtNote.Default 的 LookUp 清單同步加同兩項 ── 這是必須的連動：
+#      該清單用來判斷「CurStatus 是不是自訂文字」，沒同步的話選了新選項後
+#      下拉與自訂文字框會同時顯示同一個值。
+#   ③ drpStatus.OnChange 存檔成功後，選到的值含「未早加班」即跳 NotificationType.Warning（8 秒）；
+#      值再含「通知補請假」時，訊息再附一句「請盡快通知本人補請假。」
+#      寫入失敗分支維持原樣不動。
+#
+# 與流程端的契約（1030 週報 v4）：
+#   週報的「未早加班」件數＝ field_7 前綴「3.」 或 field_8 含「未早加班」 或 field_8 以 @@ 開頭。
+#   兩個新選項都靠「未早加班」四個字被認出，**這四個字不可拿掉**；後半段文字可自由調整。
+#
+# 尚未處理（待 PO 決定，本檔刻意未改）：
+#   txtNote 的 HintText「自訂／未早加班打 @@」與 Tooltip 仍在教行政打 @@，與新的下拉選項機制並存。
+#   @@ 在流程端仍相容認得，不會壞；但文字會誤導。要改跟我說。
+#
+- conHeaderA:
+    Control: GroupContainer@1.5.0
+    Variant: ManualLayout
+    Properties:
+      Fill: =RGBA(237, 237, 237, 1)
+      Height: =84
+      Visible: =locIsAdmin
+      Width: =Parent.Width
+    Children:
+      - lblTitleA:
+          Control: Label@2.5.1
+          Properties:
+            Color: =RGBA(31, 41, 55, 1)
+            FontWeight: =FontWeight.Semibold
+            Height: =32
+            Size: =18
+            Text: ="行政出勤查核　" & Text(Today(), "yyyy/mm/dd")
+            Width: =Parent.Width * 0.46
+            X: =16
+            Y: =12
+      - lblHintA:
+          Control: Label@2.5.1
+          Properties:
+            Color: =RGBA(156, 163, 175, 1)
+            Height: =33
+            Size: =9
+            Text: ="出勤狀態欄藍字＝已確認存檔；整列紅字＝卡片仍延遲、未早加班也非請假，需人工追蹤；資料未更新請按右上重新整理"
+            Width: =902
+            X: =16
+            Y: =50
+      - btnRefreshA:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =RGBA(229, 231, 235, 1)
+            BorderThickness: =1
+            Color: =RGBA(37, 99, 235, 1)
+            Fill: =RGBA(255, 255, 255, 1)
+            HoverFill: =RGBA(248, 250, 252, 1)
+            OnSelect: =Refresh(AttendanceHistory); ClearCollect(colToday, Filter(AttendanceHistory, 日期 = gToday))
+            Size: =13
+            Text: ="↻ 重新整理"
+            Width: =Parent.Width * 0.20
+            X: =Parent.Width - Parent.Width * 0.20 - 16
+            Y: =24
+      - recHeaderLine:
+          Control: Rectangle@2.3.0
+          Properties:
+            Fill: =RGBA(229, 231, 235, 1)
+            Height: =1
+            Width: =Parent.Width
+            Y: =83
+- conColHead:
+    Control: GroupContainer@1.5.0
+    Variant: ManualLayout
+    Properties:
+      Fill: =RGBA(255, 255, 255, 1)
+      Height: =32
+      Visible: =locIsAdmin
+      Width: =Parent.Width
+      Y: =84
+    Children:
+      - lblColNo:
+          Control: Label@2.5.1
+          Properties:
+            Color: =RGBA(107, 114, 128, 1)
+            FontWeight: =FontWeight.Semibold
+            Height: =20
+            Size: =9
+            Text: ="編號"
+            VerticalAlign: =VerticalAlign.Top
+            Width: =Parent.Width * 0.033
+            Wrap: =false
+            X: =Parent.Width * 0.005
+            Y: =6
+      - lblColPerson:
+          Control: Label@2.5.1
+          Properties:
+            Color: =RGBA(107, 114, 128, 1)
+            FontWeight: =FontWeight.Semibold
+            Height: =20
+            Size: =9
+            Text: ="同事"
+            VerticalAlign: =VerticalAlign.Top
+            Width: =Parent.Width * 0.048
+            Wrap: =false
+            X: =Parent.Width * 0.040
+            Y: =6
+      - lblColStatus:
+          Control: Label@2.5.1
+          Properties:
+            Color: =RGBA(107, 114, 128, 1)
+            FontWeight: =FontWeight.Semibold
+            Height: =20
+            Size: =9
+            Text: ="出勤狀態（已存）"
+            VerticalAlign: =VerticalAlign.Top
+            Width: =Parent.Width * 0.093
+            Wrap: =false
+            X: =Parent.Width * 0.091
+            Y: =6
+      - lblColInput:
+          Control: Label@2.5.1
+          Properties:
+            Color: =RGBA(107, 114, 128, 1)
+            FontWeight: =FontWeight.Semibold
+            Height: =20
+            Size: =9
+            Text: ="行政人員輸入（下拉／打字）"
+            VerticalAlign: =VerticalAlign.Top
+            Width: =Parent.Width * 0.205
+            Wrap: =false
+            X: =Parent.Width * 0.188
+            Y: =6
+      - lblColReply:
+          Control: Label@2.5.1
+          Properties:
+            Color: =RGBA(107, 114, 128, 1)
+            FontWeight: =FontWeight.Semibold
+            Height: =20
+            Size: =9
+            Text: ="今日延遲工作｜同事回覆"
+            VerticalAlign: =VerticalAlign.Top
+            Width: =Parent.Width * 0.430
+            Wrap: =false
+            X: =Parent.Width * 0.400
+            Y: =6
+      - lblColPlan:
+          Control: Label@2.5.1
+          Properties:
+            Color: =RGBA(107, 114, 128, 1)
+            FontWeight: =FontWeight.Semibold
+            Height: =20
+            Size: =9
+            Text: |-
+              =With(
+                  {
+                      m: Max(
+                          AddColumns(
+                              Filter(
+                                  colToday,
+                                  IsMatch(
+                                      Left(Planner狀態, 4),
+                                      Match.Digit & Match.Digit & Match.Digit & Match.Digit
+                                  )
+                              ),
+                              ChkTime,
+                              Value(Left(Planner狀態, 4))
+                          ),
+                          ChkTime
+                      )
+                  },
+                  "追蹤狀態" & If(IsBlank(m), "", " [" & Left(Text(m, "0000"), 2) & ":" & Right(Text(m, "0000"), 2) & " 巡檢]")
+              )
+            VerticalAlign: =VerticalAlign.Top
+            Width: =Parent.Width * 0.155
+            Wrap: =false
+            X: =Parent.Width * 0.842
+            Y: =6
+      - recColLine:
+          Control: Rectangle@2.3.0
+          Properties:
+            Fill: =RGBA(229, 231, 235, 1)
+            Height: =1
+            Width: =Parent.Width
+            Y: =31
+- lblEmptyA:
+    Control: Label@2.5.1
+    Properties:
+      Align: =Align.Center
+      Color: =RGBA(156, 163, 175, 1)
+      Height: =60
+      Size: =15
+      Text: ="查無同事名冊（請確認 team_member 已連接）"
+      Visible: =locIsAdmin And CountRows(galPeople.AllItems) = 0
+      Width: =Parent.Width - 32
+      X: =16
+      Y: =Parent.Height * 0.35
+- galPeople:
+    Control: Gallery@2.15.0
+    Variant: Vertical
+    Properties:
+      Height: =Parent.Height - 116
+      Items: |-
+        =With(
+            {
+                src: AddColumns(
+                    Sort(team_member, 員工編號) As tm,
+                    CurStatus,
+                    LookUp(colToday, Email = tm.Email).實際出勤狀態,
+                    NeedLeaveCard,
+                    CountRows(Filter(colToday, Email = tm.Email && StartsWith(表單回覆, "3."))) > 0,
+                    HasTask,
+                    CountRows(Filter(colToday, Email = tm.Email && 任務名稱 <> Blank())) > 0,
+                    TaskCnt,
+                    CountRows(Filter(colToday, Email = tm.Email && 任務名稱 <> Blank())),
+                    HasPlanStat,
+                    CountRows(
+                        Filter(
+                            colToday,
+                            Email = tm.Email && 任務名稱 <> Blank() && !IsBlank(Planner狀態)
+                        )
+                    ) > 0,
+                    PlanDelay,
+                    CountRows(
+                        Filter(
+                            colToday,
+                            Email = tm.Email && 任務名稱 <> Blank() && EndsWith(Planner狀態, "延遲")
+                        )
+                    ) > 0,
+                    EarlyOT,
+                    CountRows(
+                        Filter(
+                            colToday,
+                            Email = tm.Email && 任務名稱 <> Blank() && StartsWith(表單回覆, "2.")
+                        )
+                    ) > 0,
+                    OnLeave,
+                    CountRows(
+                        Filter(
+                            colToday,
+                            Email = tm.Email && 任務名稱 <> Blank() && StartsWith(表單回覆, "4.")
+                        )
+                    ) > 0,
+                    NeedFollow,
+                    CountRows(
+                        Filter(
+                            colToday,
+                            Email = tm.Email && 任務名稱 <> Blank() && EndsWith(Planner狀態, "延遲")
+                                && !StartsWith(表單回覆, "2.") && !StartsWith(表單回覆, "4.")
+                        )
+                    ) > 0
+                )
+            },
+            ForAll(
+                Sequence(CountRows(src)) As s,
+                Patch(Index(src, s.Value), { Idx: s.Value })
+            )
+        )
+      TemplatePadding: =0
+      TemplateSize: =(Parent.Height - 116) / 25
+      Visible: =locIsAdmin
+      Width: =Parent.Width
+      Y: =116
+    Children:
+      - recRow:
+          Control: Rectangle@2.3.0
+          Properties:
+            Fill: =If(Mod(ThisItem.Idx, 2) = 0, RGBA(237, 242, 247, 1), RGBA(255, 255, 255, 1))
+            Height: =Parent.TemplateHeight
+            Width: =Parent.TemplateWidth
+      - recDivider:
+          Control: Rectangle@2.3.0
+          Properties:
+            Fill: =RGBA(226, 232, 240, 1)
+            Height: =1
+            Width: =Parent.TemplateWidth
+            Y: =Parent.TemplateHeight - 1
+      - lblNo:
+          Control: Label@2.5.1
+          Properties:
+            Color: =If(ThisItem.NeedFollow, RGBA(220, 38, 38, 1), RGBA(107, 114, 128, 1))
+            Height: =Parent.TemplateHeight
+            Size: =6
+            Text: =ThisItem.員工編號
+            Width: =Parent.TemplateWidth * 0.033
+            X: =Parent.TemplateWidth * 0.005
+      - lblName:
+          Control: Label@2.5.1
+          Properties:
+            Color: =If(ThisItem.NeedFollow, RGBA(220, 38, 38, 1), RGBA(31, 41, 55, 1))
+            FontWeight: =FontWeight.Semibold
+            Height: =Parent.TemplateHeight
+            Size: =10
+            Text: =ThisItem.姓名
+            Width: =Parent.TemplateWidth * 0.048
+            X: =Parent.TemplateWidth * 0.040
+      - lblStatusView:
+          Control: Label@2.5.1
+          Properties:
+            Color: |-
+              =If(
+                  ThisItem.NeedFollow,
+                  RGBA(220, 38, 38, 1),
+                  If(!IsBlank(ThisItem.CurStatus) && ThisItem.CurStatus <> "（待確認）", RGBA(37, 99, 235, 1), RGBA(203, 213, 225, 1))
+              )
+            FontWeight: =If(!IsBlank(ThisItem.CurStatus) && ThisItem.CurStatus <> "（待確認）", FontWeight.Bold, FontWeight.Normal)
+            Height: =Parent.TemplateHeight
+            Size: =10
+            Text: =If(!IsBlank(ThisItem.CurStatus) && ThisItem.CurStatus <> "（待確認）", ThisItem.CurStatus, "待確認")
+            Tooltip: =If(!IsBlank(ThisItem.CurStatus) && ThisItem.CurStatus <> "（待確認）", ThisItem.CurStatus, "待確認")
+            Width: =Parent.TemplateWidth * 0.093
+            Wrap: =false
+            X: =Parent.TemplateWidth * 0.091
+      - drpStatus:
+          Control: Classic/DropDown@2.3.1
+          Properties:
+            BorderColor: =RGBA(229, 231, 235, 1)
+            Color: =If(Self.Selected.Value = "（待確認）", RGBA(203, 213, 225, 1), RGBA(31, 41, 55, 1))
+            Default: =Coalesce(ThisItem.CurStatus, "（待確認）")
+            Height: =Max(Parent.TemplateHeight - 4, 20)
+            Items: =["（待確認）", "0930已到", "1000已到", "10:00前已發**", "1000未到，已提醒", "1000未到，已發米米信", "1000未到，請假", "異地(其他縣市)", "已發**先去場館後進公司", "當日休假", "臨時請假", "未早加班，已補請假", "未早加班，通知補請假"]
+            Items.Value: =Value
+            OnChange: |-
+              =If(
+                  !IsBlank(Self.Selected.Value)
+                      && Self.Selected.Value <> "（待確認）"
+                      && Self.Selected.Value <> Coalesce(ThisItem.CurStatus, ""),
+                  UpdateIf(
+                      AttendanceHistory,
+                      Email = ThisItem.Email && 日期 = gToday,
+                      {實際出勤狀態: Self.Selected.Value}
+                  );
+                  If(
+                      IsEmpty(Errors(AttendanceHistory)),
+                      UpdateIf(colToday, Email = ThisItem.Email, {實際出勤狀態: Self.Selected.Value});
+                      If(
+                          "未早加班" in Self.Selected.Value,
+                          Notify(
+                              "⚠ " & ThisItem.姓名 & "：已標記未早加班，本筆會計入下週一的週報。" &
+                                  If("通知補請假" in Self.Selected.Value, "請盡快通知本人補請假。", ""),
+                              NotificationType.Warning,
+                              8000
+                          )
+                      ),
+                      Notify("儲存失敗：" & First(Errors(AttendanceHistory)).Message, NotificationType.Error)
+                  )
+              )
+            Size: =10
+            Width: =Parent.TemplateWidth * 0.115
+            X: =Parent.TemplateWidth * 0.188
+            Y: =2
+      - txtNote:
+          Control: Classic/TextInput@2.3.2
+          Properties:
+            BorderColor: =RGBA(229, 231, 235, 1)
+            Color: =RGBA(31, 41, 55, 1)
+            Default: |-
+              =If(
+                  !IsBlank(ThisItem.CurStatus)
+                      && IsBlank(LookUp(["（待確認）", "0930已到", "1000已到", "10:00前已發**", "1000未到，已提醒", "1000未到，已發米米信", "1000未到，請假", "異地(其他縣市)", "已發**先去場館後進公司", "當日休假", "臨時請假", "未早加班，已補請假", "未早加班，通知補請假"], Value = ThisItem.CurStatus)),
+                  ThisItem.CurStatus,
+                  ""
+              )
+            Height: =Max(Parent.TemplateHeight - 6, 18)
+            HintText: ="自訂／未早加班打 @@"
+            OnChange: |-
+              =If(
+                  !IsBlank(Self.Text)
+                      && Self.Text <> Coalesce(ThisItem.CurStatus, ""),
+                  UpdateIf(
+                      AttendanceHistory,
+                      Email = ThisItem.Email && 日期 = gToday,
+                      {實際出勤狀態: Self.Text}
+                  );
+                  If(
+                      IsEmpty(Errors(AttendanceHistory)),
+                      UpdateIf(colToday, Email = ThisItem.Email, {實際出勤狀態: Self.Text}),
+                      Notify("儲存失敗：" & First(Errors(AttendanceHistory)).Message, NotificationType.Error)
+                  )
+              )
+            Size: =10
+            Tooltip: |-
+              ="一般狀況直接打字即可。" & Char(10) &
+               "若為「工作延遲、且未於 09:30 到公司早加班」，請以 @@ 開頭，例：" & Char(10) &
+               "　@@未早加班，已補請假" & Char(10) &
+               "（週報的未早加班件數只採計 @@ 註記，沒填就不會計入）"
+            Width: =Parent.TemplateWidth * 0.083
+            X: =Parent.TemplateWidth * 0.310
+            Y: =3
+      - lblReply:
+          Control: Label@2.5.1
+          Properties:
+            Color: |-
+              =If(
+                  ThisItem.NeedFollow,
+                  RGBA(220, 38, 38, 1),
+                  If(
+                      ThisItem.HasTask && (ThisItem.EarlyOT || (ThisItem.HasPlanStat && !ThisItem.PlanDelay)),
+                      RGBA(22, 101, 52, 1),
+                      RGBA(75, 85, 99, 1)
+                  )
+              )
+            Height: =Parent.TemplateHeight
+            OnSelect: |-
+              =If(
+                  ThisItem.TaskCnt > 0,
+                  Set(gDetailEmail, ThisItem.Email);
+                  Set(gDetailName, ThisItem.姓名)
+              )
+            Size: =10
+            Text: |-
+              =If(
+                  ThisItem.TaskCnt = 0,
+                  "—",
+                  With(
+                      {f: First(Filter(colToday, Email = ThisItem.Email && 任務名稱 <> Blank()))},
+                      ThisItem.TaskCnt & " 件 ▸ " &
+                          If(Len(f.任務名稱) > 18, Left(f.任務名稱, 18) & "…", f.任務名稱) &
+                          "｜回覆：" & If(IsBlank(f.表單回覆), "（未回覆）", f.表單回覆)
+                  )
+              )
+            Tooltip: =If(ThisItem.TaskCnt = 0, "", "點一下展開全部 " & ThisItem.TaskCnt & " 件")
+            Width: =Parent.TemplateWidth * 0.468
+            Wrap: =false
+            X: =Parent.TemplateWidth * 0.400
+      - lblPlanStat:
+          Control: Label@2.5.1
+          Properties:
+            Color: |-
+              =If(
+                  ThisItem.NeedFollow,
+                  RGBA(220, 38, 38, 1),
+                  If(
+                      ThisItem.EarlyOT || (ThisItem.HasPlanStat && !ThisItem.PlanDelay),
+                      RGBA(22, 101, 52, 1),
+                      If(
+                          ThisItem.OnLeave,
+                          RGBA(100, 116, 139, 1),
+                          RGBA(203, 213, 225, 1)
+                      )
+                  )
+              )
+            FontWeight: =If(ThisItem.NeedFollow, FontWeight.Bold, FontWeight.Normal)
+            Height: =Parent.TemplateHeight
+            Size: =10
+            Text: |-
+              =If(
+                  !ThisItem.HasTask,
+                  "—",
+                  If(
+                      ThisItem.NeedFollow,
+                      "仍有延遲",
+                      If(
+                          ThisItem.EarlyOT,
+                          "已早加班",
+                          If(
+                              ThisItem.OnLeave,
+                              "已請假",
+                              If(ThisItem.HasPlanStat, "已更新", "未巡檢")
+                          )
+                      )
+                  )
+              )
+            Tooltip: |-
+              =With(
+                  {d: Filter(colToday, Email = ThisItem.Email && 任務名稱 <> Blank())},
+                  If(
+                      CountRows(d) = 0,
+                      "（今日無延遲工作）",
+                      Concat(d, "・" & 任務名稱 & "：" & If(IsBlank(Planner狀態), "（尚未巡檢）", Planner狀態), Char(10))
+                  )
+              )
+            Width: =Parent.TemplateWidth * 0.120
+            Wrap: =false
+            X: =Parent.TemplateWidth * 0.875
+- conNoAccess:
+    Control: GroupContainer@1.5.0
+    Variant: ManualLayout
+    Properties:
+      Fill: =RGBA(247, 248, 250, 1)
+      Height: =Parent.Height
+      Visible: =!IsBlank(locIsAdmin) && Not(locIsAdmin)
+      Width: =Parent.Width
+    Children:
+      - lblNoAccess:
+          Control: Label@2.5.1
+          Properties:
+            Align: =Align.Center
+            Color: =RGBA(107, 114, 128, 1)
+            FontWeight: =FontWeight.Semibold
+            Height: =80
+            Size: =18
+            Text: ="你沒有查閱權限"
+            Width: =Parent.Width
+            Y: =Parent.Height * 0.4
+- conDetail:
+    Control: GroupContainer@1.5.0
+    Variant: ManualLayout
+    Properties:
+      Height: =Parent.Height
+      Visible: =!IsBlank(gDetailEmail)
+      Width: =Parent.Width
+    Children:
+      - recDetailMask:
+          Control: Rectangle@2.3.0
+          Properties:
+            Fill: =RGBA(15, 23, 42, 0.45)
+            Height: =Parent.Height
+            OnSelect: =Set(gDetailEmail, Blank())
+            Width: =Parent.Width
+      - conDetailCard:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =RGBA(255, 255, 255, 1)
+            Height: |-
+              =Min(
+                  Parent.Height * 0.74,
+                  92 + CountRows(Filter(colToday, Email = gDetailEmail && 任務名稱 <> Blank())) * 58
+              )
+            Width: =Parent.Width * 0.62
+            X: =Parent.Width * 0.19
+            Y: =Parent.Height * 0.12
+          Children:
+            - lblDetailTitle:
+                Control: Label@2.5.1
+                Properties:
+                  Color: =RGBA(31, 41, 55, 1)
+                  FontWeight: =FontWeight.Semibold
+                  Height: =32
+                  Size: =14
+                  Text: |-
+                    =gDetailName & "　今日延遲工作 " &
+                     CountRows(Filter(colToday, Email = gDetailEmail && 任務名稱 <> Blank())) & " 件"
+                  Width: =Parent.Width - 80
+                  X: =20
+                  Y: =14
+            - btnDetailClose:
+                Control: Classic/Button@2.2.0
+                Properties:
+                  BorderColor: =RGBA(229, 231, 235, 1)
+                  BorderThickness: =1
+                  Color: =RGBA(107, 114, 128, 1)
+                  Fill: =RGBA(255, 255, 255, 1)
+                  Height: =28
+                  HoverFill: =RGBA(243, 244, 246, 1)
+                  OnSelect: =Set(gDetailEmail, Blank())
+                  Size: =12
+                  Text: ="✕"
+                  Width: =36
+                  X: =Parent.Width - 52
+                  Y: =16
+            - recDetailLine:
+                Control: Rectangle@2.3.0
+                Properties:
+                  Fill: =RGBA(226, 232, 240, 1)
+                  Height: =1
+                  Width: =Parent.Width - 40
+                  X: =20
+                  Y: =52
+            - galDetail:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  Height: =Parent.Height - 68
+                  Items: |-
+                    =AddColumns(
+                        Filter(colToday, Email = gDetailEmail && 任務名稱 <> Blank()),
+                        IsRed,
+                        EndsWith(Coalesce(Planner狀態, ""), "延遲")
+                            && !StartsWith(Coalesce(表單回覆, ""), "2.")
+                            && !StartsWith(Coalesce(表單回覆, ""), "4."),
+                        IsGreen,
+                        StartsWith(Coalesce(表單回覆, ""), "2.")
+                            || (!IsBlank(Planner狀態) && !EndsWith(Coalesce(Planner狀態, ""), "延遲")),
+                        IsLeave,
+                        StartsWith(Coalesce(表單回覆, ""), "4.")
+                    )
+                  TemplatePadding: =0
+                  TemplateSize: =58
+                  Width: =Parent.Width - 40
+                  X: =20
+                  Y: =60
+                Children:
+                  - recDRow:
+                      Control: Rectangle@2.3.0
+                      Properties:
+                        Fill: |-
+                          =If(
+                              ThisItem.IsRed,
+                              RGBA(254, 242, 242, 1),
+                              If(ThisItem.IsGreen, RGBA(240, 253, 244, 1), RGBA(255, 255, 255, 1))
+                          )
+                        Height: =Parent.TemplateHeight - 4
+                        Width: =Parent.TemplateWidth
+                  - lblDTask:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: |-
+                          =If(
+                              ThisItem.IsRed,
+                              RGBA(153, 27, 27, 1),
+                              If(
+                                  ThisItem.IsGreen,
+                                  RGBA(22, 101, 52, 1),
+                                  If(ThisItem.IsLeave, RGBA(100, 116, 139, 1), RGBA(31, 41, 55, 1))
+                              )
+                          )
+                        FontWeight: =FontWeight.Semibold
+                        Height: =22
+                        Size: =11
+                        Text: ="・" & If(IsBlank(ThisItem.方案名稱), "", ThisItem.方案名稱 & "｜") & ThisItem.任務名稱
+                        VerticalAlign: =VerticalAlign.Top
+                        Width: =Parent.TemplateWidth - 16
+                        Wrap: =false
+                        X: =8
+                        Y: =6
+                  - lblDReply:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: |-
+                          =If(
+                              ThisItem.IsRed,
+                              RGBA(185, 28, 28, 1),
+                              If(ThisItem.IsLeave, RGBA(100, 116, 139, 1), RGBA(75, 85, 99, 1))
+                          )
+                        Height: =22
+                        Size: =10
+                        Text: ="　回覆：" & If(IsBlank(ThisItem.表單回覆), "（未回覆）", ThisItem.表單回覆)
+                        VerticalAlign: =VerticalAlign.Top
+                        Width: =Parent.TemplateWidth * 0.68
+                        Wrap: =false
+                        X: =8
+                        Y: =28
+                  - lblDStat:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Right
+                        Color: |-
+                          =If(
+                              ThisItem.IsRed,
+                              RGBA(220, 38, 38, 1),
+                              If(ThisItem.IsGreen, RGBA(22, 101, 52, 1), RGBA(148, 163, 184, 1))
+                          )
+                        FontWeight: =If(ThisItem.IsRed, FontWeight.Bold, FontWeight.Normal)
+                        Height: =22
+                        Size: =10
+                        Text: =Coalesce(ThisItem.Planner狀態, "（尚未巡檢）")
+                        VerticalAlign: =VerticalAlign.Top
+                        Width: =Parent.TemplateWidth * 0.28
+                        Wrap: =false
+                        X: =Parent.TemplateWidth * 0.70
+                        Y: =28
+                  - recDDivider:
+                      Control: Rectangle@2.3.0
+                      Properties:
+                        Fill: =RGBA(241, 245, 249, 1)
+                        Height: =1
+                        Width: =Parent.TemplateWidth
+                        Y: =Parent.TemplateHeight - 1

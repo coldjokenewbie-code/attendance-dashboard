@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ScrToday 加「離開 App」鈕 — 2026-08-27</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#e5e7eb;--ink:#1f2937;--mut:#6b7280;--acc:#0079bb;--warn:#b45309;--warnbg:#fffbeb}
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:var(--bg);color:var(--ink);
+ font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;line-height:1.7}
+.wrap{max-width:880px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:var(--mut);font-size:13px;margin-bottom:22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:16px}
+h2{font-size:16px;margin:0 0 12px;padding-bottom:8px;border-bottom:2px solid var(--acc)}
+h3{font-size:14px;margin:18px 0 8px;color:var(--acc)}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:#f3f4f6;width:180px;white-space:nowrap}
+code{background:#f3f4f6;border:1px solid var(--line);border-radius:4px;padding:1px 5px;
+ font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 16px;overflow-x:auto;font-size:12.5px;line-height:1.55}
+pre code{background:none;border:none;color:inherit;padding:0}
+details{margin:10px 0;background:#fafafa;border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+summary{cursor:pointer;font-size:13px;color:var(--mut);font-weight:600}
+details p{font-size:13.5px;color:#374151;margin:10px 0 2px}
+.warn{background:var(--warnbg);border:1px solid #fcd34d;border-left:4px solid var(--warn);
+ border-radius:8px;padding:12px 16px;margin:14px 0;font-size:14px}
+.warn b{color:var(--warn)}
+ol,ul{padding-left:22px;margin:8px 0}
+li{margin:6px 0;font-size:14px}
+.chk{list-style:none;padding-left:0}
+.chk li{padding-left:26px;position:relative}
+.chk li::before{content:"☐";position:absolute;left:4px;font-size:15px;color:var(--acc)}
+.tag{display:inline-block;background:#e0f2fe;color:#075985;border-radius:4px;padding:1px 7px;font-size:12px;margin-left:6px}
+</style></head><body><div class="wrap">
+
+<h1>ScrToday 加「離開 App」鈕</h1>
+<div class="sub">2026-08-27 ｜ [Claude@Mac] ｜ 對應回報：手機上勾選送出後無法結束程式</div>
+
+<div class="card">
+<h2>症狀與根因</h2>
+<table>
+<tr><th>使用者回報</th><td>手機安裝 Power Apps，個人儀表板勾選送出後無法離開頁面／結束程式；目前只能叫出手機的「所有開啟中的 App」列表把它滑掉。</td></tr>
+<tr><th>已排除</th><td>送出本身正常：Patch 成功、顯示「已送出回覆」、彈窗有關掉。<b>與送出邏輯無關。</b></td></tr>
+<tr><th>根因</th><td>ScrToday 是單一畫面，整份 <code>pa.yaml</code> <b>沒有任何 <code>Exit()</code>／<code>Back()</code>／<code>Navigate()</code></b>——App 內完全沒有離開入口，只能靠 Power Apps 播放器自身的邊緣滑動手勢，同事找不到。</td></tr>
+<tr><th>修法</th><td>標題列右上角加一顆 <code>btnExit</code>，<code>OnSelect: =Exit()</code>。</td></tr>
+</table>
+<details><summary>為什麼確定不是彈窗卡住</summary>
+<p>送出鈕的寫法是「Patch 沒有錯誤才關彈窗」，Patch 失敗時 <code>locShowPopup</code> 會維持 <code>true</code>、全螢幕遮罩持續蓋著。但使用者確認送出後顯示「已送出」、沒有紅色錯誤訊息，代表這條路徑沒有觸發；而且「取消」鈕是無條件關閉、永遠有效。</p>
+<p>另外已比對 Studio 2026-08-03 匯出版 <code>ScrToday_0803bak.yml</code> 與 repo 版：結構逐行相同，只差 radio 選項文字，所以上述判讀就是線上實際行為。</p>
+</details>
+</div>
+
+<div class="warn"><b>⚠ 不要整頁重貼。</b>TaskLog A11 已記：Studio 端的 <code>galToday.TemplateSize</code> 可能被手動改小過，repo 版仍是 <code>420</code>。全選刪除再貼會把手改值洗掉。<b>本次只加一顆控件、改一個既有屬性。</b></div>
+
+<div class="card">
+<h2>作法 A：貼單一控件<span class="tag">建議</span></h2>
+<ol>
+<li>Studio 開啟個人儀表板 → 進 <b>ScrToday</b> 畫面。</li>
+<li>在左側樹狀圖點選 <code>conHeader</code>（讓新控件成為它的子控件）。</li>
+<li>複製下面整段 → 在畫布上 <code>Ctrl/Cmd + V</code>。</li>
+</ol>
+<pre><code>- btnExit:
+    Control: Classic/Button@2.2.0
+    Properties:
+      BorderColor: =RGBA(148, 163, 184, 1)
+      BorderThickness: =1
+      Color: =RGBA(51, 65, 85, 1)
+      Fill: =RGBA(255, 255, 255, 1)
+      Height: =32
+      HoverFill: =RGBA(226, 232, 240, 1)
+      OnSelect: =Exit()
+      Size: =13
+      Text: ="離開 App"
+      Tooltip: ="關閉出勤回覆 App，回到 Power Apps 的 app 清單"
+      Width: =92
+      X: =Parent.Width - 108
+      Y: =14</code></pre>
+
+<h3>不要動 lblTitle 的寬度<span class="tag">2026-08-27 手機實測後修正</span></h3>
+<p style="font-size:14px;margin:6px 0"><code>lblTitle.Width</code> 維持原本的 <code>=Parent.Width - 32</code>，其餘控件全部不動。</p>
+<div class="warn"><b>⚠ 曾試過縮寬到 <code>=Parent.Width - 132</code>，實測是錯的。</b>手機上標題「今日工作時程狀況　2026/08/27」會被擠成兩行，塞進 <code>Height: =32</code> 的 Label 裡上下都被裁掉。若已經改過，<b>請改回 <code>=Parent.Width - 32</code></b>。</div>
+<details><summary>為什麼不必讓位</summary>
+<p><code>btnExit</code> 放在 <code>conHeader.Children</code> 最後＝z-order 最上層（Studio 樹狀檢視裡它排在最前面）。上層控件先接收點擊，所以底下的 Label 橫跨過去也擋不住按鈕。縮寬純屬多餘的預防，代價是版面被裁。</p>
+<p>若手機系統字體放很大、標題本來就換行，改 <code>lblTitle.Size</code>（<code>18</code> → <code>15</code>）比縮寬度安全。</p>
+</details>
+</div>
+
+<div class="card">
+<h2>作法 B：純手動（貼不上時用）</h2>
+<ol>
+<li><b>插入 → 按鈕</b>，命名 <code>btnExit</code>。</li>
+<li>拖進 <code>conHeader</code> 內。</li>
+<li>依序設這幾個屬性：</li>
+</ol>
+<table>
+<tr><th>屬性</th><th>值</th></tr>
+<tr><td>OnSelect</td><td><code>Exit()</code></td></tr>
+<tr><td>Text</td><td><code>"離開 App"</code></td></tr>
+<tr><td>X</td><td><code>Parent.Width - 108</code></td></tr>
+<tr><td>Y</td><td><code>14</code></td></tr>
+<tr><td>Width</td><td><code>92</code></td></tr>
+<tr><td>Height</td><td><code>32</code></td></tr>
+</table>
+<p style="font-size:14px;margin:10px 0 0"><b>不要動 <code>lblTitle.Width</code></b>，維持 <code>Parent.Width - 32</code>（理由見上一段的紅框）。</p>
+</div>
+
+<div class="card">
+<h2>驗收</h2>
+<ul class="chk">
+<li>Studio 內標題列右上角看得到「離開 App」鈕。</li>
+<li><b>手機上標題「今日工作時程狀況　2026/08/27」維持一行、沒有被上下裁切</b>（縮過 lblTitle 寬度就會裁）。</li>
+<li>發佈後，<b>在手機上</b>開 App → 按「離開 App」→ 回到 Power Apps 的 app 清單（不是白畫面、不是留在原頁）。</li>
+<li>回報者實測：填寫回覆 → 送出 → 按「離開 App」，整段流程走得完。</li>
+<li>行政 App（ScrAdmin）是否也要加，見下方待決。</li>
+</ul>
+<div class="warn"><b>必須在手機實測。</b><code>Exit()</code> 在 Studio 預覽模式下不會真的結束 App（<b>推測</b>，未實測）——在 Studio 按沒反應不代表失敗，要以手機播放器的結果為準。</div>
+</div>
+
+<div class="card">
+<h2>待決</h2>
+<p style="font-size:14px;margin:0">行政儀表板（ScrAdmin，獨立 App）同樣沒有任何 <code>Exit()</code>／離開入口，三位行政人員會遇到一模一樣的狀況。本次<b>沒有動它</b>——ScrAdmin 正卡在權限閘 yaml 待貼（TaskLog B1），不宜同時再疊改動。要不要一併加，等你決定。</p>
+</div>
+
+</div></body></html>
